@@ -1,6 +1,15 @@
 # Progress files
 
-One file per roadmap phase, created **when the phase starts** — not in advance.
+One file per roadmap phase. Every planned phase has a stub from the outset, so
+there is always somewhere to park a finding that belongs to a phase other than
+the current one — those are exactly the notes that get lost otherwise.
+
+A stub is thin on purpose: **Current state** says "not started", **Next action**
+says what it is blocked on, and **Done** lists the checkpoints and the work the
+roadmap already commits to. Everything else waits until the phase starts.
+
+*This rule changed on 2026-08-09.* It previously said files were created when a
+phase started, not in advance.
 
 These are the **volatile** half of the docs. Keep them separate from `decisions.md` so that reading current state doesn't drag stable content along, and so decisions stay stable while progress churns.
 

@@ -1,6 +1,6 @@
 ---
 name: orient
-description: Load KanjiLens project context — current phase, progress, decisions, and repo state. Use at the start of a session or when resuming after a break.
+description: Load Spotter project context — current phase, progress, decisions, and repo state. Use at the start of a session or when resuming after a break.
 disable-model-invocation: true
 allowed-tools: Read Glob Grep Bash(git status:*) Bash(git log:*) Bash(git branch:*)
 ---

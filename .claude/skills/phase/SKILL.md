@@ -1,6 +1,6 @@
 ---
 name: phase
-description: Start or resume work on a KanjiLens roadmap phase. Loads that phase's docs, verification cases, and decision checkpoints, then plans the work before coding. Use with a phase number or topic, e.g. "phase 1" or "phase overlay".
+description: Start or resume work on a Spotter roadmap phase. Loads that phase's docs, verification cases, and decision checkpoints, then plans the work before coding. Use with a phase number or topic, e.g. "phase 1" or "phase overlay".
 argument-hint: [phase-number-or-topic]
 arguments: target
 disable-model-invocation: true

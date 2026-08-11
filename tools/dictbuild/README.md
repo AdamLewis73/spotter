@@ -1,6 +1,6 @@
 # dictbuild
 
-Builds `kanjilens.db`, the read-only dictionary shipped as an Android asset (D-10).
+Builds `spotter.db`, the read-only dictionary shipped as an Android asset (D-10).
 
 Desktop Python, stdlib only, no install step. Contains no Android code and needs no emulator — the point is to de-risk the whole data layer before any Android work starts.
 
@@ -8,7 +8,7 @@ Desktop Python, stdlib only, no install step. Contains no Android code and needs
 
 ```bash
 python test_dictbuild.py   # 38 unit tests over the pure functions, ~3 ms
-python build.py            # kanjilens.db from schema.sql + the ingest stages
+python build.py            # spotter.db from schema.sql + the ingest stages
 python verify.py           # the verification cases from docs/verification.md
 ```
 
@@ -36,7 +36,7 @@ The remaining two sources (KanjiVG, JmdictFurigana) are immutable GitHub release
 
 ## Getting the database into the Android app
 
-`data/build/kanjilens.db` is **gitignored** — it is a build output, and committing a 100 MB binary that changes on every rebuild is exactly what D-55 avoided for the sources. So a fresh clone has the sources but not the database.
+`data/build/spotter.db` is **gitignored** — it is a build output, and committing a 100 MB binary that changes on every rebuild is exactly what D-55 avoided for the sources. So a fresh clone has the sources but not the database.
 
 Phase 2 needs it as an app asset:
 
@@ -44,7 +44,7 @@ Phase 2 needs it as an app asset:
 python fetch.py                      # only if data/raw/ is empty
 python build.py
 python verify.py                     # 10 of 10 must pass
-cp data/build/kanjilens.db ../../app/src/main/assets/
+cp data/build/spotter.db ../../app/src/main/assets/
 ```
 
 Room loads it with `createFromAsset`, which copies it out to internal storage on first launch — so the device holds both the compressed copy inside the APK and the extracted one, roughly 130 MB total.

@@ -5,11 +5,11 @@
 
 ## Current state
 
-`tools/dictbuild/` builds a 99.7 MB `kanjilens.db` in about 45 seconds: `kanji`, `word`, `word_sense`, `example`, `kanji_in_word`, `meta`. All four parsers are in, plus the `changes` diff and a verification harness. Nothing outstanding.
+`tools/dictbuild/` builds a 99.7 MB `spotter.db` in about 45 seconds: `kanji`, `word`, `word_sense`, `example`, `kanji_in_word`, `meta`. All four parsers are in, plus the `changes` diff and a verification harness. Nothing outstanding.
 
 ```
 python fetch.py     # sources from the pinned manifest (D-41)
-python build.py     # kanjilens.db from schema.sql + the ingest stages
+python build.py     # spotter.db from schema.sql + the ingest stages
 ```
 
 Design decisions from this phase are D-38 through D-59, with verification cases V-17 through V-25. Nothing below should be re-litigated without reading those.

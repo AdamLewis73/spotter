@@ -1,16 +1,18 @@
-# Kanji Lens
+# Spotter
 
-By Adam Lewis
+**Spotter: Kanji Scanner** — by Adam Lewis
 
-An Android app for learning kanji **in context**.
+An Android app for reading Japanese in the wild. Point the camera at a sign, a menu, or a package; freeze the frame; tap a word to see what it means, how it's read, and which kanji compose it. Save words and review them.
 
-Kanji don't have fixed meanings in isolation. 生 alone is "life", but 先生 is "teacher" and 生産 is "production". 手 alone is "hand", but 上手 is "skilled" and 歌手 is "singer". Translation apps replace the Japanese, which destroys exactly the information a learner needs.
+**The scanner is the product.** The app opens on the camera — no home screen, no dashboard. Free, with no ads and no paywall on scanning.
 
-Kanji Lens keeps the Japanese and explains it. Point the camera at a sign, a menu, or a package; freeze the frame; tap a word to see what it means, how it's read, and which kanji compose it. Save words to lists and review them with spaced repetition.
+Where it differs from a translation app: it keeps the Japanese and explains it, rather than replacing it. Kanji don't have fixed meanings in isolation — 生 alone is "life", but 先生 is "teacher" and 生産 is "production"; 手 alone is "hand", but 上手 is "skilled" and 歌手 is "singer". Replacing the text destroys exactly the information a learner needs.
 
 ## Status
 
-**Pre-development.** Design is complete; no code yet.
+**Phase 1 complete** — `tools/dictbuild/` builds the bundled dictionary from four pinned open datasets. **Phase 2 (Android app) not started;** no Kotlin yet.
+
+See `docs/roadmap.md` for the phase plan and `docs/overview.md` to start reading.
 
 ## Documentation
 

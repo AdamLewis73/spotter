@@ -88,6 +88,10 @@ Scan for the relevant entry rather than reading the whole file.
 | D-57 | Indexes are demand-driven, and column order is load-bearing | Data |
 | D-58 | The build must be byte-reproducible from identical sources | Data |
 | D-59 | CI review is manual-only; committed datasets are undiffable | Process |
+| D-60 | `:domain` is a plain Kotlin/JVM module, so the layering rule is a compile error | Architecture |
+| D-61 | The scanner is the product; simplicity outranks features | Product |
+| D-62 | Free, no ads, and no paywall on scanning | Product |
+| D-63 | The app is **Spotter**; "Kanji Scanner" is the store subtitle, not the name | Product |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -147,7 +151,7 @@ It does **not** attempt *word sense disambiguation* — choosing which of a word
 *Why this is written down:* "contextual meaning" appears throughout these docs and reads, to a fresh reader, as the larger claim. It is not. Two things make the smaller claim sufficient:
 
 - **Reading disambiguation is already solved.** Kuromoji builds a lattice over possible segmentations and picks a path using learned connection costs, and its tokens carry readings (D-07). Choosing うわて over じょうず is contextual, offline, and needs no language model. Ambiguity chips (`ux.md`) surface the candidates when it isn't confident, rather than guessing.
-- **Showing every sense is the stated goal, not a fallback.** Principle 4 in `overview.md` asks that a learner be able to answer *"do I know how to use this in all the ways it's used?"* Listing all senses serves that directly.
+- **Showing every sense is the stated goal, not a fallback.** The **usage completeness** principle in `overview.md` asks that a learner be able to answer *"do I know how to use this in all the ways it's used?"* Listing all senses serves that directly.
 
 What remains open is narrow and belongs to Phase 7: what goes on the **back of a review card** for a multi-sense word. That is a flashcard design question, not a data or scanning question, and it must not be mistaken for one.
 
@@ -183,6 +187,68 @@ The no-runtime-LLM half of D-03 is unchanged and still holds, for the reasons gi
 - **ML Kit Translation cannot be bundled.** Its API is built around runtime model download; there is no bundled variant. If D-45's translation feature is ever built, the download is structural, not negotiable.
 - **Future account sync (D-19)** obviously requires network, and was never in tension with this — sync is not a core function.
 
+**D-61 — The scanner is the product. Where a feature and a clean first screen conflict, the feature loses.**
+
+This decision followed a competitive review in August 2026 that the project should have run before Phase 1. The finding: the planned feature set already exists. Yomiwa (~840k downloads, on Google Play since 2015) does camera OCR, word segmentation, word and kanji detail, saved images with bounding boxes, stroke order and readings. On iOS, "Kanji Lens — Japanese Scanner" ships close to this project's entire roadmap including SRS. Several smaller Android apps cover parts of it.
+
+**D-04's Examples tab — words grouped by reading — was the project's stated differentiator, and it does not survive contact with this.** Nothing else offers it, but nobody installs an app for a screen they cannot see in a store listing. D-04 is **not superseded**: it remains the right design and the best teaching in the app. It is demoted from *the reason the app exists* to *a good feature*.
+
+What replaces it is a positioning claim rather than a feature claim: **the incumbents are cluttered, and their scanners are buried.** Yomiwa's own reviews describe a cluttered home screen with immovable shortcut buttons, freezing, and — most usefully — a camera that is paywalled without clear disclosure. The opening is not a missing capability. It is the same capabilities, reachable in one tap, by an app that opens on the camera.
+
+Concretely, this decision means:
+
+- The app **opens on the camera**. Not a home screen, not a dashboard, not a shortcut grid.
+- Every screen has **one obvious next action**.
+- A new feature must justify itself against the first screen staying clean. The default answer is to put it behind the tap, or not to build it.
+- **Simplicity outranks every other product principle in `overview.md`.** It is the hardest to hold, because every other principle argues for adding something.
+
+*Cost, accepted:* features this project has already specified will have to be hidden, deferred, or cut on these grounds, including ones that are individually good. That is the decision, not a side effect of it.
+
+*Risk being taken knowingly:* discovery, not capability, is the binding constraint on a new entrant here. Being cleaner than Yomiwa does not by itself put the app in front of anyone. Nothing in the build plan solves that, and it should not be rediscovered as a surprise later.
+
+*Watch item:* [Dokuen](https://play.google.com/store/apps/details?id=io.github.dokuendev.dokuenreader) launched September 2025 on the same instinct — camera on real-world text, tap a word, one-tap Anki export — and is already ranked in the top 100 education apps with no ratings yet. It is a closer competitor to this project than Yomiwa is.
+
+**D-62 — Free. No ads, and no paywall on scanning.**
+
+Not "free tier with the camera behind a subscription", which is the incumbent's model and the thing its users complain about most specifically. **Scanning is never metered, gated, timed, or interrupted.**
+
+*Why this is credible rather than merely generous:* the offline-first architecture (D-46) means there is no marginal cost per user. No server, no OCR API bill, no per-scan charge to recover. A competitor built on cloud OCR *must* meter the camera; this project does not have to, and that asymmetry is structural rather than a matter of willpower.
+
+*Why it matters commercially:* the beloved apps in this category are the free, ad-free ones — Takoboto (~1.7M downloads, 4.79) and Akebi (4.70) — while the ad-supported camera apps draw complaints about intrusive ads on top of broken recognition. Android Japanese learners reward this and punish the alternative.
+
+*Scope:* this constrains **scanning and core lookup only**. It does not commit the project to never charging for anything ever — a paid tier over some *later* convenience feature is not ruled out. It does rule out the camera, the dictionary, and the study loop being that feature.
+
+*Consequence for the build:* no billing integration, no paywall plumbing, no ad SDK, and no Play Store financial-data declarations for v1. That is a real simplification, not just a stance.
+
+**D-63 — The app is called Spotter. The Play Store title is `Spotter: Kanji Scanner`.**
+
+The project was called *KanjiLens* until August 2026. It was renamed because the name collided with two live products in the same category — a Chrome extension at kanjilens.com and an iOS app, "Kanji Lens — Japanese Scanner", which ships most of this project's roadmap.
+
+**The brand word is deliberately not descriptive, and the description is deliberately not the brand.** Every app in this category uses a two-part store title — `Takoboto: Japanese Dictionary`, `Yomiwa - Japanese Dictionary`, `Dokuen Japanese Reader` — because Play indexes the whole title field. So the keyword lives in the subtitle, where it earns search traffic, and the brand stays a word that can be owned, defended and said out loud.
+
+`Spotter: Kanji Scanner` is 22 characters, within Play's 30-character title limit.
+
+*Why "Spotter":* a spotter identifies things in the wild — bird spotting, plane spotting. It names what the user does, extends naturally to the saved-word-with-photo feature (D-21), and is an ordinary English word, which matters because **the audience by definition cannot read Japanese**. That last point ruled out the otherwise-strong Japanese candidates (Yomitori, Kotoba, Jukugo) even though the category's own leaders — Anki, WaniKani, Bunpro — all use Japanese words.
+
+*Names rejected, and why, so they don't get re-proposed:*
+
+| Candidate | Why not |
+|---|---|
+| KanjiLens | The original. Collides with two live products (above) |
+| Kanji Scanner | A generic descriptor: unownable, untrademarkable, unrecommendable out loud. Also the ninth `Kanji ___` app |
+| NihonGo | The most crowded name in the category — six-plus apps on Play, plus **Nihongo — Japanese Dictionary**, an established product with OCR and SRS whose pitch is nearly identical to this one. Japanese, too |
+| KanjiSpot | One letter's difference from **KanjiSnap**, a live iOS Japanese-OCR app. Near-identical mark, same category |
+
+*The pattern behind those rejections:* the obvious names are taken **because** they are obvious. Every entrant reaches for the same three stems — *kanji*, *nihongo*, *lens/camera* — so that namespace is a pile-up and the unclaimed space is exactly the non-obvious names. A future session proposing another `Kanji ___` should read this row first.
+
+*Naming the wrong unit, separately:* `Kanji ___` names the character, but this app's unit of study is the **word** (D-01), and single characters are routed differently on purpose (D-49). A kanji-prefixed name promises the character-by-character behaviour D-49 rejects.
+
+*Done as part of this decision:* the build artifact was renamed `kanjilens.db` → **`spotter.db`** across `build.py`, `verify.py`, `README.md`, `ci.yml` and the docs, and the `fetch.py` user-agent token likewise. `.gitignore` needed no change — it matches `*.db`.
+
+*Application ID:* **`com.spotterkanji.app`**. Deliberately not `com.spotter.*` — "Spotter" is a common app name in aviation and fitness, so a bare `spotter` namespace risks collision. It carries no personal name, and `spotterkanji.com` is unregistered, so the reverse-DNS form claims nothing anyone else holds. Checked against app stores and the web in August 2026 with no conflict found; note that Play package IDs are not publicly searchable in bulk, so **the authoritative check is the first Play Console upload**, which rejects a taken ID. The ID is freely changeable until then and permanent after.
+
+*Repository:* renamed `kanji_lens` → `spotter` (August 2026). The local directory may still be `kanji_lens`; git does not care.
+
 ---
 
 ## Tokenization
@@ -217,7 +283,7 @@ The **user DB** contains saved words, lists, SRS state, and scan records. It is 
 *Why separate:* the dictionary is disposable. When a new JMdict release comes out, the app replaces the whole file — no migration, no risk. User data is irreplaceable and evolves slowly under carefully written migrations. If they shared one database, every dictionary refresh would put the user's study history inside the blast radius of a schema change. Keeping them apart means dictionary updates can never harm user data.
 
 **D-10 — The dictionary DB is built by a desktop Python script, not on-device.**
-JMdict is a large XML file. Parsing it on first launch would take a long time and drain battery. Instead a script run on a development machine produces `kanjilens.db`, which is committed as an app asset.
+JMdict is a large XML file. Parsing it on first launch would take a long time and drain battery. Instead a script run on a development machine produces `spotter.db`, which is committed as an app asset.
 
 Secondary benefit: this script and its output are the most portable assets in the project. A plain SQLite file works identically on Android, iOS, or desktop.
 
@@ -256,7 +322,7 @@ Reading kana render above the entire word as a unit — せんせい positioned 
 
 **D-38 — The dictionary is rebuilt from scratch every time. Stable dictionary-owned IDs were considered and rejected.**
 
-Each build regenerates `kanjilens.db` from the source datasets, so **every row number changes**. That is fine, and D-11 is what makes it fine.
+Each build regenerates `spotter.db` from the source datasets, so **every row number changes**. That is fine, and D-11 is what makes it fine.
 
 *The rejected alternative, recorded so it isn't re-proposed:* assign our own permanent ID to each word on first build, then maintain the database incrementally forever, updating rows in place as JMdict changes. It is a natural idea and it fails for three reasons:
 
@@ -745,3 +811,21 @@ Removed from the Overview tab:
 The visual-component question — *what pieces is this kanji built from?* — is the genuinely useful version of "radical", and it is deferred separately in `roadmap.md` (KRADFILE), where the obstacle is component *naming* rather than data.
 
 *Consequence:* Overview would be left holding only meanings and readings, which is thin. D-49 refills it with the "As a word" section for kanji that are also standalone words.
+
+---
+
+## Architecture
+
+**D-60 — `:domain` is a plain Kotlin/JVM module, not an Android library. The no-`android.*` rule is enforced by the compiler, not by review.**
+
+`architecture.md` has always required that `:domain` and `:data` import nothing from `android.*` — it is the line that makes a future iOS port a matter of moving files rather than a rewrite. It previously proposed enforcing that with "a lint rule or a CI grep", noting that a convention nobody checks will not survive.
+
+There is a stronger option for `:domain`, and it costs nothing. A Gradle module's flavour determines its compile classpath: an Android library module has `android.jar` on it, and a plain Kotlin/JVM module does not. Declaring `:domain` as the latter means `import android.os.Bundle` is not a style violation to be caught later — it does not compile. The constraint stops being policy and becomes structure.
+
+**`:data` does not get this**, because Room genuinely pulls in Android. That compromise is already accepted in `architecture.md`, and it is the reason a CI grep for `android.` is still required — just for one module instead of two.
+
+*Second benefit, felt daily:* tests in an Android library module need an emulator or Robolectric; tests in a Kotlin/JVM module are ordinary JUnit and run in milliseconds. `:domain` holds FSRS, the use cases, and the tokenizer logic — most of the test suite worth having — so this moves the fast-feedback path to where the interesting code lives.
+
+*Cost, accepted:* `:domain` can never use an Android type. Should one ever seem necessary, that is the signal the code belongs in `:data` or `:app`, not a reason to change the module flavour. Nothing in the planned domain layer — models, use cases, FSRS, repository interfaces, the `Tokenizer` interface (D-08) — needs one.
+
+*On Kotlin Multiplatform:* still not being set up now, per `architecture.md`. A Kotlin/JVM module is, however, the shortest distance from here to a KMP module if it is ever wanted, because the dependency-hygiene work is already done.
