@@ -17,9 +17,11 @@ Read `overview.md` first if you're new to this project — it explains what the 
 | Navigation | Navigation Compose | |
 | SRS | FSRS (ported) | D-26 |
 
-**Dependency coordinates — verify current versions before use:**
-- `com.google.android.gms:play-services-mlkit-text-recognition-japanese`
-- `com.atilika.kuromoji:kuromoji-ipadic`
+**Versions live in `gradle/libs.versions.toml`, which is the single source of truth.** Do not paste version numbers into module build files, and do not trust a remembered one — check Google Maven or Maven Central. That instruction has already earned its keep: AGP 9 removed the Kotlin Android plugin, so every pre-2026 tutorial gives advice that is now a build error. The scaffold's findings are in `progress/phase-02-android-text-input.md`.
+
+**Dependency coordinates still to add, for later phases:**
+- `com.google.android.gms:play-services-mlkit-text-recognition-japanese` (Phase 4)
+- `com.atilika.kuromoji:kuromoji-ipadic` (Phase 2)
 
 ML Kit offers *bundled* and *unbundled* variants. Bundled ships the model inside the APK (larger download, works immediately); unbundled downloads it via Google Play Services on first use (smaller APK, but the first scan can fail offline). **Bundled is the choice** — confirm the size cost when Phase 4 starts.
 
@@ -27,8 +29,9 @@ ML Kit offers *bundled* and *unbundled* variants. Bundled ships the model inside
 
 ### SDK levels
 
-- **`compileSdk` / `targetSdk`: latest stable.** Google Play requires apps to target API 36 (Android 16) or higher as of 2026-08-31.
+- **`compileSdk` / `targetSdk`: latest stable.** Google Play requires apps to target API 36 (Android 16) or higher as of 2026-08-31. **Currently 37.** Note that from API 37 the SDK platforms carry *minor* versions — the installable packages are `android-37.0` and `android-37.1`, and there is no bare `android-37`.
 - **`minSdk`: 26.** This is the *floor* of Android versions that can install the app — a completely different knob from `targetSdk`. Setting it near the newest release would cut the app off from most devices in use for no benefit. ML Kit itself only requires API 21+.
+- **JDK 17 bytecode throughout**, including `:domain`, because Android's dexer rejects class files stamped newer than it understands.
 
 ## Module structure
 

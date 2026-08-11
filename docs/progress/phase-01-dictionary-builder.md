@@ -112,6 +112,20 @@ extracts the asset.
 
 ## Open questions
 
+- **Two guards will bite on the next source refresh (D-41). Fix them when
+  dictbuild is next touched — not urgent, since a refresh happens once or twice
+  a year.**
+  - **V-09 asserts `ranked == 2501`, an exact equality against KANJIDIC2.**
+    It fails if upstream gains or loses a single ranked kanji, which it
+    eventually will. That is a spurious failure, not a caught regression — a
+    lower bound (`>= 2400`) protects against the real fault, which is coverage
+    collapsing, without breaking on ordinary upstream drift.
+  - **The D-56 size band disagrees with itself.** `build.py` prints a warning
+    and returns 0; the CI step hard-fails. A refresh landing at 120 MB therefore
+    passes locally and fails in CI, which is a confusing way to find out. Make
+    them agree — the CI behaviour is the right one.
+  - Neither affects a build from unchanged sources, which is why they have not
+    fired yet.
 - **Verb-stem conjugation in the reading matcher.** Optional. D-52's normalizer leaves 2.25% unmatched; roughly half of that is stem forms (引き, 言い, 売り, 買い) that a conjugation rule would catch, taking the residue to about 1.5%. Diminishing returns — decide after seeing whether the Examples tab looks thin anywhere.
 - **Trimming vocabulary, if the device footprint ever matters more than coverage.** 86% of words carry no frequency tag; keeping only tagged ones would drop 278,012 words, 315,281 senses and 503,512 alignments. Rejected for now — it is one-way once users have saved words (D-11) and risks "not found" on legitimate text. Revisit only with a real reason.
 

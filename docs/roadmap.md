@@ -46,7 +46,7 @@ Three things are known to be harder than they look:
 
 **No camera at all.** Paste `先生と生産` into a text field, tokenize with Kuromoji, look up in Room, and render the word screen and kanji screen. This is where the app's actual value gets proven, and it's fully testable without any of the camera complexity.
 
-**First job: get the dictionary in.** `spotter.db` is a build output and gitignored, so a fresh clone doesn't have one — build it and copy it into the app's assets. Steps are in `tools/dictbuild/README.md`. Worth automating as a Gradle task early, because a stale asset yields an app that looks fine and serves old data.
+**First job: get the dictionary in. — Done.** `spotter.db` is a build output and gitignored, so a fresh clone doesn't have one; `:app:stageDictionaryAsset` builds it into the APK and fails loudly if it is missing or older than the code that generates it. CI rebuilds it from the committed sources every push and asserts it reached the APK, which is what actually prevents a stale asset serving old data.
 
 **Decide here: do example sentences get rendered? (D-51)** They are already in the dictionary — ingested in Phase 1, shown nowhere. Coverage is 41.4% of common senses, with a ceiling around 43% because the corpus doesn't attest the rest.
 

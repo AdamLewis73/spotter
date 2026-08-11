@@ -70,9 +70,9 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 ## Status
 
-**Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 99.7 MB `spotter.db` (30.3 MB gzipped) from four pinned sources in ~45 seconds. `verify.py` passes 10 of 10 verification cases.
+**Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 99.7 MB `spotter.db` (30.3 MB gzipped) from four pinned sources in ~45 seconds, byte-reproducible from identical sources (D-58, D-64). `verify.py` passes 10 of 10 verification cases.
 
-**Current phase:** Phase 2 — Android app, text input only. **In progress.** The Gradle scaffold builds: `:app` / `:data` / `:domain`, with `:domain` a plain Kotlin/JVM module so `android.*` is a compile error there (D-60). App is a placeholder; no dictionary wired up yet.
+**Current phase:** Phase 2 — Android app, text input only. **In progress.** `:app` / `:data` / `:domain` build, with `:domain` a plain Kotlin/JVM module so `android.*` is a compile error there (D-60). The dictionary ships inside the APK (`:app:stageDictionaryAsset`). **Nothing reads it yet** — no Room layer — and the app is still a placeholder screen.
 
 Build with `./gradlew :app:assembleDebug` (needs `JAVA_HOME` pointing at Android Studio's JBR). Scaffold gotchas and pinned versions are in `docs/progress/phase-02-android-text-input.md` — **read its Notes before touching build files**, especially that AGP 9 removed the Kotlin Android plugin.
 

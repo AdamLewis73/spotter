@@ -10,7 +10,14 @@ Where it differs from a translation app: it keeps the Japanese and explains it, 
 
 ## Status
 
-**Phase 1 complete** — `tools/dictbuild/` builds the bundled dictionary from four pinned open datasets. **Phase 2 (Android app) not started;** no Kotlin yet.
+**Phase 1 complete.** `tools/dictbuild/` builds the bundled dictionary from four pinned open datasets — 99.7 MB, byte-reproducible from identical sources, 10 of 10 verification cases passing.
+
+**Phase 2 (Android app) in progress.** Three Gradle modules build, and the dictionary ships inside a 46 MB debug APK. The app itself is still a placeholder: it launches and renders 先生, and nothing reads the dictionary yet.
+
+```bash
+python tools/dictbuild/build.py     # ~45 s; sources are committed, no network needed
+./gradlew :app:assembleDebug        # stages the dictionary into the APK
+```
 
 See `docs/roadmap.md` for the phase plan and `docs/overview.md` to start reading.
 
