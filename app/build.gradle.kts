@@ -64,6 +64,10 @@ abstract class StageDictionaryAsset : DefaultTask() {
     @get:Input
     abstract val assetName: Property<String>
 
+    /** Tiny sidecar asset holding just the build id, for the staleness check. */
+    @get:Input
+    abstract val buildIdAssetName: Property<String>
+
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
@@ -127,10 +131,23 @@ abstract class StageDictionaryAsset : DefaultTask() {
             )
         }
 
+        val buildId = Regex("\"build_id\"\\s*:\\s*\"([0-9a-f]+)\"")
+            .find(info.readText())?.groupValues?.get(1)
+            ?: throw GradleException("build-info.json has no build_id — rebuild the dictionary.")
+
         val destination = outputDir.get().asFile
         destination.mkdirs()
         db.copyTo(destination.resolve(assetName.get()), overwrite = true)
-        logger.lifecycle("Staged ${db.name} (${db.length() / 1_048_576} MB) into assets")
+
+        // Ships the dictionary's identity beside it, so the app can tell whether
+        // the copy it extracted earlier came from this same build (D-65). Room
+        // copies an asset out exactly once and never looks again, so without
+        // this a rebuilt dictionary never reaches an installed app.
+        destination.resolve(buildIdAssetName.get()).writeText(buildId)
+
+        logger.lifecycle(
+            "Staged ${db.name} (${db.length() / 1_048_576} MB) into assets, build $buildId",
+        )
     }
 
     /**
@@ -160,6 +177,9 @@ plugins {
 // gitignored — a build output, not a source file.
 val dictionaryAssetName = "spotter.db"
 
+// Must match DictionaryDatabase.BUILD_ID_ASSET_NAME.
+val dictionaryBuildIdAssetName = "spotter.db.build-id"
+
 val stageDictionaryAsset = tasks.register<StageDictionaryAsset>("stageDictionaryAsset") {
     group = "build"
     description = "Copies the built dictionary into the app's assets, failing if it is missing or stale."
@@ -185,6 +205,7 @@ val stageDictionaryAsset = tasks.register<StageDictionaryAsset>("stageDictionary
     buildInfo.from(rootProject.layout.projectDirectory.file("tools/dictbuild/data/build/build-info.json"))
     builderDir.set(rootProject.layout.projectDirectory.dir("tools/dictbuild"))
     assetName.set(dictionaryAssetName)
+    buildIdAssetName.set(dictionaryBuildIdAssetName)
     outputDir.set(layout.buildDirectory.dir("generated/dictionaryAssets"))
 }
 
