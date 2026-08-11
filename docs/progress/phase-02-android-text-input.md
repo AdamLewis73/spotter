@@ -26,14 +26,10 @@ invisible until something checksums the artefact.
 
 ## Next action
 
-**Dictionary refresh on device.** Room copies the asset out on first open and
-never looks again, so a rebuilt dictionary does not reach an already-installed
-app — during this work the tests only passed after an uninstall. The app needs
-to compare the shipped build against the extracted one and delete the copy when
-they differ.
-
-That is blocked on the `build_id` gap below: refresh logic keyed on an id that
-does not change when the builder changes would silently do nothing.
+**The D-35 checkpoint** — Material 3 plus a design-token layer — which is due
+before any real UI and is the last thing standing between here and a word
+screen. The data layer is done: the dictionary is in the APK, readable, and
+refreshes itself when it changes.
 
 Note the **D-35 checkpoint** (Material 3 plus a design-token layer) falls due
 before any real UI, and the placeholder screen deliberately does not pre-empt
@@ -56,7 +52,8 @@ it — it uses bare `MaterialTheme` defaults.
 - [x] Room read-only dictionary DAOs over the Phase 1 schema, proven on a device
       by instrumented tests (先生 resolves; 上手 returns all three readings)
 - [x] Room schema export on, JSON committed (D-18)
-- [ ] Refresh the extracted dictionary when the shipped build differs
+- [x] Refresh the extracted dictionary when the shipped build differs, verified
+      end to end by shipping a different dictionary as an in-place APK update
 - [ ] Checkpoint: Material 3 + design-token layer before the first UI commit (D-35)
 - [ ] Kuromoji tokenization behind the `Tokenizer` interface in `:domain` (D-08)
 - [ ] JMdict longest-match alternates (D-07)
@@ -144,9 +141,26 @@ differs — diff the two blocks. Three mismatches cost time:
 Check a table with `PRAGMA table_info`, `foreign_key_list` and `index_list`
 before writing its entity; it is faster than reading a validation dump.
 
-**Room copies the asset once.** A rebuilt dictionary does not reach an installed
-app — these tests only passed after `adb uninstall`. That is the next action,
-not a quirk of the emulator.
+**Room copies the asset once and never looks again.** It compares schema
+versions, not contents, so a dictionary rebuilt from newer sources changes no
+version and Room keeps serving the old copy indefinitely. Early instrumented
+tests only passed after `adb uninstall`, which looked like a test-harness quirk
+and was not.
+
+Fixed by shipping the build id as a sidecar asset and discarding the extracted
+copy when it differs (D-65). Two things that are easy to get wrong:
+
+- **Close the Room instance before deleting the file.** Unlinking an open SQLite
+  file succeeds on Linux, but the open handle keeps pointing at the old inode,
+  so a still-open instance goes on serving the database that was just deleted —
+  with no error anywhere.
+- **Delete `-wal` and `-shm` too**, or a fresh copy sits beside old journal
+  files.
+
+Verifying this needs a genuine in-place APK update. `connectedAndroidTest`
+uninstalls afterwards, so a plain re-run silently tests a fresh install and
+proves nothing; drive it with `adb install -r` plus `am instrument` and read the
+`DictionaryProvider` log line.
 
 `Room.databaseBuilder` needs a `Context`, which `:data` may not import (D-60),
 so construction lives in `:app` and `:data` exposes Room types via `api` rather

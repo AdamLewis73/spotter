@@ -33,5 +33,14 @@ abstract class DictionaryDatabase : RoomDatabase() {
     companion object {
         /** Matches the file staged into assets by `:app:stageDictionaryAsset`. */
         const val ASSET_NAME: String = "spotter.db"
+
+        /**
+         * Sidecar asset holding the shipped dictionary's `build_id` (D-65).
+         *
+         * Kept beside the database rather than read from inside it, because the
+         * point is to decide whether to open the extracted copy at all — reading
+         * the answer out of that copy would be circular.
+         */
+        const val BUILD_ID_ASSET_NAME: String = "spotter.db.build-id"
     }
 }
