@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import shutil
 import sqlite3
 import sys
 import tempfile
@@ -139,6 +140,16 @@ def v18(db, out):
 
 @case("V-19", "The changes table catches a retired key (D-39)")
 def v19(db, out):
+    # This is the one case that must WRITE — it populates `changes` from a
+    # synthetic baseline and reads back what landed. It therefore runs against a
+    # throwaway copy, never the real database.
+    #
+    # It used to write to the artefact directly and delete its rows afterwards.
+    # That looked tidy and was not: simply opening SQLite read-write alters the
+    # file's bytes, so verifying the dictionary changed it, and the D-58
+    # determinism check compared a verified database against a freshly built one
+    # and reported a reproducibility failure that did not exist.
+    source = Path(db.execute("PRAGMA database_list").fetchone()[2])
     seq = db.execute("SELECT ent_seq FROM word WHERE text='上手'"
                      " AND reading='じょうず'").fetchone()[0]
     gone = db.execute("SELECT max(ent_seq) FROM word").fetchone()[0] + 1
@@ -149,10 +160,18 @@ def v19(db, out):
                 fh.write(f"{t}\t{r}\t{s}\n")
             fh.write(f"上手\tじょうづ\t{seq}\n")        # entry survives
             fh.write(f"架空語\tかくうご\t{gone}\n")     # entry gone
-        db.execute("DELETE FROM changes")
-        stats = changes.diff(db, synthetic, "verify")
-    rows = {(r[0], r[1]): (r[2], r[3]) for r in db.execute("SELECT * FROM changes")}
-    db.execute("DELETE FROM changes")
+
+        scratch_path = Path(td) / "scratch.db"
+        shutil.copy2(source, scratch_path)
+        scratch = sqlite3.connect(scratch_path)
+        try:
+            scratch.execute("DELETE FROM changes")
+            stats = changes.diff(scratch, synthetic, "verify")
+            rows = {(r[0], r[1]): (r[2], r[3])
+                    for r in scratch.execute("SELECT * FROM changes")}
+        finally:
+            scratch.close()
+
     for k, v in rows.items():
         out(f"{k[0]} / {k[1]:<10} -> {v[0] + ' / ' + v[1] if v[0] else '(removed outright)'}")
     return (stats["retired"] == 2 and stats["with_successor"] == 1
@@ -213,7 +232,18 @@ def main() -> int:
     if not args.db.exists():
         sys.exit(f"{args.db} not found — run build.py first")
 
-    db = sqlite3.connect(args.db)
+    # READ-ONLY, and not merely as good practice. A plain sqlite3.connect()
+    # opens read-write, and simply connecting is enough to change the file's
+    # bytes without changing its size or content — SQLite touches the header.
+    #
+    # That silently broke the D-58 determinism check: CI builds, verifies, then
+    # rebuilds and compares checksums, so the verifier was mutating the very
+    # artefact under comparison and the rebuild "failed" reproducibility. The
+    # bug was invisible until the database became byte-reproducible (D-64) and
+    # something finally checksummed it.
+    #
+    # A tool whose job is to verify an artefact must not write to it.
+    db = sqlite3.connect(f"file:{args.db}?mode=ro", uri=True)
     failures = []
     for cid, title, fn in CASES:
         lines: list[str] = []
