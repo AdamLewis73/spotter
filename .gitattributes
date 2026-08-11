@@ -27,8 +27,14 @@ tools/dictbuild/baseline/**  -text -diff linguist-generated
 # shell rather than the line endings — an expensive thing to debug.
 #
 # `gradlew.bat` is the opposite: a Windows batch file, which wants CRLF.
-gradlew        text eol=lf
-gradlew.bat    text eol=crlf
+#
+# Both are marked `-diff linguist-generated` for the same reason as the datasets
+# above: they are generated boilerplate nobody hand-edits, and between them they
+# are ~15k tokens. Collapsing them keeps them out of PR diffs, out of GitHub's
+# language statistics, and out of any reviewer's context — automated or human.
+# To change them, regenerate with `gradle wrapper`, never patch by hand.
+gradlew        text eol=lf   -diff linguist-generated
+gradlew.bat    text eol=crlf -diff linguist-generated
 *.jar          -text -diff linguist-generated
 
 # Generated artifacts, wherever they land.
