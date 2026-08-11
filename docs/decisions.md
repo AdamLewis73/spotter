@@ -93,6 +93,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-62 | Free, no ads, and no paywall on scanning | Product |
 | D-63 | The app is **Spotter**; "Kanji Scanner" is the store subtitle, not the name | Product |
 | D-64 | Wall-clock time lives outside the dictionary, in a `build-info.json` sidecar | Data |
+| D-65 | `build_id` identifies the artefact: sources **and** builder, normalised | Data |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -588,6 +589,22 @@ So `built_at` moved to `build-info.json`, written beside the database. `build_id
 *Why a sidecar rather than deleting the timestamp:* "when was this built, and from what?" is a real question when debugging a bad dictionary. The file is build output, not an app asset — the app reads `meta`, and D-38 keeps the dictionary disposable, so dropping a column cost nothing.
 
 *Consequence:* `build_id` changed shape, from `20260811-1103feb9` to `1103feb952bd`. Nothing persisted depends on it yet, which is why this was cheap now and would not have been after Phase 8 ships export files carrying build ids.
+
+**D-65 — `build_id` identifies the artefact, not just its inputs: it hashes the sources *and* the builder, with line endings normalised.**
+
+D-64 made `build_id` a pure hash of the source checksums. That fixed the date-prefix bug but left the mirror-image one: **a change to the builder was invisible.** Adding `NOT NULL` to `word.id` in `schema.sql` produced a materially different database carrying an identical `build_id`.
+
+D-58's rule survived in one direction — a rebuild that changed nothing was labelled unchanged — while the question that actually matters went unanswered: *did this artefact change?* An on-device dictionary refresh has to answer exactly that, and keyed on the old id it would have silently done nothing.
+
+So `build_id` now hashes the source checksums **plus** a digest of every builder file — `build.py`, `changes.py`, `kana.py`, `ingest_*.py`, `schema.sql`. Deliberately excluded: `verify.py` and `test_dictbuild.py` read the output, `inspect_sources.py` reads the raw sources, and `fetch.py`'s effect shows up as a changed `sources.lock.json`, which the source checksums already cover.
+
+**Line endings are normalised to LF before hashing, and that is load-bearing.** Git checks these files out CRLF on Windows and LF on Linux, so hashing raw bytes would make `build_id` a function of the developer's platform — the same commit yielding a different id on a laptop than in CI. Caught while testing this change, not in production. The Gradle task normalises identically; the two implementations must stay in step.
+
+*Second thing this buys — one definition of "the builder".* `build.py` publishes the file list with each hash in `build-info.json`, and `:app:stageDictionaryAsset` consumes it rather than keeping its own glob. Previously both maintained a list and could drift.
+
+*Third — the staleness check stops lying.* It compared mtimes, so `git checkout` or a branch switch made a current database look stale; it fired on a `build.py` byte-identical to git. Comparing published hashes removes the false positive, and with it the `-PallowStaleDictionary` escape hatch that existed only to work around it. A guard that cannot cry wolf does not need one.
+
+*Cost:* `build_id` changes whenever the builder changes, so a refactor that alters no output still produces a new id. That is the correct trade — the id answers "is this the same artefact?", and a conservative answer is safe where a false "unchanged" is not.
 
 **D-59 — GitHub review runs only on manual trigger, and committed datasets must be undiffable.**
 

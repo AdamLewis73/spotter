@@ -72,17 +72,6 @@ it — it uses bare `MaterialTheme` defaults.
 
 ## Open questions
 
-- **`build_id` does not change when the builder changes, only when the sources
-  do.** Demonstrated here: adding `NOT NULL` to `word.id` in `schema.sql`
-  produced a materially different database with the *same* `build_id`
-  (`1103feb952bd`). D-58's rule holds in one direction — a rebuild that changed
-  nothing is labelled unchanged — but not the other, and "did this artefact
-  change?" is the question an asset-refresh needs answered.
-  Fix is a natural extension of D-64: fold a hash of the builder sources
-  (`schema.sql`, `ingest_*.py`, `kana.py`, `changes.py`) into `build_id`
-  alongside the source checksums. Note `:app:stageDictionaryAsset` already
-  tracks exactly that file set for its staleness check, so the definition of
-  "the builder" exists in two places and should end up in one.
 
 - **A 100 MB asset is proven present, not proven readable.** Room's
   `createFromAsset` streams a compressed asset out to internal storage on first
@@ -185,11 +174,12 @@ unverified — hence pinning the 9.2 line, whose requirements are documented
   points at the Variant API; `androidComponents.onVariants { … addGenerated
   SourceDirectory(...) }` is the supported route and carries the task
   dependency automatically, so no `preBuild.dependsOn` is needed.
-- **The staleness check is a timestamp comparison, and timestamps lie.**
-  `git checkout` and branch switches reset mtime without changing content, which
-  makes a current database look stale — this fired during development on a
-  `build.py` that was byte-identical to git. Hence
-  `-PallowStaleDictionary=true`. A guard with no escape hatch gets deleted.
+- **The staleness check compared timestamps, and timestamps lie.** `git checkout`
+  and branch switches reset mtime without changing content, so a current
+  database looked stale — it fired on a `build.py` byte-identical to git. It now
+  compares content hashes published by `build.py` in `build-info.json` (D-65),
+  which removes the false positive and the `-PallowStaleDictionary` escape hatch
+  that existed only to work around it.
 - The real protection is CI: it rebuilds the dictionary from committed sources
   every push and asserts `assets/spotter.db` is in the APK.
 
