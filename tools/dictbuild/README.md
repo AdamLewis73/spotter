@@ -36,20 +36,26 @@ The remaining two sources (KanjiVG, JmdictFurigana) are immutable GitHub release
 
 ## Getting the database into the Android app
 
-`data/build/spotter.db` is **gitignored** — it is a build output, and committing a 100 MB binary that changes on every rebuild is exactly what D-55 avoided for the sources. So a fresh clone has the sources but not the database.
+`data/build/spotter.db` is **gitignored** — a 100 MB binary does not belong in git, and D-55's argument for committing the *sources* does not extend to a file those sources can regenerate in 45 seconds. So a fresh clone has the sources but not the database.
 
-Phase 2 needs it as an app asset:
+Build it, and the Android build picks it up:
 
 ```bash
 python fetch.py                      # only if data/raw/ is empty
 python build.py
 python verify.py                     # 10 of 10 must pass
-cp data/build/spotter.db ../../app/src/main/assets/
 ```
+
+**The copy into the app is automated** (`:app:stageDictionaryAsset`), so there is no manual `cp` step. That task fails the Android build if the database is missing, or if it is older than the code that generates it — a stale asset otherwise produces an app that looks fine and serves old data. See `app/build.gradle.kts`.
 
 Room loads it with `createFromAsset`, which copies it out to internal storage on first launch — so the device holds both the compressed copy inside the APK and the extracted one, roughly 130 MB total.
 
-**This step is not automated yet.** When the Gradle project exists, wiring it as a build task is the obvious next move; until then it is a manual copy and worth remembering, because a stale asset produces an app that looks fine and serves old data.
+Two outputs, and only one of them is reproducible:
+
+| File | Reproducible? |
+|---|---|
+| `spotter.db` | **Yes** — byte-identical from identical sources (D-58) |
+| `build-info.json` | No, and deliberately so — it records the wall-clock build time that used to sit inside the database (D-64) |
 
 ## Refresh policy (D-41)
 

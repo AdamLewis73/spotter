@@ -87,10 +87,18 @@ jobs:
         # verify.py exits non-zero if any case fails, which fails the job.
         run: python verify.py
 
-      - name: Check the build is deterministic (D-58, V-25)
+      - name: Check the build is deterministic (D-58, D-64, V-25)
         working-directory: tools/dictbuild
+        # This checksums the SHIPPED ARTEFACT, not a proxy for it. Until
+        # 2026-08-11 it could only check keys.tsv.gz, because meta.built_at put
+        # a wall-clock timestamp inside the database and guaranteed its bytes
+        # differed on every build. With that moved to build-info.json (D-64),
+        # the database itself is byte-reproducible and gets checked directly.
+        #
+        # build-info.json is deliberately excluded — it is the one output that
+        # is *meant* to vary.
         run: |
-          sha256sum data/build/keys.tsv.gz > first.sha
+          sha256sum data/build/spotter.db data/build/keys.tsv.gz > first.sha
           PYTHONHASHSEED=12345 python build.py > /dev/null
           sha256sum -c first.sha
 

@@ -59,19 +59,6 @@ it — it uses bare `MaterialTheme` defaults.
 
 ## Open questions
 
-- **D-58 claims more than the build delivers, and should be corrected or the
-  build changed.** D-58 says the build produces "a byte-identical database from
-  identical sources", but `meta` stores a wall-clock build timestamp
-  (`2026-08-11T03:55:21+00:00`), so two builds from unchanged sources are
-  *never* byte-identical — confirmed here, two runs minutes apart differed.
-  D-58's substance still holds: it is about unordered iteration deciding stored
-  values, and V-25 and CI check `keys.tsv.gz`, which *is* deterministic.
-  Separately, D-58 says `build_id` is "a hash of the source checksums" so
-  unchanged inputs are labelled unchanged, but the real value is date-prefixed
-  (`20260811-1103feb9`) and therefore changes daily regardless of inputs.
-  Either reword D-58 to claim content-determinism, or make the artefact
-  genuinely reproducible (drop the timestamp, or honour `SOURCE_DATE_EPOCH`).
-  Not urgent, but it is a doc asserting something untrue.
 - **A 100 MB asset is proven present, not proven readable.** Room's
   `createFromAsset` streams a compressed asset out to internal storage on first
   launch; that path is untested here and will roughly double disk use on device

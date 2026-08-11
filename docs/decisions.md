@@ -92,6 +92,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-61 | The scanner is the product; simplicity outranks features | Product |
 | D-62 | Free, no ads, and no paywall on scanning | Product |
 | D-63 | The app is **Spotter**; "Kanji Scanner" is the store subtitle, not the name | Product |
+| D-64 | Wall-clock time lives outside the dictionary, in a `build-info.json` sidecar | Data |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -568,6 +569,25 @@ Nothing errors. Both are real readings of 一. The word simply lands in a differ
 The fix is also more correct: iterate KANJIDIC2's reading list, which is ordered with the primary reading first, and test membership in the candidate set rather than the reverse. Verified identical across three `PYTHONHASHSEED` values. Covered by V-25.
 
 *Applies to any future ingest stage.* Sets and dicts keyed on strings are fine as lookups; they must not decide which of several candidates gets written.
+
+**D-64 — Wall-clock time lives outside the dictionary, in a `build-info.json` sidecar.**
+
+**D-58 is not superseded by this — it was never implemented.** It required a byte-identical database from identical sources, and required `build_id` to be a hash of those sources. The code did neither, and said it did in three places (D-58 itself, V-25, and `build_id`'s own docstring). Found on 2026-08-11 when two builds minutes apart produced different checksums.
+
+Two wall-clock values were responsible, and nothing else:
+
+- **`meta.built_at`** — a timestamp inside the artefact makes its bytes differ on every build *by construction*. D-58's rule was therefore not merely unverified, it was unachievable.
+- **`build_id`'s `%Y%m%d-` prefix** — two builds from byte-identical sources got different ids on different days. This is precisely the "the label is a lie" failure D-58 was written to prevent, and the `changes` diff (D-39) records entries against that identity.
+
+**The rule: nothing inside the shipped artefact may be a function of when the build ran.** Provenance is not the problem; provenance *inside the thing being checksummed* is.
+
+So `built_at` moved to `build-info.json`, written beside the database. `build_id` is now a plain hash of the source checksums. With those two changed, two consecutive builds are byte-identical — verified before the change was designed, which is what made this the cheap option rather than a speculative one.
+
+*What this buys:* CI can checksum the **shipped 100 MB artefact** instead of the derived `keys.tsv.gz`. That is a far stronger determinism test — `keys.tsv.gz` covers the word key list, while the database also holds senses, readings, examples, stroke paths, and every index.
+
+*Why a sidecar rather than deleting the timestamp:* "when was this built, and from what?" is a real question when debugging a bad dictionary. The file is build output, not an app asset — the app reads `meta`, and D-38 keeps the dictionary disposable, so dropping a column cost nothing.
+
+*Consequence:* `build_id` changed shape, from `20260811-1103feb9` to `1103feb952bd`. Nothing persisted depends on it yet, which is why this was cheap now and would not have been after Phase 8 ships export files carrying build ids.
 
 **D-59 — GitHub review runs only on manual trigger, and committed datasets must be undiffable.**
 
