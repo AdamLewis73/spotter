@@ -26,9 +26,14 @@ invisible until something checksums the artefact.
 
 ## Next action
 
-Room, reading the dictionary out of the asset. That is what turns "the file is
-in the APK" into "the app can look up 先生", and it is the first thing that will
-exercise the schema from Kotlin.
+**Dictionary refresh on device.** Room copies the asset out on first open and
+never looks again, so a rebuilt dictionary does not reach an already-installed
+app — during this work the tests only passed after an uninstall. The app needs
+to compare the shipped build against the extracted one and delete the copy when
+they differ.
+
+That is blocked on the `build_id` gap below: refresh logic keyed on an id that
+does not change when the builder changes would silently do nothing.
 
 Note the **D-35 checkpoint** (Material 3 plus a design-token layer) falls due
 before any real UI, and the placeholder screen deliberately does not pre-empt
@@ -48,7 +53,10 @@ it — it uses bare `MaterialTheme` defaults.
       failing loudly when the dictionary is missing or older than its builder
 - [x] CI builds the dictionary from committed sources and asserts it reached
       the APK — the real guarantee that master never ships a stale asset
-- [ ] Room read-only dictionary DAOs over the Phase 1 schema
+- [x] Room read-only dictionary DAOs over the Phase 1 schema, proven on a device
+      by instrumented tests (先生 resolves; 上手 returns all three readings)
+- [x] Room schema export on, JSON committed (D-18)
+- [ ] Refresh the extracted dictionary when the shipped build differs
 - [ ] Checkpoint: Material 3 + design-token layer before the first UI commit (D-35)
 - [ ] Kuromoji tokenization behind the `Tokenizer` interface in `:domain` (D-08)
 - [ ] JMdict longest-match alternates (D-07)
@@ -63,6 +71,18 @@ it — it uses bare `MaterialTheme` defaults.
 - [ ] `/launch` skill at `.claude/skills/launch/SKILL.md` (roadmap housekeeping)
 
 ## Open questions
+
+- **`build_id` does not change when the builder changes, only when the sources
+  do.** Demonstrated here: adding `NOT NULL` to `word.id` in `schema.sql`
+  produced a materially different database with the *same* `build_id`
+  (`1103feb952bd`). D-58's rule holds in one direction — a rebuild that changed
+  nothing is labelled unchanged — but not the other, and "did this artefact
+  change?" is the question an asset-refresh needs answered.
+  Fix is a natural extension of D-64: fold a hash of the builder sources
+  (`schema.sql`, `ingest_*.py`, `kana.py`, `changes.py`) into `build_id`
+  alongside the source checksums. Note `:app:stageDictionaryAsset` already
+  tracks exactly that file set for its staleness check, so the definition of
+  "the builder" exists in two places and should end up in one.
 
 - **A 100 MB asset is proven present, not proven readable.** Room's
   `createFromAsset` streams a compressed asset out to internal storage on first
@@ -114,6 +134,35 @@ Four things cost time. All four look like typos in a log and none are.
   file rather than a missing permission bit. Fix once with
   `git update-index --chmod=+x gradlew`; the mode is stored in git, so it only
   has to be done on the commit that adds the file.
+
+### Room over a hand-written schema — 2026-08-11
+
+Room validates a pre-packaged database against its entities on open and throws
+`IllegalStateException: Pre-packaged database has an invalid schema`. The message
+names the table and dumps Expected vs Found, but never says *which field*
+differs — diff the two blocks. Three mismatches cost time:
+
+- **`INTEGER PRIMARY KEY` reports as nullable.** SQLite treats it as the rowid
+  alias, implicitly non-null, but `PRAGMA table_info` returns `notnull=0`, and
+  Room compares that against a non-null Kotlin field. Fixed in `schema.sql` by
+  writing `NOT NULL` explicitly — redundant to SQLite, required by Room.
+- **`DEFAULT 0` must be mirrored** in `@ColumnInfo(defaultValue = "0")`.
+- **`REFERENCES word(id)` must be mirrored** in `@Entity(foreignKeys = …)`. A
+  real constraint the entity does not declare fails validation.
+- `WITHOUT ROWID` (D-56) is **not** a problem: it exists only in the SQL text,
+  and Room compares pragmas, which report the same shape either way.
+
+Check a table with `PRAGMA table_info`, `foreign_key_list` and `index_list`
+before writing its entity; it is faster than reading a validation dump.
+
+**Room copies the asset once.** A rebuilt dictionary does not reach an installed
+app — these tests only passed after `adb uninstall`. That is the next action,
+not a quirk of the emulator.
+
+`Room.databaseBuilder` needs a `Context`, which `:data` may not import (D-60),
+so construction lives in `:app` and `:data` exposes Room types via `api` rather
+than `implementation` — `DictionaryDatabase` extends `RoomDatabase`, so Room is
+genuinely part of its public surface.
 
 ### Versions
 

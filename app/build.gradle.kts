@@ -210,5 +210,10 @@ dependencies {
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.junit)
+    // Supplies AndroidJUnitRunner itself, named in testInstrumentationRunner
+    // above. Without it the install succeeds and the run dies at startup with
+    // ClassNotFoundException, which reads like a packaging fault rather than a
+    // missing dependency.
+    androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(platform(libs.compose.bom))
 }
