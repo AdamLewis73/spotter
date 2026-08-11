@@ -4,24 +4,34 @@
 
 ## The problem
 
-Kanji don't have fixed meanings in isolation — they have meanings *in context*.
+A learner standing in front of Japanese text wants one thing: *what does this say, and what can I learn from it?* The tools that answer the first half destroy the second.
+
+**Translation apps** replace the Japanese with English, which erases exactly the information a learner needs. **Dictionary apps** answer properly but make you already know how to type what you're looking at — which is the problem you had.
+
+**Camera dictionaries** are the right shape, and they exist. The complaint is not that they're missing; it's that they're cluttered, the scanner is buried several taps deep in a general-purpose dictionary, and the camera is usually the paywalled feature (D-61).
+
+Underneath all of that sits the fact that makes the app worth building at all: kanji don't have fixed meanings in isolation — they have meanings *in context*.
 
 - 生 alone means "life / birth". In 先生 it's "teacher". In 生産 it's "production".
 - 手 alone means "hand". In 上手 it's "skilled". In 歌手 it's "singer".
 
-Translation apps optimize for *replacing* Japanese text with English, which destroys exactly the information a learner needs. Kanji Lens keeps the Japanese and explains it.
+So the app keeps the Japanese and explains it, rather than replacing it.
 
 ## The product
 
-Point the camera at real-world Japanese — a sign, a menu, a package — freeze the frame, tap a word, and see what it means, how it's read, and which kanji compose it. Save words to lists and review them with spaced repetition.
+**A scanner, first and above all.** Open the app and the camera is already there — no home screen, no menu, no shortcut grid. Point at a sign, a menu, a package. Freeze the frame, tap a word, and see what it means, how it's read, and which kanji compose it. Save words to lists and review them.
+
+Everything else in this document is what happens *after* the tap. The scan is the product; the study loop is what makes it worth keeping (D-61).
 
 The learning claim: **contextual exposure to real text beats memorizing isolated characters.**
+
+**Free, with no paywall on scanning, and no ads** (D-62). This is a positioning choice and also a structural one — the offline-first architecture (D-46) means there is no per-scan cost to recover.
 
 ### What "context" means here (D-44)
 
 Precisely: **the word is the context for the kanji.** 生 means "teacher" *inside 先生*. The app delivers that completely — the tokenizer finds the word boundary, the dictionary supplies the word's meaning, and the kanji screen shows every other word using that kanji grouped by reading.
 
-It does **not** attempt to work out which of a word's several meanings applies in a particular photograph. 甘い on a sweet wrapper means "sweet"; in 採点が甘い it means "lenient". The app shows every sense and lets the learner choose — which principle 4 below argues is the better teaching anyway.
+It does **not** attempt to work out which of a word's several meanings applies in a particular photograph. 甘い on a sweet wrapper means "sweet"; in 採点が甘い it means "lenient". The app shows every sense and lets the learner choose — which the **usage completeness** principle below argues is the better teaching anyway.
 
 Worth stating up front because "contextual meaning" reads, on a first pass, as the larger claim. Sentence-level comprehension is deliberately post-v1 (D-45).
 
@@ -71,11 +81,15 @@ The user sees, without reading any authored explanation, that 生 carries differ
 
 ## Product principles
 
-1. **Word-first, kanji-second.** The unit of study is the word. Kanji screens are reference material reached by drilling down.
-2. **Offline always.** No network required for any core function. No runtime LLM calls.
-3. **Show, don't assert.** Rather than authoring an explanation of why 生 means teacher in 先生, show every common word using 生 grouped by reading and let the pattern teach.
-4. **Usage completeness.** A learner should be able to look at any word or kanji and answer: *"Do I know how to use this in all the ways it's used?"* A word with only one reading isn't a thin screen — it's useful information: *this one is easy.* The UI should say so rather than looking empty.
-5. **Real-world capture.** The scan image is saved with the word. "That sign outside the ramen shop" is a stronger memory hook than a bare flashcard.
+1. **One obvious action.** The app opens on the camera. Every screen has a single clear next move. Where a feature and a clean first screen conflict, the feature loses or moves behind the tap (D-61).
+2. **Word-first, kanji-second.** The unit of study is the word. Kanji screens are reference material reached by drilling down.
+3. **Offline always.** No network required for any core function. No runtime LLM calls.
+4. **Show, don't assert.** Rather than authoring an explanation of why 生 means teacher in 先生, show every common word using 生 grouped by reading and let the pattern teach.
+5. **Usage completeness.** A learner should be able to look at any word or kanji and answer: *"Do I know how to use this in all the ways it's used?"* A word with only one reading isn't a thin screen — it's useful information: *this one is easy.* The UI should say so rather than looking empty.
+6. **Real-world capture.** The scan image is saved with the word. "That sign outside the ramen shop" is a stronger memory hook than a bare flashcard.
+7. **Free where it counts.** Scanning is never metered, gated, or interrupted by an ad (D-62).
+
+**Principle 1 outranks the rest.** It is the one that is hard to hold, because every other principle argues for putting something on screen. When they conflict, simplicity wins — that is the entire reason this app has a reason to exist alongside the incumbents.
 
 ## Core features
 

@@ -1,4 +1,4 @@
--- KanjiLens dictionary schema
+-- Spotter dictionary schema
 --
 -- Read-only, shipped as an Android asset, rebuilt from scratch every build
 -- (D-09, D-38). It never needs a migration — regenerate and swap the file.

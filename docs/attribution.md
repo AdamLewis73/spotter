@@ -19,7 +19,7 @@ Two further constraints from the same statement:
 
 ## Share-alike
 
-All four datasets are CC BY-SA. The built `kanjilens.db` is a derivative of them, so **the database asset itself carries CC BY-SA** and must be distributed under the same or a compatible licence.
+All four datasets are CC BY-SA. The built `spotter.db` is a derivative of them, so **the database asset itself carries CC BY-SA** and must be distributed under the same or a compatible licence.
 
 This is a statement of what the licences say, not legal advice — worth a proper read before release, since it governs how the shipped asset may be distributed.
 
@@ -27,7 +27,7 @@ This is a statement of what the licences say, not legal advice — worth a prope
 
 > **Dictionary data**
 >
-> KanjiLens uses the following freely licensed datasets. We claim no copyright over their content.
+> Spotter uses the following freely licensed datasets. We claim no copyright over their content.
 >
 > **JMdict** — Japanese-English dictionary data.
 > © Electronic Dictionary Research and Development Group, licensed under CC BY-SA 4.0.

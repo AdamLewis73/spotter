@@ -8,11 +8,16 @@ Read `overview.md` first if you're new to this project.
 
 By the end of Phase 3, roughly 70% of the app exists and is fully testable without ever pointing a phone at anything.
 
+**Build order is not importance order.** D-61 makes the scanner the product, which means **Phases 4 and 5 are what v1 lives or dies on** — they are built last for debuggability, not because they matter least. Two consequences worth holding onto through the earlier phases:
+
+- Phases 2 and 3 are *infrastructure for the scan*, not the deliverable. Resist polishing them past the point where they serve the tap.
+- The schedule risk sits at the end. The hardest and most important work is the last work, so slippage in Phases 2–3 eats directly into the only part users will judge.
+
 ## Phases
 
 | # | Phase | Status | Output |
 |---|---|---|---|
-| 1 | Dictionary builder (desktop Python) | **Complete** | `kanjilens.db` — 99.7 MB, 30.3 MB gzipped |
+| 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
 | 2 | Android app, text input only | Not started | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | Not started | KanjiVG animation |
 | 4 | CameraX + ML Kit | Not started | Raw recognized text into the Phase 2 pipeline |
@@ -41,7 +46,7 @@ Three things are known to be harder than they look:
 
 **No camera at all.** Paste `先生と生産` into a text field, tokenize with Kuromoji, look up in Room, and render the word screen and kanji screen. This is where the app's actual value gets proven, and it's fully testable without any of the camera complexity.
 
-**First job: get the dictionary in.** `kanjilens.db` is a build output and gitignored, so a fresh clone doesn't have one — build it and copy it into the app's assets. Steps are in `tools/dictbuild/README.md`. Worth automating as a Gradle task early, because a stale asset yields an app that looks fine and serves old data.
+**First job: get the dictionary in.** `spotter.db` is a build output and gitignored, so a fresh clone doesn't have one — build it and copy it into the app's assets. Steps are in `tools/dictbuild/README.md`. Worth automating as a Gradle task early, because a stale asset yields an app that looks fine and serves old data.
 
 **Decide here: do example sentences get rendered? (D-51)** They are already in the dictionary — ingested in Phase 1, shown nowhere. Coverage is 41.4% of common senses, with a ceiling around 43% because the corpus doesn't attest the rest.
 
@@ -61,9 +66,17 @@ Self-contained, visually rewarding, and good Compose practice. Renders KanjiVG's
 
 CameraX plus ML Kit's Japanese model, feeding recognized text into a pipeline that already works and is already trusted.
 
+**This is where the product starts existing** (D-61). The app opens on the camera — no home screen, no dashboard, no shortcut grid. That is the whole positioning against the incumbents, and it is a Phase 4 decision because it shapes navigation, not a coat of paint applied later.
+
 ### Phase 5 — Overlay
 
-The coordinate-mapping work described in `architecture.md` — connecting ML Kit's pixel rectangles to the tokenizers' character offsets so a tap resolves to a word. Highest risk of subtle bugs in the project. Include vertical text (縦書き) in test images from day one.
+The coordinate-mapping work described in `architecture.md` — connecting ML Kit's pixel rectangles to the tokenizers' character offsets so a tap resolves to a word. Highest risk of subtle bugs in the project, **and the core of v1**.
+
+Stage 4 does three geometric jobs at once, and they must be designed together rather than retrofitted onto each other:
+
+1. **Vertical text (縦書き)** — interpolate on y, columns right-to-left (V-10). In test images from day one.
+2. **Character interpolation** — the tap-to-word resolution itself (V-11).
+3. **Furigana separation** — ruby is smaller and offset, and must be kept out of the token stream (V-26). This is one of the few OCR failures competitors visibly have, which makes it demonstrable in a store listing rather than merely correct.
 
 ### Phases 6–8 — The study loop
 
@@ -91,6 +104,7 @@ The project owner has asked to be consulted at these points rather than having a
 | Phase 2, first user-data write | `snapshot_gloss` on `study_item` (D-43) | Adding it later is a migration, **and** every word saved before it has a permanently empty snapshot — the gloss cannot be recovered for a word the dictionary has since dropped |
 | Phase 5 | Bounding box stored in the scan record (D-22) | Cheap now; later requires re-running OCR over every saved image |
 | Phase 6 | Study-item identity `(text, reading)` plus the `type` discriminator (D-12, D-27) | All review history is keyed to it |
+| Phase 6 | **Built-in SRS, or export to Anki?** (D-26, D-29) | The schema Phase 6 builds assumes the answer. Serious learners already live in Anki; beginners don't have it. See the open question in `progress/phase-07-srs-review.md` |
 
 ---
 
@@ -108,7 +122,7 @@ Pinned deliberately, each with the reason and the cost of adding it later. **Non
 | **KRADFILE radical components** | Show which visual pieces a kanji is built from | The component *data* is free, but standard English *names* for components are not, and inventing them risks looking derivative of WaniKani, whose names are their own authored content. ~214 names is a bounded task if ever wanted | **Low** — additive |
 | **Word-level stroke order** | Play 先 then 生 in sequence on the word screen | Redundant and visually busy for long words; D-05 places stroke order on the kanji screen | **Low** — composes existing per-kanji data |
 | **Accounts + server sync** | User profiles with cross-device sync | Authentication brings privacy obligations, a Play Store data-safety declaration, and hosting cost. None of it helps v1 | **Low — but only because** D-15, D-16, and D-19 are being followed from the start |
-| **Ads** | Post-quiz placement, Duolingo-style | No reason to add before there are users | **Zero** — genuinely bolt-on: a dependency and a composable |
+| **Ads** | ~~Post-quiz placement, Duolingo-style~~ | **Ruled out, not deferred (D-62).** Free with no ads is now a positioning commitment, and intrusive ads are among the loudest complaints against the free competitors | n/a |
 | **Kanji-only study items** | Let users add individual kanji to their SRS, not just words | v1 studies words (D-01) | **Near zero** — D-27 puts the `type` discriminator in the schema from day one |
 | **Smart / auto lists** | Lists generated by rule — by JLPT level, shared kanji, or scan date | Nice-to-have | **Low** — falls out of D-28's join table |
 | **On-device sentence translation** | ML Kit Translation showing an English rendering of the scanned line, alongside — never replacing — the word breakdown | The honest way to answer "what does this sign say", but it is a translation surface on a learning app's main screen, and the thing shown first is the thing people use (D-45) | **Low** — a new panel calling one API; no data-model change. Note the ~30 MB model **cannot** be bundled (D-46) |

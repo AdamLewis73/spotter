@@ -45,7 +45,9 @@ The layering rule below is the single most important architectural constraint in
               ← depends on nothing
 ```
 
-**`:domain` and `:data` must not import anything from `android.*`.** All Android-specific code lives in `:app`. Once the modules exist, enforce this with a lint rule or a CI grep — a convention nobody checks will not survive.
+**`:domain` and `:data` must not import anything from `android.*`.** All Android-specific code lives in `:app`.
+
+For `:domain` this is enforced by the compiler: it is declared as a plain Kotlin/JVM module, so `android.jar` is not on its classpath and the import does not resolve (D-60). For `:data` it needs a CI grep, since Room brings Android in — see the caveat below.
 
 One caveat: Room itself has Android dependencies, so `:data` isn't strictly platform-free. That's an accepted compromise for now. If strict purity becomes necessary, SQLDelight is the multiplatform equivalent. Not worth switching preemptively.
 

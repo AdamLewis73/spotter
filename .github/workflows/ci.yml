@@ -52,7 +52,7 @@ jobs:
 
       # No fetch step: the sources are committed (D-55), so this proves the
       # build works from a clean checkout with no network at all.
-      - name: Build kanjilens.db
+      - name: Build spotter.db
         working-directory: tools/dictbuild
         run: python build.py
 
@@ -71,9 +71,9 @@ jobs:
       - name: Report size against the D-56 band
         working-directory: tools/dictbuild
         run: |
-          bytes=$(stat -c%s data/build/kanjilens.db)
+          bytes=$(stat -c%s data/build/spotter.db)
           mb=$(( bytes / 1048576 ))
-          echo "kanjilens.db ${mb} MB"
+          echo "spotter.db ${mb} MB"
           echo "### Dictionary: ${mb} MB" >> "$GITHUB_STEP_SUMMARY"
           if [ "$mb" -lt 90 ] || [ "$mb" -gt 115 ]; then
             echo "::error::${mb} MB is outside the expected 90-115 MB band (D-56)."

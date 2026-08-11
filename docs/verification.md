@@ -264,6 +264,24 @@ Render 直, 骨, 令, 化 and confirm they show **Japanese** forms rather than C
 
 Both forms are legible and neither errors. In an app teaching people to write kanji, the wrong form is a correctness bug — and it's device- and locale-dependent, so it may look correct on the development device and wrong on a user's.
 
+### V-26 · Furigana must not be interleaved into the body text (D-61, `architecture.md` stage 4)
+
+Collect a test image of Japanese text that carries **ruby** — small kana printed above kanji (or to their right in vertical text) to show pronunciation. Children's books, manga, station signage and NHK captions all use it heavily.
+
+The trap: OCR does not know that ruby is annotation. It recognizes small kana as ordinary characters and returns them **in reading order interleaved with the base text**. 先生 annotated with せんせい can come back as `せんせい先生`, `先せんせい生`, or similar, depending on how the engine orders the boxes.
+
+Nothing errors. The recognizer succeeds, the tokenizer happily segments the garbled string, and the overlay renders tappable words — they are simply the wrong words. Downstream it reads as "the dictionary doesn't have this", not as a text-extraction bug.
+
+Expected: ruby is **excluded from the token stream**, and taps on the base text resolve to the base word.
+
+| Input | Wrong (silent) | Right |
+|---|---|---|
+| 先生 with せんせい ruby | tokens for `せんせい先生` | tokens for `先生` |
+
+The signal to separate them is geometric, not linguistic: ruby glyphs are markedly smaller than their base text and sit consistently above it (horizontal) or to its right (vertical). ML Kit supplies per-element bounding boxes, so the height ratio and baseline offset are both available in stage 4 — the same stage that already has to distinguish vertical from horizontal (V-10).
+
+*Why this is worth a case rather than a backlog item:* it is one of the few OCR failures competitors visibly have, and "works on furigana'd text" is demonstrable in a store listing (D-61). It is also cheapest to handle while stage 4 is being designed, for exactly the reason V-10 gives — retrofitting the coordinate layer is the most error-prone work in the project.
+
 ---
 
 ## Phase 6–7 — Study loop

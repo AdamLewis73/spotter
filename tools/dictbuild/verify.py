@@ -208,7 +208,7 @@ def v09(db, out):
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--db", type=Path, default=HERE / "data" / "build" / "kanjilens.db")
+    ap.add_argument("--db", type=Path, default=HERE / "data" / "build" / "spotter.db")
     args = ap.parse_args()
     if not args.db.exists():
         sys.exit(f"{args.db} not found — run build.py first")

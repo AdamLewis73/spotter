@@ -1,6 +1,8 @@
-# KanjiLens — Agent Context
+# Spotter — Agent Context
 
-Android app: scan Japanese text with the phone camera and learn kanji **in context** — 生 alone is "life", but 先生 is "teacher" and 生産 is "production". Users tap words on a frozen photo, see what they mean and which kanji compose them, save them to lists, and review with spaced repetition.
+**Spotter: Kanji Scanner** (D-63). Android app: point the camera at Japanese text, tap a word on the frozen photo, see what it means and which kanji compose it. Save words to lists and review them.
+
+**The scanner is the product** (D-61) — the app opens on the camera, and simplicity outranks every other principle. Free, no ads, no paywall on scanning (D-62). It teaches kanji **in context** rather than translating: 生 alone is "life", but 先生 is "teacher" and 生産 is "production".
 
 **This file is loaded into every session. Keep it short** — it's a router, not documentation. Details live in `docs/`, read on demand.
 
@@ -67,7 +69,7 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 ## Status
 
-**Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 99.7 MB `kanjilens.db` (30.3 MB gzipped) from four pinned sources in ~45 seconds. `verify.py` passes 10 of 10 verification cases.
+**Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 99.7 MB `spotter.db` (30.3 MB gzipped) from four pinned sources in ~45 seconds. `verify.py` passes 10 of 10 verification cases.
 
 **Current phase:** Phase 2 — Android app, text input only. Not started; no Kotlin exists yet.
 

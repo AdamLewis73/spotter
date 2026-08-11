@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build kanjilens.db from the raw sources.
+"""Build spotter.db from the raw sources.
 
 The output is read-only, disposable, and rebuilt from scratch every run (D-09,
 D-38). There is no migration path and none is wanted: if the schema changes,
@@ -32,7 +32,7 @@ HERE = Path(__file__).parent
 SCHEMA = HERE / "schema.sql"
 LOCK = HERE / "sources.lock.json"
 RAW = HERE / "data" / "raw"
-DEFAULT_OUT = HERE / "data" / "build" / "kanjilens.db"
+DEFAULT_OUT = HERE / "data" / "build" / "spotter.db"
 # The last SHIPPED build's key list, committed. See changes.py.
 BASELINE_KEYS = HERE / "baseline" / "keys.tsv.gz"
 

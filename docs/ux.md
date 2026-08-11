@@ -16,8 +16,11 @@ The app's core interaction — tapping one specific word on a photograph — has
 
 ## Screen map
 
+**Scan is the start destination.** The app launches straight into the live camera preview — there is no home screen, dashboard, or shortcut grid in front of it (D-61). The bottom nav is how you leave the scanner, never something you pass through to reach it.
+
 ```
 Bottom nav: Scan · Saved · Review          (three — resist a fourth, D-36)
+             ▲ start destination (D-61)
 
 Scan
  └─ live preview + "text detected" indicator + large shutter
