@@ -47,22 +47,66 @@ def load_lock() -> dict:
     return {s["name"]: s for s in lock["sources"]}
 
 
-def build_id(sources: dict) -> str:
-    """A pure function of the source checksums, so identical sources produce an
-    identical id and a rebuild that changed nothing is visibly a rebuild that
-    changed nothing (D-58).
+# The files that can change the database's CONTENTS — "the builder".
+#
+# This list is the single definition of that set. build-info.json publishes it
+# with each file's hash so the Gradle staleness check consumes it rather than
+# maintaining a second, drifting copy (D-65).
+#
+# Deliberately excluded: verify.py and test_dictbuild.py read the output,
+# inspect_sources.py reads the raw sources, and fetch.py's effect appears as a
+# changed sources.lock.json, which is covered by the source checksums instead.
+BUILDER_GLOBS = ("build.py", "changes.py", "kana.py", "ingest_*.py", "schema.sql")
 
-    This carried a `%Y%m%d-` prefix until 2026-08-11, which meant two builds
-    from byte-identical sources got different ids on different days — exactly
-    the "the label is a lie" failure D-58 exists to prevent, and it silently
-    broke the `changes` diff's notion of which build an entry disappeared in
-    (D-39). Do not reintroduce a date here; wall-clock belongs in
-    build-info.json (D-64).
+
+def builder_files() -> list[Path]:
+    seen: dict[str, Path] = {}
+    for pattern in BUILDER_GLOBS:
+        for path in HERE.glob(pattern):
+            if path.is_file():
+                seen[path.name] = path
+    return [seen[name] for name in sorted(seen)]
+
+
+def builder_digests() -> dict[str, str]:
+    """sha256 per builder file, keyed by name and sorted for determinism.
+
+    **Line endings are normalised to LF before hashing**, and that is not a
+    detail. Git checks these files out with CRLF on Windows and LF on Linux, so
+    hashing raw bytes would make `build_id` a function of the developer's
+    platform: the same commit would produce a different id on a laptop than in
+    CI, which is exactly the "the label is a lie" failure the id exists to
+    avoid. Hashing normalised content makes it a function of what is committed.
     """
-    return hashlib.sha256(
-        "".join(s["sha256"] for s in sorted(sources.values(), key=lambda x: x["name"]))
-        .encode()
-    ).hexdigest()[:12]
+    return {
+        p.name: hashlib.sha256(
+            p.read_bytes().replace(b"\r\n", b"\n")
+        ).hexdigest()
+        for p in builder_files()
+    }
+
+
+def build_id(sources: dict, builder: dict[str, str]) -> str:
+    """Identifies the ARTEFACT: a hash over both the source checksums and the
+    code that turns them into a database (D-58, D-65).
+
+    Two earlier versions of this were wrong in opposite directions.
+
+    It carried a `%Y%m%d-` prefix until 2026-08-11, so identical inputs produced
+    different ids on different days — the "label is a lie" failure D-58 exists
+    to prevent. Do not reintroduce a date; wall-clock belongs in build-info.json
+    (D-64).
+
+    Then it hashed only the sources, so a *builder* change was invisible:
+    adding `NOT NULL` to `word.id` produced a materially different database
+    carrying an identical id. That makes "did this artefact change?"
+    unanswerable, which is precisely the question an on-device dictionary
+    refresh has to answer.
+    """
+    material = "".join(
+        s["sha256"] for s in sorted(sources.values(), key=lambda x: x["name"])
+    ) + "".join(f"{name}:{digest}" for name, digest in sorted(builder.items()))
+    return hashlib.sha256(material.encode()).hexdigest()[:12]
 
 
 def create(out: Path) -> sqlite3.Connection:
@@ -93,12 +137,18 @@ def write_meta(db: sqlite3.Connection, sources: dict, bid: str) -> None:
     )
 
 
-def write_build_info(out: Path, sources: dict, bid: str) -> Path:
+def write_build_info(out: Path, sources: dict, bid: str,
+                     builder: dict[str, str]) -> Path:
     """Wall-clock provenance, deliberately OUTSIDE the database (D-64).
 
     Answers "when was this built, and from what?" without putting a
     non-reproducible byte into the shipped artefact. Not an app asset — the app
-    reads `meta`; this is for humans and for debugging a build.
+    reads `meta`; this is for humans, for debugging a build, and for the Gradle
+    staleness check.
+
+    `builder` is published here so that check can compare hashes against the
+    exact file set this build used, instead of keeping its own list of what
+    counts as the builder and comparing timestamps (D-65).
     """
     info = out.parent / "build-info.json"
     info.write_text(
@@ -107,6 +157,7 @@ def write_build_info(out: Path, sources: dict, bid: str) -> Path:
                 "build_id": bid,
                 "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 "database": out.name,
+                "builder": builder,
                 "sources": {
                     name: {"header_date": s.get("header_date"),
                            "version": s.get("version"), "sha256": s["sha256"]}
@@ -162,12 +213,13 @@ def main() -> int:
         sys.exit(f"unknown stage(s): {', '.join(sorted(unknown))}")
 
     sources = load_lock()
-    bid = build_id(sources)
+    builder = builder_digests()
+    bid = build_id(sources, builder)
     print(f"build {bid}\noutput {args.out}\n")
 
     db = create(args.out)
     write_meta(db, sources, bid)
-    info = write_build_info(args.out, sources, bid)
+    info = write_build_info(args.out, sources, bid, builder)
 
     for name in stages:
         fn, source_name = STAGES[name]

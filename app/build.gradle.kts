@@ -1,3 +1,8 @@
+// Imported rather than fully qualified: inside a build script `java` resolves to
+// Gradle's own `java` extension, so `java.security.MessageDigest` fails with
+// "Unresolved reference 'security'".
+import java.security.MessageDigest
+
 // :app — Compose UI, ViewModels, navigation, and later CameraX and ML Kit.
 // The only module allowed to touch the Android framework freely.
 
@@ -9,24 +14,33 @@
  * instead, which is the whole point — a missing or stale dictionary yields an
  * app that looks completely fine and serves wrong data.
  *
- * `builderSources` is not used for the copy. It exists so the task can refuse to
- * ship a database older than the code that generates it.
+ * It also refuses to ship a database older than the code that generates it.
  *
- * The check is a timestamp comparison, and timestamps lie. `git checkout`, a
- * branch switch, or restoring a file all reset mtime without changing content,
- * which makes a perfectly current database look stale. That false positive is
- * why `-PallowStaleDictionary=true` exists: it downgrades the failure to a
- * warning for exactly those cases, and costs a flag instead of a 45-second
- * rebuild. A guard that cries wolf gets deleted, so it needs an escape hatch.
+ * **That check compares content hashes, not timestamps** (D-65). `build.py`
+ * publishes a hash per builder file in `build-info.json`; this re-hashes those
+ * exact files and compares. Two consequences:
  *
- * The real guarantee is elsewhere. CI builds the dictionary from the committed
- * sources on every push and assembles the APK from *that*, so a stale asset
- * cannot reach master no matter what any local working copy looks like. This
- * task is a fast local warning, not the last line of defence.
+ *  - No false positives. The previous version compared mtimes, and `git
+ *    checkout` or a branch switch resets those without changing content — it
+ *    fired on a `build.py` byte-identical to git and demanded a pointless
+ *    45-second rebuild. `-PallowStaleDictionary=true` existed purely to escape
+ *    that, and is gone with the flaw that motivated it.
+ *  - One definition of "the builder". `build.py` owns the list; this task
+ *    consumes it. The two cannot drift.
+ *
+ * Hashes are compared with line endings normalised, because git hands out CRLF
+ * on Windows and LF on Linux for the same commit.
+ *
+ * The declared inputs are deliberately broader than the builder set — they only
+ * decide when Gradle re-runs the task, while `build-info.json` decides the
+ * verdict. Over-inclusion therefore costs an extra task execution and cannot
+ * cause a spurious failure.
+ *
+ * The real guarantee remains CI, which rebuilds the dictionary from committed
+ * sources on every push and assembles the APK from that.
  *
  * A fresh clone has no database at all (it is gitignored), so that case is
- * caught by the presence check — which has no escape hatch, because there is
- * nothing to ship at all.
+ * caught by the presence check.
  */
 abstract class StageDictionaryAsset : DefaultTask() {
 
@@ -38,12 +52,17 @@ abstract class StageDictionaryAsset : DefaultTask() {
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val builderSources: ConfigurableFileCollection
 
+    /** `build-info.json`, which publishes a hash per builder file (D-65). */
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val buildInfo: ConfigurableFileCollection
+
+    /** Where the builder files live, for re-hashing what `buildInfo` names. */
+    @get:Internal
+    abstract val builderDir: DirectoryProperty
+
     @get:Input
     abstract val assetName: Property<String>
-
-    /** `-PallowStaleDictionary=true` — see the class docs for why this exists. */
-    @get:Input
-    abstract val allowStale: Property<Boolean>
 
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
@@ -65,39 +84,68 @@ abstract class StageDictionaryAsset : DefaultTask() {
             )
         }
 
-        val newestBuilderSource = builderSources.files
-            .filter { it.isFile }
-            .maxByOrNull { it.lastModified() }
+        val info = buildInfo.files.firstOrNull()
+        if (info == null || !info.exists()) {
+            throw GradleException(
+                "${db.name} exists but build-info.json does not, so the build " +
+                    "that produced it cannot be identified. Rebuild with " +
+                    "`python build.py` in tools/dictbuild.",
+            )
+        }
 
-        if (newestBuilderSource != null && newestBuilderSource.lastModified() > db.lastModified()) {
-            val message =
+        // build-info.json is the single definition of "the builder" (D-65);
+        // this only re-hashes what it names. Parsed with a small regex rather
+        // than by adding a JSON library to the build classpath — the shape is
+        // fixed and written by build.py.
+        val builderSection = Regex("\"builder\"\\s*:\\s*\\{([^}]*)}")
+            .find(info.readText())?.groupValues?.get(1)
+            ?: throw GradleException("build-info.json has no \"builder\" section — rebuild the dictionary.")
+
+        val recorded = Regex("\"([^\"]+)\"\\s*:\\s*\"([0-9a-f]+)\"")
+            .findAll(builderSection)
+            .associate { it.groupValues[1] to it.groupValues[2] }
+
+        val dir = builderDir.get().asFile
+        val changed = recorded.filter { (name, expected) ->
+            val file = dir.resolve(name)
+            !file.exists() || sha256Normalised(file) != expected
+        }.keys
+
+        if (changed.isNotEmpty()) {
+            throw GradleException(
                 """
-                The dictionary is older than the code that builds it, so the app
-                may ship stale data while looking perfectly healthy.
+                The dictionary was built from different code than is on disk now,
+                so the app would ship stale data while looking perfectly healthy.
 
-                  ${newestBuilderSource.name} is newer than ${db.name}.
+                  changed since the last build: ${changed.sorted().joinToString(", ")}
 
                 Rebuild it:
 
                   cd tools/dictbuild
                   python build.py
-
-                If ${newestBuilderSource.name} did not actually change — a branch
-                switch or `git checkout` resets mtime without touching content —
-                re-run with -PallowStaleDictionary=true to proceed anyway.
-                """.trimIndent()
-
-            if (allowStale.get()) {
-                logger.warn("WARNING: $message")
-            } else {
-                throw GradleException(message)
-            }
+                """.trimIndent(),
+            )
         }
 
         val destination = outputDir.get().asFile
         destination.mkdirs()
         db.copyTo(destination.resolve(assetName.get()), overwrite = true)
         logger.lifecycle("Staged ${db.name} (${db.length() / 1_048_576} MB) into assets")
+    }
+
+    /**
+     * Must match `builder_digests()` in build.py exactly, including the CRLF
+     * normalisation — git hands out CRLF on Windows and LF on Linux for the
+     * same commit, so hashing raw bytes would make this platform-dependent.
+     */
+    private fun sha256Normalised(file: File): String {
+        val normalised = file.readBytes()
+            .toString(Charsets.ISO_8859_1)
+            .replace("\r\n", "\n")
+            .toByteArray(Charsets.ISO_8859_1)
+        return MessageDigest.getInstance("SHA-256")
+            .digest(normalised)
+            .joinToString("") { byte -> "%02x".format(byte) }
     }
 }
 
@@ -134,10 +182,9 @@ val stageDictionaryAsset = tasks.register<StageDictionaryAsset>("stageDictionary
             exclude("verify.py", "test_*.py", "inspect_sources.py", "fetch.py")
         },
     )
+    buildInfo.from(rootProject.layout.projectDirectory.file("tools/dictbuild/data/build/build-info.json"))
+    builderDir.set(rootProject.layout.projectDirectory.dir("tools/dictbuild"))
     assetName.set(dictionaryAssetName)
-    allowStale.set(
-        providers.gradleProperty("allowStaleDictionary").map(String::toBoolean).orElse(false),
-    )
     outputDir.set(layout.buildDirectory.dir("generated/dictionaryAssets"))
 }
 
