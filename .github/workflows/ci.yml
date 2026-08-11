@@ -128,6 +128,20 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      # The dictionary is gitignored, so a fresh checkout has none and
+      # :app:stageDictionaryAsset would fail. Building it here is not a
+      # workaround — it is the actual guarantee that master never contains an
+      # APK built from a stale dictionary, because CI always regenerates it from
+      # the committed sources (D-55). The local staleness check in
+      # app/build.gradle.kts is a fast warning; this is the real defence.
+      - name: Build the dictionary
+        working-directory: tools/dictbuild
+        run: python build.py
+
       - uses: gradle/actions/setup-gradle@v6
 
       # The runner image ships an Android SDK, but not necessarily the platform
@@ -166,3 +180,19 @@ jobs:
 
       - name: Assemble debug
         run: ./gradlew :app:assembleDebug
+
+      # Proves the dictionary actually reached the APK. A build that quietly
+      # produced an app with no dictionary would otherwise pass every check
+      # above, which is precisely the silent failure this phase is guarding
+      # against.
+      - name: Confirm the dictionary is in the APK
+        run: |
+          apk=app/build/outputs/apk/debug/app-debug.apk
+          if ! unzip -l "$apk" | grep -q 'assets/spotter.db'; then
+            echo "::error::spotter.db is missing from $apk"
+            unzip -l "$apk" | grep assets/ || echo "(no assets at all)"
+            exit 1
+          fi
+          entry=$(unzip -l "$apk" | grep 'assets/spotter.db')
+          echo "$entry"
+          echo "### APK: $(du -h "$apk" | cut -f1), dictionary present" >> "$GITHUB_STEP_SUMMARY"

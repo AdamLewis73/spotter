@@ -5,23 +5,25 @@
 
 ## Current state
 
-**The Gradle scaffold builds.** Three modules — `:app`, `:data`, `:domain` —
-with `:domain` as a plain Kotlin/JVM module per D-60. `:app:assembleDebug`
-produces a 12 MB debug APK; `:domain:test` runs 3 JUnit tests in milliseconds
-with no emulator. The app itself is a placeholder that renders 先生 and nothing
-else.
+**The Gradle scaffold builds and the dictionary ships inside the APK.** Three
+modules — `:app`, `:data`, `:domain` — with `:domain` as a plain Kotlin/JVM
+module per D-60. The debug APK is **46 MB**, holding a 99.7 MB `spotter.db` at
+`assets/spotter.db` (the APK's own compression does the rest). `:domain:test`
+runs 3 JUnit tests in milliseconds with no emulator.
 
-The layering rule is verified rather than asserted: adding `import
-android.os.Bundle` to `:domain` fails with `Unresolved reference 'android'`,
-and a CI job greps `:data` (where the compiler cannot help) for the same.
+The app itself is still a placeholder that renders 先生. **Nothing reads the
+dictionary yet** — there is no Room layer, so the asset is proven to be present
+and byte-correct, not proven to be usable.
 
-No dictionary yet — `spotter.db` is not built in this working copy, and nothing
-reads it.
+Rules are verified rather than asserted: `import android.os.Bundle` in
+`:domain` fails to compile; a CI grep covers `:data`, where the compiler cannot
+help; and both dictionary guards were tested by deliberately breaking them.
 
 ## Next action
 
-Build `spotter.db` and get it into `:app` assets, with the copy automated as a
-Gradle task. A stale asset yields an app that looks fine and serves old data.
+Room, reading the dictionary out of the asset. That is what turns "the file is
+in the APK" into "the app can look up 先生", and it is the first thing that will
+exercise the schema from Kotlin.
 
 Note the **D-35 checkpoint** (Material 3 plus a design-token layer) falls due
 before any real UI, and the placeholder screen deliberately does not pre-empt
@@ -36,8 +38,11 @@ it — it uses bare `MaterialTheme` defaults.
 - [x] Layering rule enforced automatically — compiler for `:domain`, CI grep
       for `:data`; both verified against a deliberate violation
 - [ ] Confirm the APK actually launches on a device or emulator
-- [ ] `spotter.db` built and copied into app assets
-- [ ] Asset copy automated as a Gradle task — a stale asset serves old data silently
+- [x] `spotter.db` built and copied into app assets
+- [x] Asset copy automated as a Gradle task (`:app:stageDictionaryAsset`),
+      failing loudly when the dictionary is missing or older than its builder
+- [x] CI builds the dictionary from committed sources and asserts it reached
+      the APK — the real guarantee that master never ships a stale asset
 - [ ] Room read-only dictionary DAOs over the Phase 1 schema
 - [ ] Checkpoint: Material 3 + design-token layer before the first UI commit (D-35)
 - [ ] Kuromoji tokenization behind the `Tokenizer` interface in `:domain` (D-08)
@@ -53,6 +58,24 @@ it — it uses bare `MaterialTheme` defaults.
 - [ ] `/launch` skill at `.claude/skills/launch/SKILL.md` (roadmap housekeeping)
 
 ## Open questions
+
+- **D-58 claims more than the build delivers, and should be corrected or the
+  build changed.** D-58 says the build produces "a byte-identical database from
+  identical sources", but `meta` stores a wall-clock build timestamp
+  (`2026-08-11T03:55:21+00:00`), so two builds from unchanged sources are
+  *never* byte-identical — confirmed here, two runs minutes apart differed.
+  D-58's substance still holds: it is about unordered iteration deciding stored
+  values, and V-25 and CI check `keys.tsv.gz`, which *is* deterministic.
+  Separately, D-58 says `build_id` is "a hash of the source checksums" so
+  unchanged inputs are labelled unchanged, but the real value is date-prefixed
+  (`20260811-1103feb9`) and therefore changes daily regardless of inputs.
+  Either reword D-58 to claim content-determinism, or make the artefact
+  genuinely reproducible (drop the timestamp, or honour `SOURCE_DATE_EPOCH`).
+  Not urgent, but it is a doc asserting something untrue.
+- **A 100 MB asset is proven present, not proven readable.** Room's
+  `createFromAsset` streams a compressed asset out to internal storage on first
+  launch; that path is untested here and will roughly double disk use on device
+  while it runs. Test on a real device, not only the emulator.
 
 
 - **Do example sentences get rendered? (D-51)** Already in the dictionary,
@@ -111,10 +134,29 @@ AGP 9.3.1 is published but has **no release notes**, so its minimum Gradle is
 unverified — hence pinning the 9.2 line, whose requirements are documented
 (Gradle 9.4.1, JDK 17, max API 37.0). Revisit when 9.3 is documented.
 
+### The dictionary asset — 2026-08-10
+
+- **A plain `Copy` task is the wrong tool.** With a missing source it is skipped
+  as `NO-SOURCE`, silently producing an app with no dictionary — the exact
+  failure being guarded against. `StageDictionaryAsset` is a custom task so the
+  absent case throws instead.
+- **AGP 9 refuses a `Provider` in `sourceSets.assets.srcDir`.** It errors and
+  points at the Variant API; `androidComponents.onVariants { … addGenerated
+  SourceDirectory(...) }` is the supported route and carries the task
+  dependency automatically, so no `preBuild.dependsOn` is needed.
+- **The staleness check is a timestamp comparison, and timestamps lie.**
+  `git checkout` and branch switches reset mtime without changing content, which
+  makes a current database look stale — this fired during development on a
+  `build.py` that was byte-identical to git. Hence
+  `-PallowStaleDictionary=true`. A guard with no escape hatch gets deleted.
+- The real protection is CI: it rebuilds the dictionary from committed sources
+  every push and asserts `assets/spotter.db` is in the APK.
+
 ### General
 
 - `spotter.db` is gitignored, so a fresh clone has none. Build it with
-  `python fetch.py` then `python build.py` in `tools/dictbuild/` (~45 s).
+  `python build.py` in `tools/dictbuild/` (~45 s). No `fetch.py` needed — the
+  sources are committed (D-55), which is also why CI can build offline.
 - Kuromoji is JVM-only and cannot run on iOS. It is the one part of the
   tokenizer that will not port — which is why D-07 leans on JMdict longest-match
   as well.
