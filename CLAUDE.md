@@ -46,6 +46,7 @@ Committed on purpose (D-55), but they are third-party data and generated artifac
 | `tools/dictbuild/data/` | ~29 MB of JMdict, KANJIDIC2, KanjiVG, JmdictFurigana sources |
 | `tools/dictbuild/baseline/` | 3.5 MB generated key list for the `changes` diff |
 | `*.db`, `*.gz`, `*.tsv` | build output and compressed data |
+| `gradlew`, `gradlew.bat`, `gradle/wrapper/` | Gradle-generated wrapper, ~15k tokens. Never hand-edited — regenerate with `gradle wrapper` rather than reading or patching it |
 
 To inspect their *structure*, use `tools/dictbuild/inspect_sources.py`, which prints small representative samples. `.gitattributes` marks them binary so diffs stay collapsed.
 
