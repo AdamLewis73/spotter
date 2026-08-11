@@ -93,6 +93,12 @@ Four things cost time. All four look like typos in a log and none are.
   the platform has not been published yet rather than like a naming problem.
   This broke the first CI run. Build-tools version independently — 37.0.0 is not
   what AGP wants merely because compileSdk is 37; AGP 9.2 defaults to 36.0.0.
+- **`gradlew` must be committed executable, and Windows git will not do it.**
+  It lands as mode `100644`, and Linux CI then fails with
+  `./gradlew: Permission denied` and exit code 126 — which looks like a missing
+  file rather than a missing permission bit. Fix once with
+  `git update-index --chmod=+x gradlew`; the mode is stored in git, so it only
+  has to be done on the commit that adds the file.
 
 ### Versions
 
