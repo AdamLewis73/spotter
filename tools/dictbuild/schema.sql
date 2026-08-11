@@ -50,7 +50,11 @@ CREATE TABLE kanji (
 -- D-11 defines it as a lookup hint, never an identity.
 
 CREATE TABLE word (
-    id            INTEGER PRIMARY KEY,  -- internal only, NEVER in user data (D-11)
+    -- NOT NULL is redundant to SQLite (an INTEGER PRIMARY KEY is the rowid
+    -- alias and cannot be null) but it is NOT redundant to Room: PRAGMA
+    -- table_info reports the implicit form as nullable, and Room then rejects
+    -- the whole database with "Pre-packaged database has an invalid schema".
+    id            INTEGER PRIMARY KEY NOT NULL,  -- internal only, NEVER in user data (D-11)
     text          TEXT    NOT NULL,     -- 先生 — or the kana itself for kana-only words
     reading       TEXT    NOT NULL,     -- せんせい
     ent_seq       INTEGER NOT NULL,     -- JMdict entry id. A HINT, not identity (D-11).

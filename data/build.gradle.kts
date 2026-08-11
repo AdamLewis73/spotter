@@ -8,6 +8,9 @@
 // resembling business logic belongs in :domain.
 plugins {
     alias(libs.plugins.android.library)
+    // Room generates its DAO implementations at compile time, which needs an
+    // annotation processor. KSP is the current one; kapt is deprecated.
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -16,6 +19,13 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Room schema export stays ON and the JSON is committed (D-18). It is
+        // what makes a future migration reviewable rather than guessed at.
+        // The dictionary itself is never migrated (D-38) — this matters for the
+        // *user* database, which lands later in this phase.
+        ksp { arg("room.schemaLocation", "$projectDir/schemas") }
     }
 
     compileOptions {
@@ -26,5 +36,17 @@ android {
 
 dependencies {
     implementation(project(":domain"))
+
+    // `api`, not `implementation`: DictionaryDatabase extends RoomDatabase, so
+    // Room types are genuinely part of this module's public surface and any
+    // consumer needs them on its classpath to construct one. `implementation`
+    // fails with "Cannot access androidx.room.RoomDatabase which is a supertype
+    // of DictionaryDatabase", which is Gradle correctly reporting a leaked type.
+    api(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
     testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
 }
