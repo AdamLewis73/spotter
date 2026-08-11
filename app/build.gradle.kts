@@ -117,9 +117,21 @@ val stageDictionaryAsset = tasks.register<StageDictionaryAsset>("stageDictionary
     description = "Copies the built dictionary into the app's assets, failing if it is missing or stale."
 
     dictionary.from(rootProject.layout.projectDirectory.file("tools/dictbuild/data/build/$dictionaryAssetName"))
+    // Only files that can actually change the database's CONTENTS. Deliberately
+    // an exclude-list rather than an include-list: a new ingest stage added
+    // later is then covered automatically, and the cost of being too broad is a
+    // spurious rebuild prompt, while the cost of being too narrow is shipping
+    // stale data silently — which is the entire thing this guard exists to stop.
+    //
+    // The excluded four cannot affect the output: verify.py and
+    // test_dictbuild.py read it, inspect_sources.py reads the raw sources, and
+    // fetch.py's effect shows up as a changed sources.lock.json, which IS
+    // included. Editing the verifier used to fail the Android build, which is a
+    // false alarm of exactly the kind that gets a guard switched off.
     builderSources.from(
         rootProject.layout.projectDirectory.dir("tools/dictbuild").asFileTree.matching {
-            include("*.py", "schema.sql", "sources.json")
+            include("*.py", "schema.sql", "sources.json", "sources.lock.json")
+            exclude("verify.py", "test_*.py", "inspect_sources.py", "fetch.py")
         },
     )
     assetName.set(dictionaryAssetName)

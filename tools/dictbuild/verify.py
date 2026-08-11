@@ -222,6 +222,12 @@ def v09(db, out):
     ranked = db.execute("SELECT count(*) FROM kanji k JOIN strokes s"
                         " ON s.kanji_char=k.char WHERE k.freq_rank IS NOT NULL").fetchone()[0]
     out(f"ranked kanji with strokes: {ranked:,} of 2,501")
+    # NOTE: `ranked == 2501` is an exact equality against an upstream dataset and
+    # will fail the day KANJIDIC2 gains or loses a ranked kanji — a spurious
+    # failure rather than a caught regression. The fault worth catching is
+    # coverage collapsing, which a lower bound detects just as well. Change it to
+    # `ranked >= 2400` next time dictbuild is touched; see the phase-01 progress
+    # notes. Left alone for now because it only bites on a source refresh (D-41).
     return bad < 150 and ranked == 2501, "bounded disagreement, full coverage where it matters"
 
 

@@ -1,7 +1,7 @@
 # Phase 2 — Android app, text input only
 
 **Status:** in progress
-**Updated:** 2026-08-10
+**Updated:** 2026-08-11
 
 ## Current state
 
@@ -18,6 +18,11 @@ and byte-correct, not proven to be usable.
 Rules are verified rather than asserted: `import android.os.Bundle` in
 `:domain` fails to compile; a CI grep covers `:data`, where the compiler cannot
 help; and both dictionary guards were tested by deliberately breaking them.
+
+The dictionary is now byte-reproducible (D-58, D-64), which immediately exposed
+a pre-existing bug: `verify.py` was modifying the database it verified, because
+opening SQLite read-write changes a file's bytes. That class of fault is
+invisible until something checksums the artefact.
 
 ## Next action
 
