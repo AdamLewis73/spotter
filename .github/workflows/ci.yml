@@ -129,13 +129,31 @@ jobs:
       # The runner image ships an Android SDK, but not necessarily the platform
       # this project compiles against. Install it explicitly rather than relying
       # on whatever the image happens to include this month.
+      #
+      # NOTE the ".0". From API 37 the platforms carry MINOR versions, so the
+      # installed packages are android-37.0 and android-37.1 and there is no
+      # bare `android-37`. AGP maps `compileSdk = 37` onto the .0 minor, so that
+      # is what gets installed. Asking for "platforms;android-37" fails with
+      # "Failed to find package", which reads like the platform does not exist
+      # yet rather than like a naming problem.
+      #
+      # build-tools is pinned to AGP 9.2's default rather than derived from
+      # compileSdk — they version independently, and 37.0.0 is not what AGP asks
+      # for just because compileSdk is 37.
       - name: Install the compileSdk platform
         run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           compile_sdk=$(grep -oP 'compileSdk\s*=\s*"\K[0-9]+' gradle/libs.versions.toml)
-          echo "compileSdk=${compile_sdk}"
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platforms;android-${compile_sdk}" "build-tools;${compile_sdk}.0.0"
+          platform="platforms;android-${compile_sdk}.0"
+          echo "compileSdk=${compile_sdk} -> ${platform}"
+
+          # `yes |` races the pipe closing and prints "Broken pipe"; a bounded
+          # number of confirmations does the same job quietly.
+          printf 'y\n%.0s' $(seq 40) | "$SDKMANAGER" --licenses > /dev/null
+
+          "$SDKMANAGER" "$platform" "build-tools;36.0.0"
+          echo "Installed platforms:"
+          ls "$ANDROID_HOME/platforms"
 
       # :domain is a plain Kotlin/JVM module, so these are ordinary JUnit tests
       # with no emulator (D-60).

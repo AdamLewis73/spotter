@@ -86,6 +86,13 @@ Four things cost time. All four look like typos in a log and none are.
   property. Use forward slashes.
 - **Gradle will not generate a wrapper in a directory with no build.**
   `gradle wrapper` fails until a `settings.gradle.kts` exists, even an empty one.
+- **From API 37 the SDK platforms carry minor versions.** The installed packages
+  are `android-37.0` and `android-37.1`; there is no bare `android-37`. AGP maps
+  `compileSdk = 37` onto the `.0` minor. Asking sdkmanager for
+  `platforms;android-37` fails with "Failed to find package", which reads like
+  the platform has not been published yet rather than like a naming problem.
+  This broke the first CI run. Build-tools version independently — 37.0.0 is not
+  what AGP wants merely because compileSdk is 37; AGP 9.2 defaults to 36.0.0.
 
 ### Versions
 
