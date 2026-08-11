@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The XML theme only styles the window before Compose takes over: no
-         action bar, since Compose draws its own scaffolding.
+    <!-- The XML theme styles the window before Compose draws a single pixel.
+         Getting it wrong shows as a flash of the wrong colour on every launch,
+         which is most noticeable in a dark room — precisely when this app gets
+         used (`ux.md`: evenings and dim interiors are prime usage time).
 
-         The real theming — Material 3 plus the design-token layer — is D-35 and
-         is deliberately NOT here yet. It is a decision checkpoint due before the
-         first real UI commit, because it touches every composable if retrofitted. -->
-    <style name="Theme.Spotter" parent="android:Theme.Material.Light.NoActionBar" />
+         `windowBackground` is set to the same surface colour SpotterTheme uses,
+         so the pre-draw frame and the first composed frame match and there is
+         nothing to see. The night variant lives in values-night/.
+
+         Not `Theme.Material.DayNight`: that platform theme only exists from API
+         29, and minSdk here is 26. The -night resource qualifier does the same
+         job and has worked since long before that. -->
+    <style name="Theme.Spotter" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>

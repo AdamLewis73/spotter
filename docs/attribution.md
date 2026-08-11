@@ -50,8 +50,18 @@ This is a statement of what the licences say, not legal advice — worth a prope
 > https://tatoeba.org
 >
 > Dataset versions in this build are listed below.
+>
+> **Fonts**
+>
+> **Noto Sans JP** — bundled so that kanji render with Japanese glyph forms
+> rather than Chinese ones (D-34).
+> © 2014–2021 Adobe, with Reserved Font Name 'Source'. Licensed under the SIL
+> Open Font License, Version 1.1.
+> https://fonts.google.com/noto/specimen/Noto+Sans+JP
 
 KanjiVG's terms are the most prescriptive: attribution must state the use of KanjiVG **and link to the site**, both of which the wording above does.
+
+**The font is a separate obligation from the datasets**, and easy to overlook because it is not part of the dictionary. The SIL Open Font License permits bundling and redistribution, but requires the copyright notice and licence to travel with the font — so the full OFL text ships in the app alongside this notice, not merely a link. Note the copyright names **Adobe**, not Google: Noto Sans JP derives from Source Han Sans.
 
 Tatoeba is credited even though we ingest no Tatoeba file directly — the example sentences in `JMdict_e_examp` cite Tatoeba sentence ids, so the sentences are theirs (D-51).
 
