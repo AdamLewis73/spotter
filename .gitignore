@@ -16,3 +16,17 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# Android / Gradle
+# NOTE: gradle/wrapper/ and gradlew* ARE committed on purpose — the wrapper is
+# what makes a fresh clone build with the right Gradle and nothing installed
+# globally. Only build output and machine-local paths are ignored.
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+*.iml
+.idea/
+.cxx/
+captures/
