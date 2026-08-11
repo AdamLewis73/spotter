@@ -26,10 +26,13 @@ invisible until something checksums the artefact.
 
 ## Next action
 
-**The D-35 checkpoint** — Material 3 plus a design-token layer — which is due
-before any real UI and is the last thing standing between here and a word
-screen. The data layer is done: the dictionary is in the APK, readable, and
-refreshes itself when it changes.
+**The word screen.** Both blockers are gone: the data layer reads the dictionary
+and the theme layer exists, so a screen can now be built without pre-empting a
+decision. Paste 先生 into a text field, tokenize, and render one section per
+reading with component chips last (D-48, D-06).
+
+Kuromoji is not wired up yet, so the first version can look up a pasted word
+directly before tokenization lands.
 
 Note the **D-35 checkpoint** (Material 3 plus a design-token layer) falls due
 before any real UI, and the placeholder screen deliberately does not pre-empt
@@ -54,7 +57,8 @@ it — it uses bare `MaterialTheme` defaults.
 - [x] Room schema export on, JSON committed (D-18)
 - [x] Refresh the extracted dictionary when the shipped build differs, verified
       end to end by shipping a different dictionary as an in-place APK update
-- [ ] Checkpoint: Material 3 + design-token layer before the first UI commit (D-35)
+- [x] Checkpoint: Material 3 + design-token layer (D-35) — fixed palette, light
+      and dark, plus Noto Sans JP bundled (D-34)
 - [ ] Kuromoji tokenization behind the `Tokenizer` interface in `:domain` (D-08)
 - [ ] JMdict longest-match alternates (D-07)
 - [ ] Text-input screen: paste `先生と生産`, get tokens
@@ -166,6 +170,28 @@ proves nothing; drive it with `adb install -r` plus `am instrument` and read the
 so construction lives in `:app` and `:data` exposes Room types via `api` rather
 than `implementation` — `DictionaryDatabase` extends `RoomDatabase`, so Room is
 genuinely part of its public surface.
+
+### Theme and font — 2026-08-11
+
+- **Google Fonts ships Noto Sans JP as a variable font only** — one 9.2 MB
+  `NotoSansJP[wght].ttf` spanning weights 100–900, no static instances. Android
+  supports variable fonts from API 26, which is exactly this project's `minSdk`.
+  Each weight needs its own `Font(...)` entry naming the same resource with
+  different `FontVariation` settings; without one, Compose synthesises the weight
+  and synthetic bold turns dense kanji to mush.
+- `variationSettings` is still `@ExperimentalTextApi`, so the file opts in.
+- **The XML theme must have a `-night` variant.** It paints the window before
+  Compose draws anything, so a hardcoded `Material.Light` parent flashes white on
+  launch in dark mode — worst in exactly the conditions this app is used in.
+  `Theme.Material.DayNight` is API 29+, above our floor, so the `-night`
+  resource qualifier does the job instead. `window_background` is duplicated in
+  XML because the platform cannot read a Compose colour.
+- **Debug APK size is misleading.** It reached 80 MB, of which ~29 MB was dex
+  from `ui-tooling` — a `debugImplementation` that never ships. The release APK
+  is **44 MB** including the font. Measure release before worrying.
+- A screenshot taken within ~4 s of launch catches the splash screen, and one
+  taken right after `cmd uimode night` catches a blank frame mid-recreation.
+  Both look like bugs and are not; force-stop, restart, then wait.
 
 ### Versions
 

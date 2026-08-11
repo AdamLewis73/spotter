@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Must match SpotterLightColors.surface in Color.kt.
+         Duplicated in XML only because the window background is painted by the
+         platform before Compose exists — there is no way to read a Compose
+         colour from a theme attribute. Change one, change the other. -->
+    <color name="window_background">#FFFDFBFF</color>
+</resources>
