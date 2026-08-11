@@ -19,6 +19,18 @@
 tools/dictbuild/data/**      -text -diff linguist-generated
 tools/dictbuild/baseline/**  -text -diff linguist-generated
 
+# The Gradle wrapper.
+#
+# `gradlew` is a POSIX shell script and MUST keep LF endings. Git's autocrlf on
+# Windows would otherwise rewrite it to CRLF on checkout, and Linux CI then
+# fails with a "bad interpreter: no such file or directory" error that names the
+# shell rather than the line endings — an expensive thing to debug.
+#
+# `gradlew.bat` is the opposite: a Windows batch file, which wants CRLF.
+gradlew        text eol=lf
+gradlew.bat    text eol=crlf
+*.jar          -text -diff linguist-generated
+
 # Generated artifacts, wherever they land.
 *.db      -text -diff linguist-generated
 *.db-wal  -text -diff

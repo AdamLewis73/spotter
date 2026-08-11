@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The XML theme only styles the window before Compose takes over: no
+         action bar, since Compose draws its own scaffolding.
+
+         The real theming — Material 3 plus the design-token layer — is D-35 and
+         is deliberately NOT here yet. It is a decision checkpoint due before the
+         first real UI commit, because it touches every composable if retrofitted. -->
+    <style name="Theme.Spotter" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
