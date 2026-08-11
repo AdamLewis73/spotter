@@ -176,10 +176,15 @@ changes             ← D-39; merged and removed entries
   build_id                   which build it disappeared in
 
 meta                ← one row; lets the app detect an asset upgrade
-  build_id                   this dictionary's own version
-  built_at
+  build_id                   a pure hash of the source checksums (D-58)
   source_versions            header date + checksum per dataset (D-41)
 ```
+
+Every column in `meta` must be a function of the sources. A wall-clock
+`built_at` lived here until 2026-08-11 and made the database's bytes differ on
+every build, so it moved to a `build-info.json` sidecar beside the database
+(D-64). That file is build provenance for humans, not an app asset — the app
+reads `meta`.
 
 `kanji_in_word` is the table that answers *"show me every common word where 生 is read セイ."* It is queried constantly and rendered never.
 

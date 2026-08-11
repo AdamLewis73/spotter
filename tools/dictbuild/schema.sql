@@ -222,9 +222,11 @@ CREATE TABLE changes (
 
 -- One row. Lets the app detect an asset upgrade, and records exactly which
 -- source files produced this dictionary (D-41).
+-- Every column here must be a function of the sources (D-58). A wall-clock
+-- `built_at` lived here until 2026-08-11 and made the database's bytes differ
+-- on every build; it moved to build-info.json, outside the artefact (D-64).
 CREATE TABLE meta (
     build_id        TEXT PRIMARY KEY,
-    built_at        TEXT NOT NULL,
     source_versions TEXT NOT NULL   -- JSON: per source, header date + sha256, straight
                                     --   from sources.lock.json. The header date is the
                                     --   real version identifier — three of the four

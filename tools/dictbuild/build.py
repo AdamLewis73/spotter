@@ -48,13 +48,21 @@ def load_lock() -> dict:
 
 
 def build_id(sources: dict) -> str:
-    """Deterministic: identical sources produce an identical id, so a rebuild
-    that changes nothing is visibly a rebuild that changed nothing."""
-    digest = hashlib.sha256(
+    """A pure function of the source checksums, so identical sources produce an
+    identical id and a rebuild that changed nothing is visibly a rebuild that
+    changed nothing (D-58).
+
+    This carried a `%Y%m%d-` prefix until 2026-08-11, which meant two builds
+    from byte-identical sources got different ids on different days — exactly
+    the "the label is a lie" failure D-58 exists to prevent, and it silently
+    broke the `changes` diff's notion of which build an entry disappeared in
+    (D-39). Do not reintroduce a date here; wall-clock belongs in
+    build-info.json (D-64).
+    """
+    return hashlib.sha256(
         "".join(s["sha256"] for s in sorted(sources.values(), key=lambda x: x["name"]))
         .encode()
-    ).hexdigest()[:8]
-    return f"{datetime.now(timezone.utc):%Y%m%d}-{digest}"
+    ).hexdigest()[:12]
 
 
 def create(out: Path) -> sqlite3.Connection:
@@ -66,17 +74,50 @@ def create(out: Path) -> sqlite3.Connection:
 
 
 def write_meta(db: sqlite3.Connection, sources: dict, bid: str) -> None:
+    """Everything written here must be a function of the sources (D-58).
+
+    `built_at` used to live in this table. A wall-clock timestamp inside the
+    artefact guarantees the bytes differ on every build, which made D-58's
+    byte-identical rule unachievable rather than merely unverified. It now goes
+    to build-info.json instead (D-64) — the provenance is still recorded, just
+    not inside the thing whose bytes are the checksum.
+    """
     versions = {
         name: {"header_date": s.get("header_date"), "version": s.get("version"),
                "sha256": s["sha256"]}
         for name, s in sources.items()
     }
     db.execute(
-        "INSERT OR REPLACE INTO meta (build_id, built_at, source_versions)"
-        " VALUES (?, ?, ?)",
-        (bid, datetime.now(timezone.utc).isoformat(timespec="seconds"),
-         json.dumps(versions, ensure_ascii=False, sort_keys=True)),
+        "INSERT OR REPLACE INTO meta (build_id, source_versions) VALUES (?, ?)",
+        (bid, json.dumps(versions, ensure_ascii=False, sort_keys=True)),
     )
+
+
+def write_build_info(out: Path, sources: dict, bid: str) -> Path:
+    """Wall-clock provenance, deliberately OUTSIDE the database (D-64).
+
+    Answers "when was this built, and from what?" without putting a
+    non-reproducible byte into the shipped artefact. Not an app asset — the app
+    reads `meta`; this is for humans and for debugging a build.
+    """
+    info = out.parent / "build-info.json"
+    info.write_text(
+        json.dumps(
+            {
+                "build_id": bid,
+                "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "database": out.name,
+                "sources": {
+                    name: {"header_date": s.get("header_date"),
+                           "version": s.get("version"), "sha256": s["sha256"]}
+                    for name, s in sources.items()
+                },
+            },
+            ensure_ascii=False, indent=2, sort_keys=True,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    return info
 
 
 STAGES = {
@@ -126,6 +167,7 @@ def main() -> int:
 
     db = create(args.out)
     write_meta(db, sources, bid)
+    info = write_build_info(args.out, sources, bid)
 
     for name in stages:
         fn, source_name = STAGES[name]
@@ -163,6 +205,7 @@ def main() -> int:
     mb = after / 1024 / 1024
     print(f"\n{args.out.name}  {mb:.1f} MB"
           f"  (VACUUM reclaimed {(before - after) / 1024 / 1024:.1f} MB)")
+    print(f"{info.name}  build {bid}")
 
     # A layout regression is invisible in a passing build otherwise. D-56 got the
     # `strokes` table wrong by 3.4 MB and the total still looked like a win — so

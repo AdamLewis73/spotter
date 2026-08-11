@@ -126,11 +126,22 @@ Check 志 specifically: it is a common kanji, so the damage is visible to ordina
 
 Expect **about 60** katakana kun readings across the whole table. The build reports the count and flags above 100 (`kun_katakana_loanword`). Zero means something is converting them; a large jump means the source changed.
 
-### V-25 · The build is deterministic (D-41)
+### V-25 · The build is deterministic (D-41, D-58, D-64)
 
 Identical sources must produce an identical database. `build_id` is a hash of the source checksums, so a build that changes nothing is *labelled* as changing nothing — which is a lie if the output actually varies.
 
-Rebuild the alignment with different `PYTHONHASHSEED` values and hash the result:
+**Check the database itself, not a proxy for it:**
+
+```bash
+python build.py && sha256sum data/build/spotter.db
+python build.py && sha256sum data/build/spotter.db   # must match
+```
+
+This assertion was impossible until 2026-08-11. `meta.built_at` held a wall-clock timestamp, so the bytes differed on every build and the strongest available check was the derived `keys.tsv.gz`. Moving that timestamp to a `build-info.json` sidecar (D-64) made the artefact itself reproducible; CI now checksums it directly.
+
+`build-info.json` is excluded from this check — it is the one output that is *meant* to vary.
+
+Also rebuild the alignment with different `PYTHONHASHSEED` values, which is what catches the specific bug below:
 
 ```bash
 for seed in 1 2 3; do PYTHONHASHSEED=$seed python build.py --only furigana; done
@@ -138,6 +149,14 @@ for seed in 1 2 3; do PYTHONHASHSEED=$seed python build.py --only furigana; done
 ```
 
 All three must agree.
+
+**A second trap, found 2026-08-11.** `build_id` was `%Y%m%d-<hash>`, so two builds from byte-identical sources produced different ids on different days. Nothing errored; the `changes` diff (D-39) simply recorded entries against a build identity that did not mean what it claimed. The date prefix is gone — do not reintroduce one.
+
+**A third, found the moment this check first ran against the database.** `verify.py` opened it read-write, and **simply connecting to a SQLite file read-write changes its bytes** — same size, same content, different checksum. V-19 made it worse by writing to `changes` and deleting the rows afterwards, which looks tidy and is not.
+
+So verifying the dictionary modified it, and this check then compared a *verified* database against a *freshly built* one and reported a reproducibility failure that did not exist. The tooling was wrong, not the build.
+
+`verify.py` now opens read-only, and V-19 does its writing against a throwaway copy. **A tool whose job is to verify an artefact must not write to it** — and note that this class of bug is undetectable until something checksums the artefact, which is the argument for checking the database itself rather than a derived file.
 
 **The trap this caught.** A surface reading can match several readings of the same kanji — 一 is both イチ and イツ, and いっ geminates from either. The matcher originally iterated a Python `set` of candidates, and string hashing is randomised per process, so the winner varied between runs. 一生 resolved to イチ on one build and イツ on the next, from byte-identical inputs.
 
