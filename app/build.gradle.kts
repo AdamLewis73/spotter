@@ -242,6 +242,27 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    packaging {
+        resources {
+            // kuromoji-ipadic and kuromoji-core each ship these, and the merger
+            // refuses to guess which copy wins:
+            //   2 files found with path 'META-INF/CONTRIBUTORS.md'
+            //
+            // These are build metadata, not the licence notice. Kuromoji is
+            // Apache 2.0 and JMdict and friends are CC BY-SA, and every one of
+            // those obligations is met by the in-app attribution screen
+            // (`attribution.md`) — which is where a user can actually read it,
+            // rather than buried in an archive they will never open.
+            excludes += "/META-INF/CONTRIBUTORS.md"
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Both jars carry an identical Apache 2.0 text; keeping one copy is
+            // the point of pickFirst rather than exclude. The notice still
+            // ships — see the comment above.
+            pickFirsts += "/META-INF/LICENSE.md"
+            pickFirsts += "/META-INF/NOTICE.md"
+        }
+    }
 }
 
 // Attach the staged dictionary as a generated asset directory.

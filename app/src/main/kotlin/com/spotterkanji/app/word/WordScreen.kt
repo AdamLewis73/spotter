@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -26,6 +27,7 @@ import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiSummary
 import com.spotterkanji.domain.dictionary.Sense
+import com.spotterkanji.domain.tokenize.Token
 
 /**
  * Type a word, see what it means.
@@ -45,6 +47,7 @@ import com.spotterkanji.domain.dictionary.Sense
 fun WordScreen(
     state: WordLookupState,
     onQueryChanged: (String) -> Unit,
+    onTokenSelected: (Token) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tokens = SpotterTheme.tokens
@@ -53,12 +56,20 @@ fun WordScreen(
         OutlinedTextField(
             value = state.query,
             onValueChange = onQueryChanged,
-            label = { Text("Japanese word") },
-            placeholder = { Text("先生") },
+            label = { Text("Japanese text") },
+            placeholder = { Text("先生と生産") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (state.showTokens) {
+            TokenStrip(
+                tokens = state.tokens,
+                selected = state.selected,
+                onTokenSelected = onTokenSelected,
+            )
+        }
 
         when {
             state.searching -> CircularProgressIndicator(
@@ -81,6 +92,55 @@ fun WordScreen(
                 if (state.kanji.isNotEmpty() && state.entries.isNotEmpty()) {
                     item { ComponentChips(state.kanji) }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * The segmented input, one chip per token.
+ *
+ * This is the text-box stand-in for tapping a word on a photograph: the same
+ * "here are the words, pick one" interaction the scan overlay will provide, with
+ * the camera and coordinate mapping removed (Phase 5).
+ *
+ * Particles are shown but muted. They have to keep their place — leaving them
+ * out would misrepresent how the sentence divides — while "case marking
+ * particle" is not what someone photographing a sign wants explained.
+ */
+@Composable
+private fun TokenStrip(
+    tokens: List<Token>,
+    selected: Token?,
+    onTokenSelected: (Token) -> Unit,
+) {
+    val spacing = SpotterTheme.tokens
+    Column(modifier = Modifier.padding(top = spacing.spaceMd)) {
+        Text(
+            text = "Tap a word",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(spacing.spaceSm),
+            modifier = Modifier.padding(top = spacing.spaceXs),
+        ) {
+            tokens.forEach { token ->
+                FilterChip(
+                    selected = token == selected,
+                    onClick = { onTokenSelected(token) },
+                    label = {
+                        Text(
+                            text = token.text,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (token.isContentWord) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    },
+                )
             }
         }
     }
@@ -177,8 +237,18 @@ private fun NotFound(query: String) {
     }
 }
 
+// The worked example from `overview.md`: 先生と生産 segments into three, and the
+// screen opens on 先生 rather than on the particle.
+private val previewTokens = listOf(
+    Token("先生", 0, 2, partOfSpeech = "名詞"),
+    Token("と", 2, 3, partOfSpeech = "助詞"),
+    Token("生産", 3, 5, partOfSpeech = "名詞"),
+)
+
 private val previewState = WordLookupState(
-    query = "先生",
+    query = "先生と生産",
+    tokens = previewTokens,
+    selected = previewTokens.first(),
     entries = listOf(
         DictionaryEntry(
             text = "先生",
@@ -201,7 +271,7 @@ private val previewState = WordLookupState(
 @Composable
 private fun WordScreenPreviewLight() {
     SpotterTheme(darkTheme = false) {
-        Surface { WordScreen(previewState, onQueryChanged = {}) }
+        Surface { WordScreen(previewState, onQueryChanged = {}, onTokenSelected = {}) }
     }
 }
 
@@ -209,6 +279,6 @@ private fun WordScreenPreviewLight() {
 @Composable
 private fun WordScreenPreviewDark() {
     SpotterTheme(darkTheme = true) {
-        Surface { WordScreen(previewState, onQueryChanged = {}) }
+        Surface { WordScreen(previewState, onQueryChanged = {}, onTokenSelected = {}) }
     }
 }

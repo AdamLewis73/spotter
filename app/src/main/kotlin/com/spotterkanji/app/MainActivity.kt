@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
                     WordScreen(
                         state = state,
                         onQueryChanged = viewModel::onQueryChanged,
+                        onTokenSelected = viewModel::onTokenSelected,
                         modifier = Modifier.safeDrawingPadding(),
                     )
                 }
