@@ -48,6 +48,7 @@ fun WordScreen(
     state: WordLookupState,
     onQueryChanged: (String) -> Unit,
     onTokenSelected: (Token) -> Unit,
+    onKanjiSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tokens = SpotterTheme.tokens
@@ -90,7 +91,7 @@ fun WordScreen(
                     ReadingSection(state.entries[index])
                 }
                 if (state.kanji.isNotEmpty() && state.entries.isNotEmpty()) {
-                    item { ComponentChips(state.kanji) }
+                    item { ComponentChips(state.kanji, onKanjiSelected) }
                 }
             }
         }
@@ -189,7 +190,7 @@ private fun SenseRow(number: Int, sense: Sense) {
 }
 
 @Composable
-private fun ComponentChips(kanji: List<KanjiSummary>) {
+private fun ComponentChips(kanji: List<KanjiSummary>, onKanjiSelected: (String) -> Unit) {
     val tokens = SpotterTheme.tokens
     Column(verticalArrangement = Arrangement.spacedBy(tokens.spaceSm)) {
         Text(
@@ -200,9 +201,9 @@ private fun ComponentChips(kanji: List<KanjiSummary>) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm)) {
             kanji.forEach { summary ->
                 SuggestionChip(
-                    // Opens the kanji screen once that exists (D-05). Inert for
-                    // now rather than absent, so the layout is what it will be.
-                    onClick = {},
+                    // The only route to the kanji screen (D-05), which is why
+                    // D-48 accepts the cost of putting these last.
+                    onClick = { onKanjiSelected(summary.character) },
                     colors = SuggestionChipDefaults.suggestionChipColors(
                         labelColor = MaterialTheme.colorScheme.onSurface,
                     ),
@@ -271,7 +272,9 @@ private val previewState = WordLookupState(
 @Composable
 private fun WordScreenPreviewLight() {
     SpotterTheme(darkTheme = false) {
-        Surface { WordScreen(previewState, onQueryChanged = {}, onTokenSelected = {}) }
+        Surface {
+            WordScreen(previewState, onQueryChanged = {}, onTokenSelected = {}, onKanjiSelected = {})
+        }
     }
 }
 
@@ -279,6 +282,8 @@ private fun WordScreenPreviewLight() {
 @Composable
 private fun WordScreenPreviewDark() {
     SpotterTheme(darkTheme = true) {
-        Surface { WordScreen(previewState, onQueryChanged = {}, onTokenSelected = {}) }
+        Surface {
+            WordScreen(previewState, onQueryChanged = {}, onTokenSelected = {}, onKanjiSelected = {})
+        }
     }
 }

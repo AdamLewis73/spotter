@@ -16,6 +16,11 @@ meanings under each, component chips last (D-48, D-06). Confirmed on a device:
 先生 shows せんせい marked *common* with four senses, then せんしょう, せんじょう,
 ぜんじょう and シーサン, with 先 / 生 chips beneath.
 
+**The kanji screen works**, reached from a component chip: Overview carries
+meanings, on/kun readings and the "As a word" senses (D-49); Examples carries
+D-04 — every common word grouped by the reading the kanji takes there, セイ
+before ショウ because セイ holds 先生 and 学生.
+
 **Tokenization works.** `先生と生産` segments into 先生 / と / 生産 as chips; tapping
 one shows its entry. Confirmed on a device — tapping 生産 gives せいさん
 "production; manufacture" with 生 *life, genuine* and 産 *products, bear*
@@ -36,12 +41,7 @@ invisible until something checksums the artefact.
 
 ## Next action
 
-**The kanji screen** the component chips should open (D-05, D-49), with its
-Overview and Examples tabs. The Examples tab — every common word using a kanji,
-grouped by reading — is D-04, and the one screen the competitive review found
-nobody else has.
-
-**Then decide D-51**, whether example sentences get rendered. The roadmap is
+**Decide D-51**, whether example sentences get rendered. The roadmap is
 explicit that this is judged against real screens rather than on paper: look at
 先生, 上手 and 生 with them off, turn them on, look again.
 
@@ -75,7 +75,7 @@ the previous lookup so a slow query for 先 cannot overwrite a newer one for 先
 - [ ] JMdict longest-match alternates (D-07)
 - [x] Text-input screen: paste `先生と生産`, get tokens, tap one to read it
 - [x] Word screen — one section per reading, component chips last (D-48, D-06)
-- [ ] Kanji screen — Overview / Examples tabs; Stroke Order is Phase 3 (D-05)
+- [x] Kanji screen — Overview / Examples tabs; Stroke Order is Phase 3 (D-05)
 - [ ] Single kanji routes straight to the kanji screen (D-49)
 - [ ] Checkpoint: UUID keys, `updated_at`, soft delete, schema export on,
       destructive migration off (D-15 – D-18) before any user-data write

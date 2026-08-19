@@ -2,6 +2,7 @@ package com.spotterkanji.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.spotterkanji.app.ui.theme.SpotterTheme
+import com.spotterkanji.app.word.KanjiScreen
 import com.spotterkanji.app.word.WordLookupViewModel
 import com.spotterkanji.app.word.WordScreen
 
@@ -41,12 +43,30 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val viewModel: WordLookupViewModel = viewModel()
                     val state by viewModel.state.collectAsStateWithLifecycle()
-                    WordScreen(
-                        state = state,
-                        onQueryChanged = viewModel::onQueryChanged,
-                        onTokenSelected = viewModel::onTokenSelected,
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
+                    val openKanji = state.openKanji
+
+                    // The kanji screen replaces the word screen rather than
+                    // stacking beside it (D-32). System back closes it before
+                    // leaving the app, which is the behaviour the eventual
+                    // bottom sheet will need to reproduce by hand — a
+                    // ModalBottomSheet has no back stack of its own.
+                    BackHandler(enabled = openKanji != null, onBack = viewModel::onKanjiClosed)
+
+                    if (openKanji != null) {
+                        KanjiScreen(
+                            detail = openKanji,
+                            onBack = viewModel::onKanjiClosed,
+                            modifier = Modifier.safeDrawingPadding(),
+                        )
+                    } else {
+                        WordScreen(
+                            state = state,
+                            onQueryChanged = viewModel::onQueryChanged,
+                            onTokenSelected = viewModel::onTokenSelected,
+                            onKanjiSelected = viewModel::onKanjiSelected,
+                            modifier = Modifier.safeDrawingPadding(),
+                        )
+                    }
                 }
             }
         }
