@@ -20,6 +20,10 @@ targetSdk = "37"
 # there is no 2.4.x line to match Kotlin 2.4.10. 2.3.11 is the current release.
 ksp = "2.3.11"
 room = "2.8.4"
+# 0.9.0 is the only release and dates from 2017. Unmaintained but stable and
+# still the standard JVM morphological analyser; the 12.7 MB jar is mostly its
+# embedded IPADIC dictionary.
+kuromoji = "0.9.0"
 
 androidx-core = "1.19.0"
 androidx-activity = "1.13.0"
@@ -46,6 +50,8 @@ compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+kuromoji-ipadic = { group = "com.atilika.kuromoji", name = "kuromoji-ipadic", version.ref = "kuromoji" }
 
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

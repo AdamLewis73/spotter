@@ -37,6 +37,12 @@ android {
 dependencies {
     implementation(project(":domain"))
 
+    // Kuromoji is a plain JVM library, so it could technically live in :domain.
+    // It belongs here because it is JVM-ONLY and cannot run on iOS — putting it
+    // in :domain would quietly undo the portability D-60 protects. The
+    // `Tokenizer` interface stays in :domain so this stays swappable (D-08).
+    implementation(libs.kuromoji.ipadic)
+
     // `api`, not `implementation`: DictionaryDatabase extends RoomDatabase, so
     // Room types are genuinely part of this module's public surface and any
     // consumer needs them on its classpath to construct one. `implementation`

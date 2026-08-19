@@ -16,8 +16,14 @@ meanings under each, component chips last (D-48, D-06). Confirmed on a device:
 先生 shows せんせい marked *common* with four senses, then せんしょう, せんじょう,
 ぜんじょう and シーサン, with 先 / 生 chips beneath.
 
-It looks a word up **whole** — Kuromoji is not wired yet, so `先生と生産` finds
-nothing while `先生` works. Tokenization is the next feature.
+**Tokenization works.** `先生と生産` segments into 先生 / と / 生産 as chips; tapping
+one shows its entry. Confirmed on a device — tapping 生産 gives せいさん
+"production; manufacture" with 生 *life, genuine* and 産 *products, bear*
+beneath, which is the contextual point the whole app exists to make.
+
+Particles are shown but muted: they must keep their place or every offset after
+them is wrong, while "case marking particle" is not what anyone wants explained.
+Inflected words fall back to the dictionary form, so 生きた finds 生きる.
 
 Rules are verified rather than asserted: `import android.os.Bundle` in
 `:domain` fails to compile; a CI grep covers `:data`, where the compiler cannot
@@ -30,12 +36,14 @@ invisible until something checksums the artefact.
 
 ## Next action
 
-**Kuromoji tokenization** behind the `Tokenizer` interface (D-07, D-08), so
-`先生と生産` splits into 先生 / と / 生産 instead of finding nothing. That turns a
-lookup box into the thing the scan pipeline will eventually feed, and it is the
-last piece of Phase 2's stated goal.
+**The kanji screen** the component chips should open (D-05, D-49), with its
+Overview and Examples tabs. The Examples tab — every common word using a kanji,
+grouped by reading — is D-04, and the one screen the competitive review found
+nobody else has.
 
-After that, the kanji screen the component chips should open (D-05, D-49).
+**Then decide D-51**, whether example sentences get rendered. The roadmap is
+explicit that this is judged against real screens rather than on paper: look at
+先生, 上手 and 生 with them off, turn them on, look again.
 
 **No UI tests yet.** The screen is verified by eye and the data path by
 instrumented tests; the ViewModel's stale-result guard — each keystroke cancels
@@ -63,11 +71,9 @@ the previous lookup so a slow query for 先 cannot overwrite a newer one for 先
       end to end by shipping a different dictionary as an in-place APK update
 - [x] Checkpoint: Material 3 + design-token layer (D-35) — fixed palette, light
       and dark, plus Noto Sans JP bundled (D-34)
-- [ ] Kuromoji tokenization behind the `Tokenizer` interface in `:domain` (D-08)
+- [x] Kuromoji tokenization behind the `Tokenizer` interface (D-07, D-08)
 - [ ] JMdict longest-match alternates (D-07)
-- [x] Text-input screen looking a **whole word** up directly, no tokenization —
-      enough to prove the data path end to end
-- [ ] Text-input screen: paste `先生と生産`, get *tokens* (needs Kuromoji)
+- [x] Text-input screen: paste `先生と生産`, get tokens, tap one to read it
 - [x] Word screen — one section per reading, component chips last (D-48, D-06)
 - [ ] Kanji screen — Overview / Examples tabs; Stroke Order is Phase 3 (D-05)
 - [ ] Single kanji routes straight to the kanji screen (D-49)

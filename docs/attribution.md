@@ -58,8 +58,17 @@ This is a statement of what the licences say, not legal advice — worth a prope
 > © 2014–2021 Adobe, with Reserved Font Name 'Source'. Licensed under the SIL
 > Open Font License, Version 1.1.
 > https://fonts.google.com/noto/specimen/Noto+Sans+JP
+>
+> **Software**
+>
+> **Kuromoji** — the morphological analyser that decides where Japanese words
+> begin and end, bundled with its IPADIC dictionary (D-07).
+> © Atilika Inc. Licensed under the Apache License, Version 2.0.
+> https://www.atilika.org/
 
 KanjiVG's terms are the most prescriptive: attribution must state the use of KanjiVG **and link to the site**, both of which the wording above does.
+
+**Bundled software is a third category, separate again from the datasets and the font.** Kuromoji is Apache 2.0, which requires the licence and any NOTICE to be distributed with the binary. Its jars each carry `META-INF/LICENSE.md`, and the Android packaging step is configured to keep one copy rather than drop both — dropping them would be the easy accident, since the merge error that forces the decision reads like a build annoyance rather than a licensing one.
 
 **The font is a separate obligation from the datasets**, and easy to overlook because it is not part of the dictionary. The SIL Open Font License permits bundling and redistribution, but requires the copyright notice and licence to travel with the font — so the full OFL text ships in the app alongside this notice, not merely a link. Note the copyright names **Adobe**, not Google: Noto Sans JP derives from Source Han Sans.
 
