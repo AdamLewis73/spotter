@@ -23,14 +23,29 @@ import androidx.room.RoomDatabase
  * allowed to touch the framework (D-60).
  */
 @Database(
-    entities = [WordRow::class, WordSenseRow::class, MetaRow::class],
-    version = 1,
+    entities = [WordRow::class, WordSenseRow::class, KanjiRow::class, MetaRow::class],
+    version = DictionaryDatabase.SCHEMA_VERSION,
     exportSchema = true,
 )
 abstract class DictionaryDatabase : RoomDatabase() {
     abstract fun dictionaryDao(): DictionaryDao
 
     companion object {
+        /**
+         * Bumped whenever the set of tables or columns **Room knows about**
+         * changes — including simply adding an entity for a table the file
+         * always had, which is what took this from 1 to 2 when `KanjiRow`
+         * arrived.
+         *
+         * There are no `Migration` objects, and there never will be. Room's own
+         * error suggests `fallbackToDestructiveMigration*`, which is banned
+         * (D-17), and a migration chain would be equally wrong: this database is
+         * read-only and disposable (D-38), so the correct response to any schema
+         * change is to throw the extracted copy away and re-extract from the
+         * asset. `:app` does exactly that by comparing this number against the
+         * copy's `PRAGMA user_version`.
+         */
+        const val SCHEMA_VERSION: Int = 2
         /** Matches the file staged into assets by `:app:stageDictionaryAsset`. */
         const val ASSET_NAME: String = "spotter.db"
 

@@ -31,7 +31,10 @@ interface DictionaryDao {
     )
     suspend fun sensesFor(wordIds: List<Long>): List<WordSenseRow>
 
-    /** The dictionary's own version — a pure hash of the source checksums (D-58). */
+    @Query("SELECT * FROM kanji WHERE char IN (:characters)")
+    suspend fun kanji(characters: List<String>): List<KanjiRow>
+
+    /** The dictionary's own version — a hash of the sources and builder (D-65). */
     @Query("SELECT build_id FROM meta LIMIT 1")
     suspend fun buildId(): String?
 }

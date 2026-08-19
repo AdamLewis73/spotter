@@ -35,6 +35,21 @@ data class WordRow(
     @ColumnInfo(name = "is_common", defaultValue = "0") val isCommon: Int,
 )
 
+/**
+ * Checked with `PRAGMA table_info` before writing: no nullable primary key, no
+ * column defaults, no foreign keys — so unlike `word`, this one needed nothing
+ * mirrored. Doing that check first is faster than reading a Room validation dump.
+ */
+@Entity(tableName = "kanji")
+data class KanjiRow(
+    @PrimaryKey @ColumnInfo(name = "char") val character: String,
+    @ColumnInfo(name = "meanings") val meanings: String,
+    @ColumnInfo(name = "on_readings") val onReadings: String,
+    @ColumnInfo(name = "kun_readings") val kunReadings: String,
+    @ColumnInfo(name = "stroke_count") val strokeCount: Int,
+    @ColumnInfo(name = "freq_rank") val freqRank: Int?,
+)
+
 /** One row. Lets the app tell which dictionary build it is holding (D-58). */
 @Entity(tableName = "meta")
 data class MetaRow(
