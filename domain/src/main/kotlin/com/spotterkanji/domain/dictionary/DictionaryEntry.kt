@@ -22,6 +22,19 @@ data class Sense(
  * words with no error (D-11). The natural key is the only identity that crosses
  * this boundary.
  */
+/**
+ * A single kanji, as shown on a component chip beneath a word.
+ *
+ * **Meanings only — never readings** (D-06). A kanji's reading inside a compound
+ * is not the sum of its parts: 明日 is あした, which cannot be split across 明 and
+ * 日 at all. Printing per-character readings under a word teaches something
+ * false, so the chips carry meanings and the reading lives on the word.
+ */
+data class KanjiSummary(
+    val character: String,
+    val meanings: List<String>,
+)
+
 data class DictionaryEntry(
     val text: String,
     val reading: String,

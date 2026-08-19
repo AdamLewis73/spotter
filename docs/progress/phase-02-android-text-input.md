@@ -11,9 +11,13 @@ module per D-60. The debug APK is **46 MB**, holding a 99.7 MB `spotter.db` at
 `assets/spotter.db` (the APK's own compression does the rest). `:domain:test`
 runs 3 JUnit tests in milliseconds with no emulator.
 
-The app itself is still a placeholder that renders 先生. **Nothing reads the
-dictionary yet** — there is no Room layer, so the asset is proven to be present
-and byte-correct, not proven to be usable.
+**The word screen works.** Type a word and it renders one card per reading,
+meanings under each, component chips last (D-48, D-06). Confirmed on a device:
+先生 shows せんせい marked *common* with four senses, then せんしょう, せんじょう,
+ぜんじょう and シーサン, with 先 / 生 chips beneath.
+
+It looks a word up **whole** — Kuromoji is not wired yet, so `先生と生産` finds
+nothing while `先生` works. Tokenization is the next feature.
 
 Rules are verified rather than asserted: `import android.os.Bundle` in
 `:domain` fails to compile; a CI grep covers `:data`, where the compiler cannot
@@ -26,17 +30,17 @@ invisible until something checksums the artefact.
 
 ## Next action
 
-**The word screen.** Both blockers are gone: the data layer reads the dictionary
-and the theme layer exists, so a screen can now be built without pre-empting a
-decision. Paste 先生 into a text field, tokenize, and render one section per
-reading with component chips last (D-48, D-06).
+**Kuromoji tokenization** behind the `Tokenizer` interface (D-07, D-08), so
+`先生と生産` splits into 先生 / と / 生産 instead of finding nothing. That turns a
+lookup box into the thing the scan pipeline will eventually feed, and it is the
+last piece of Phase 2's stated goal.
 
-Kuromoji is not wired up yet, so the first version can look up a pasted word
-directly before tokenization lands.
+After that, the kanji screen the component chips should open (D-05, D-49).
 
-Note the **D-35 checkpoint** (Material 3 plus a design-token layer) falls due
-before any real UI, and the placeholder screen deliberately does not pre-empt
-it — it uses bare `MaterialTheme` defaults.
+**No UI tests yet.** The screen is verified by eye and the data path by
+instrumented tests; the ViewModel's stale-result guard — each keystroke cancels
+the previous lookup so a slow query for 先 cannot overwrite a newer one for 先生
+— is exactly the kind of logic that deserves a test and does not have one.
 
 ## Done
 
@@ -46,7 +50,7 @@ it — it uses bare `MaterialTheme` defaults.
       (application ID `com.spotterkanji.app`, D-63)
 - [x] Layering rule enforced automatically — compiler for `:domain`, CI grep
       for `:data`; both verified against a deliberate violation
-- [ ] Confirm the APK actually launches on a device or emulator
+- [x] Confirm the APK actually launches on a device or emulator
 - [x] `spotter.db` built and copied into app assets
 - [x] Asset copy automated as a Gradle task (`:app:stageDictionaryAsset`),
       failing loudly when the dictionary is missing or older than its builder
@@ -61,8 +65,10 @@ it — it uses bare `MaterialTheme` defaults.
       and dark, plus Noto Sans JP bundled (D-34)
 - [ ] Kuromoji tokenization behind the `Tokenizer` interface in `:domain` (D-08)
 - [ ] JMdict longest-match alternates (D-07)
-- [ ] Text-input screen: paste `先生と生産`, get tokens
-- [ ] Word screen — one section per reading, component chips last (D-48, D-06)
+- [x] Text-input screen looking a **whole word** up directly, no tokenization —
+      enough to prove the data path end to end
+- [ ] Text-input screen: paste `先生と生産`, get *tokens* (needs Kuromoji)
+- [x] Word screen — one section per reading, component chips last (D-48, D-06)
 - [ ] Kanji screen — Overview / Examples tabs; Stroke Order is Phase 3 (D-05)
 - [ ] Single kanji routes straight to the kanji screen (D-49)
 - [ ] Checkpoint: UUID keys, `updated_at`, soft delete, schema export on,

@@ -80,13 +80,27 @@ object DictionaryProvider {
         val extracted = context.getDatabasePath(DATABASE_FILE)
         if (!extracted.exists()) return false
 
-        val installedBuildId = readBuildId(extracted)
-        if (installedBuildId == shippedBuildId) return false
+        val installed = readIdentity(extracted)
+        val expectedVersion = DictionaryDatabase.SCHEMA_VERSION
+
+        // Two independent reasons to discard, and both matter.
+        //
+        // The build id changes when the DATA changes — a rebuilt dictionary.
+        // The schema version changes when the APP's expectations change, which
+        // includes simply adding an entity for a table the file always had.
+        // Miss the second and Room fails the open outright with "A migration
+        // from 1 to 2 was required but not found", suggesting the one function
+        // this project bans (D-17). There is no migration to write: the
+        // dictionary is disposable, so re-extracting IS the upgrade path (D-38).
+        val dataChanged = installed?.buildId != shippedBuildId
+        val schemaChanged = installed?.version != expectedVersion
+        if (!dataChanged && !schemaChanged) return false
 
         Log.i(
             TAG,
-            "Dictionary changed (installed=${installedBuildId ?: "unreadable"}, " +
-                "shipped=$shippedBuildId) — discarding the extracted copy.",
+            "Dictionary superseded (build ${installed?.buildId ?: "unreadable"} -> " +
+                "$shippedBuildId, schema ${installed?.version ?: "unreadable"} -> " +
+                "$expectedVersion) — discarding the extracted copy.",
         )
         // Close before deleting. Unlinking an open SQLite file succeeds on
         // Linux, but the existing handle keeps pointing at the old inode, so a
@@ -106,22 +120,29 @@ object DictionaryProvider {
         return true
     }
 
+    /** What an extracted copy says about itself. */
+    private data class ExtractedIdentity(val buildId: String?, val version: Int)
+
     /**
-     * The `build_id` recorded inside an extracted database, or null if it cannot
-     * be read.
+     * Reads an extracted database's identity, or null if it cannot be read at
+     * all.
      *
      * Null is treated as stale by the caller, which is the safe direction: a copy
-     * whose `meta` table is missing, empty or from an older schema is exactly the
-     * copy that should be replaced.
+     * that is corrupt, truncated, or from a schema old enough that `meta` is
+     * missing is exactly the copy that should be replaced.
+     *
+     * `version` is Room's schema version, which it stores in the standard SQLite
+     * `user_version` pragma — the same field `SQLiteDatabase.version` exposes.
      */
-    private fun readBuildId(file: File): String? = try {
+    private fun readIdentity(file: File): ExtractedIdentity? = try {
         SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
-            db.rawQuery("SELECT build_id FROM meta LIMIT 1", null).use { cursor ->
+            val buildId = db.rawQuery("SELECT build_id FROM meta LIMIT 1", null).use { cursor ->
                 if (cursor.moveToFirst()) cursor.getString(0) else null
             }
+            ExtractedIdentity(buildId = buildId, version = db.version)
         }
     } catch (e: Exception) {
-        Log.w(TAG, "Could not read build_id from the extracted dictionary", e)
+        Log.w(TAG, "Could not read the extracted dictionary's identity", e)
         null
     }
 }

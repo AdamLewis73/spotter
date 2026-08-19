@@ -20,4 +20,13 @@ interface DictionaryRepository {
      * word is not in the dictionary.
      */
     suspend fun lookup(text: String): List<DictionaryEntry>
+
+    /**
+     * The kanji making up [text], in the order they appear, for the component
+     * chips (D-06).
+     *
+     * Kana are skipped — 生きる contributes 生 only. A character the dictionary
+     * has no entry for is omitted rather than rendered as an empty chip.
+     */
+    suspend fun kanjiIn(text: String): List<KanjiSummary>
 }

@@ -2,6 +2,7 @@ package com.spotterkanji.data.dictionary
 
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.DictionaryRepository
+import com.spotterkanji.domain.dictionary.KanjiSummary
 import com.spotterkanji.domain.dictionary.Sense
 import org.json.JSONArray
 
@@ -42,7 +43,24 @@ class RoomDictionaryRepository(
         }
     }
 
-    /** The dictionary build currently on the device (D-58). */
+    override suspend fun kanjiIn(text: String): List<KanjiSummary> {
+        // Kana contribute no chip — 生きる is one kanji plus okurigana. Distinct,
+        // because 日々 would otherwise query and render 日 twice.
+        val characters = text.filter { it.isKanji() }.map(Char::toString).distinct()
+        if (characters.isEmpty()) return emptyList()
+
+        val byCharacter = dao.kanji(characters).associateBy { it.character }
+        // Ordered by appearance in the word, not by whatever the query returned:
+        // the chips under 先生 must read 先 then 生. A character the dictionary
+        // does not know is dropped rather than shown as an empty chip.
+        return characters.mapNotNull { character ->
+            byCharacter[character]?.let {
+                KanjiSummary(character = character, meanings = it.meanings.toStringList())
+            }
+        }
+    }
+
+    /** The dictionary build currently on the device (D-65). */
     suspend fun buildId(): String? = dao.buildId()
 }
 
@@ -53,6 +71,16 @@ class RoomDictionaryRepository(
  * not breach the layering rule (D-60) — but it is also the reason this parsing
  * lives in `:data` and not in `:domain`.
  */
+/**
+ * CJK Unified Ideographs, plus the extension A and compatibility blocks that
+ * JMdict actually uses. Deliberately not `Character.isIdeographic`, which also
+ * matches characters this dictionary has no entries for.
+ */
+private fun Char.isKanji(): Boolean =
+    this in '一'..'鿿' ||
+        this in '㐀'..'䶿' ||
+        this in '豈'..'﫿'
+
 private fun String?.toStringList(): List<String> {
     if (this.isNullOrBlank()) return emptyList()
     val array = JSONArray(this)
