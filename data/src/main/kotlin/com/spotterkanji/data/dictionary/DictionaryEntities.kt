@@ -3,6 +3,7 @@ package com.spotterkanji.data.dictionary
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -15,8 +16,9 @@ import androidx.room.PrimaryKey
  * than at compile time — so changing `schema.sql` means changing these in the
  * same commit.
  *
- * `WITHOUT ROWID` on some of these tables (D-56) is invisible to Room: it
- * validates via `PRAGMA table_info`, which reports the same shape either way.
+ * `WITHOUT ROWID` (D-56) is invisible to Room's **column** check — `PRAGMA
+ * table_info` reports the same shape either way — but **not** to its index
+ * check. See [KanjiInWordRow] for what that costs.
  */
 @Entity(tableName = "word")
 data class WordRow(
@@ -48,6 +50,79 @@ data class KanjiRow(
     @ColumnInfo(name = "kun_readings") val kunReadings: String,
     @ColumnInfo(name = "stroke_count") val strokeCount: Int,
     @ColumnInfo(name = "freq_rank") val freqRank: Int?,
+)
+
+/**
+ * The table D-04 is built on, and the reason it has to be declared even though
+ * nothing maps rows to it directly: Room validates every `@Query` against the
+ * schema it knows, so querying an undeclared table fails the *build* with
+ * `no such table: kanji_in_word`.
+ *
+ * The foreign keys are mirrored because Room compares those — omitting one
+ * compiles and then throws at runtime when it validates the real file.
+ *
+ * **The index column list looks wrong and is right.** `schema.sql` declares
+ * `idx_kiw_group` on `(kanji_char, reading_group, word_freq)` — three columns —
+ * yet two more are listed below.
+ *
+ * This table is `WITHOUT ROWID` (D-56), and SQLite **appends the primary key to
+ * every secondary index** on such a table, because there is no rowid to locate
+ * the row with. `PRAGMA index_info` therefore reports five columns, and Room
+ * compares index sets **exactly**: leaving the index undeclared fails just as
+ * hard as declaring the three-column form, with `indices = { }` expected against
+ * one found.
+ *
+ * So the earlier note that `WITHOUT ROWID` is invisible to Room holds only for
+ * `PRAGMA table_info`. It is emphatically visible through `index_info`.
+ *
+ * If `schema.sql` ever changes this table's primary key, this list changes with
+ * it — the trailing columns are the primary key, in primary-key order.
+ */
+@Entity(
+    tableName = "kanji_in_word",
+    primaryKeys = ["kanji_char", "word_id", "position"],
+    foreignKeys = [
+        ForeignKey(
+            entity = WordRow::class,
+            parentColumns = ["id"],
+            childColumns = ["word_id"],
+        ),
+        ForeignKey(
+            entity = KanjiRow::class,
+            parentColumns = ["char"],
+            childColumns = ["kanji_char"],
+        ),
+    ],
+    indices = [
+        Index(
+            name = "idx_kiw_group",
+            value = ["kanji_char", "reading_group", "word_freq", "word_id", "position"],
+        ),
+    ],
+)
+data class KanjiInWordRow(
+    @ColumnInfo(name = "kanji_char") val kanjiChar: String,
+    @ColumnInfo(name = "word_id") val wordId: Long,
+    @ColumnInfo(name = "position") val position: Int,
+    @ColumnInfo(name = "surface_reading") val surfaceReading: String,
+    @ColumnInfo(name = "canonical_reading") val canonicalReading: String?,
+    @ColumnInfo(name = "reading_group") val readingGroup: String?,
+    @ColumnInfo(name = "reading_type") val readingType: String?,
+    @ColumnInfo(name = "word_freq") val wordFreq: Int,
+)
+
+/**
+ * A projection, not a table — the result of joining `kanji_in_word` to `word`
+ * for the Examples tab. Room maps query columns onto this by name, so the
+ * aliases in the query have to match these properties exactly.
+ */
+data class KanjiExampleRow(
+    val readingGroup: String,
+    val readingType: String?,
+    val text: String,
+    val reading: String,
+    val wordFreq: Int,
+    val glosses: String?,
 )
 
 /** One row. Lets the app tell which dictionary build it is holding (D-58). */

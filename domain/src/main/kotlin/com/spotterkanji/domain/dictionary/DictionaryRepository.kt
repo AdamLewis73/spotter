@@ -29,4 +29,14 @@ interface DictionaryRepository {
      * has no entry for is omitted rather than rendered as an empty chip.
      */
     suspend fun kanjiIn(text: String): List<KanjiSummary>
+
+    /**
+     * Everything the kanji screen needs for [character], or null if the
+     * dictionary has no entry for it.
+     *
+     * Null is a real case rather than an error: KANJIDIC2 does not cover every
+     * character that can appear in Japanese text, and a saved item must still
+     * render when its data goes missing (D-40).
+     */
+    suspend fun kanjiDetail(character: String): KanjiDetail?
 }

@@ -2,6 +2,9 @@ package com.spotterkanji.data.dictionary
 
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.DictionaryRepository
+import com.spotterkanji.domain.dictionary.KanjiDetail
+import com.spotterkanji.domain.dictionary.KanjiExample
+import com.spotterkanji.domain.dictionary.KanjiReadingGroup
 import com.spotterkanji.domain.dictionary.KanjiSummary
 import com.spotterkanji.domain.dictionary.Sense
 import org.json.JSONArray
@@ -60,8 +63,70 @@ class RoomDictionaryRepository(
         }
     }
 
+    override suspend fun kanjiDetail(character: String): KanjiDetail? {
+        val row = dao.kanji(listOf(character)).firstOrNull() ?: return null
+
+        val groups = dao.readingExamples(character)
+            .groupBy { it.readingGroup }
+            .map { (reading, rows) ->
+                // Deduplicate on READING, not written form. JMdict records
+                // 一生けんめい, 一生けん命 and 一生懸命 as separate entries — three
+                // ways of writing one word, all いっしょうけんめい — and 学生 has
+                // the pre-reform 學生 beside it. Listing each is accurate and
+                // useless: it fills the group with what looks like repetition
+                // and buries the pattern D-04 is trying to show. The query
+                // orders by frequency, so the survivor is the common spelling.
+                val examples = rows.distinctBy { it.reading }
+                    .take(EXAMPLES_PER_READING)
+                    .map { example ->
+                        KanjiExample(
+                            text = example.text,
+                            reading = example.reading,
+                            meaning = example.glosses.toStringList().firstOrNull(),
+                        )
+                    }
+                // Lower is commoner; 9999 stands in for unranked (V-04).
+                val bestFrequency = rows.minOf { it.wordFreq }
+                Triple(reading, rows.first().readingType, examples) to bestFrequency
+            }
+            // On'yomi before kun'yomi, the order every dictionary uses. Within a
+            // type the reading carrying the commonest word leads, so 生's セイ
+            // (先生, 学生) precedes ショウ (一生) rather than trailing it.
+            .sortedWith(
+                compareBy(
+                    { (group, _) -> READING_TYPE_ORDER.indexOf(group.second).takeIf { it >= 0 } ?: 99 },
+                    { (_, bestFrequency) -> bestFrequency },
+                ),
+            )
+            .map { (group, _) ->
+                KanjiReadingGroup(reading = group.first, type = group.second, examples = group.third)
+            }
+
+        return KanjiDetail(
+            character = character,
+            meanings = row.meanings.toStringList(),
+            onReadings = row.onReadings.toStringList(),
+            kunReadings = row.kunReadings.toStringList(),
+            strokeCount = row.strokeCount,
+            readingGroups = groups,
+            // D-49: a single character scanned on its own lands here directly,
+            // so its own word senses have to be reachable from this screen.
+            asWord = lookup(character),
+        )
+    }
+
     /** The dictionary build currently on the device (D-65). */
     suspend fun buildId(): String? = dao.buildId()
+
+    private companion object {
+        /**
+         * Enough to show a pattern, few enough to scan. 生's い group holds 136
+         * words; listing them all would bury the point D-04 is making rather
+         * than make it.
+         */
+        const val EXAMPLES_PER_READING = 8
+        val READING_TYPE_ORDER = listOf("on", "kun")
+    }
 }
 
 /**

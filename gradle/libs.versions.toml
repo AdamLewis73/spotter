@@ -50,6 +50,10 @@ compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+# Icons are no longer bundled with material3. `-core` carries the handful of
+# standard glyphs (back arrow, close); `-extended` is thousands of icons and
+# several MB, which this app has no use for.
+compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
 
 kuromoji-ipadic = { group = "com.atilika.kuromoji", name = "kuromoji-ipadic", version.ref = "kuromoji" }
 

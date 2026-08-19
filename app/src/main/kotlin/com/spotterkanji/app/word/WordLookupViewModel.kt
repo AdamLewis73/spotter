@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.spotterkanji.app.data.DictionaryProvider
 import com.spotterkanji.data.tokenize.KuromojiTokenizer
 import com.spotterkanji.domain.dictionary.DictionaryEntry
+import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiSummary
 import com.spotterkanji.domain.tokenize.Token
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +30,15 @@ data class WordLookupState(
     val entries: List<DictionaryEntry> = emptyList(),
     val kanji: List<KanjiSummary> = emptyList(),
     val searching: Boolean = false,
+    /**
+     * The kanji screen, when one is open.
+     *
+     * The kanji screen REPLACES the word screen rather than stacking beside it
+     * (D-32), so this is a mode of the same state rather than a separate
+     * destination. No navigation library for a two-level swap the sheet will
+     * eventually own anyway.
+     */
+    val openKanji: KanjiDetail? = null,
 ) {
     val hasSearched: Boolean get() = query.isNotBlank() && !searching
     val notFound: Boolean get() = hasSearched && selected != null && entries.isEmpty()
@@ -75,6 +85,16 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
                 _state.value = _state.value.copy(searching = false)
             }
         }
+    }
+
+    fun onKanjiSelected(character: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(openKanji = repository.kanjiDetail(character))
+        }
+    }
+
+    fun onKanjiClosed() {
+        _state.value = _state.value.copy(openKanji = null)
     }
 
     fun onTokenSelected(token: Token) {

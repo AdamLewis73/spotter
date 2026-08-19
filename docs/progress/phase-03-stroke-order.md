@@ -1,7 +1,7 @@
 # Phase 3 — Stroke order tab
 
 **Status:** not started
-**Updated:** 2026-08-09
+**Updated:** 2026-08-11
 
 ## Current state
 
@@ -10,8 +10,9 @@ path data ships in `spotter.db` and needs no new source work.
 
 ## Next action
 
-Nothing yet — blocked on Phase 2's kanji screen existing to hang the third tab
-from (D-05).
+**Unblocked.** Phase 2's kanji screen now exists with Overview and Examples
+tabs, so Stroke Order is a third tab alongside them — `KanjiScreen.kt` in `:app`.
+Stroke count belongs on that tab rather than in Overview (D-50).
 
 ## Done
 
