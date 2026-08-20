@@ -54,9 +54,7 @@ That number is deliberately not being judged on paper. Build the word screen wit
 
 Also still open if they stay: sense-attached only, or word-level examples too where no sense-attached one exists.
 
-**Housekeeping for this phase — create a `/launch` skill.** There is no build-and-run command for this project yet; one was deliberately deferred because there was nothing to launch. Once the app module exists, add `.claude/skills/launch/SKILL.md` alongside the existing `orient` and `phase` skills. It needs the real Gradle task, the application id, and a rule for selecting a device or emulator (and for stopping rather than silently starting one). It should surface real Gradle and logcat output on failure instead of summarizing.
-
-The bundled `/run` skill covers the generic case in the meantime, which is why this is housekeeping rather than a blocker.
+**Housekeeping — `/launch` exists** (`.claude/skills/launch/SKILL.md`), added 2026-08-19 alongside `orient` and `phase`. It builds, installs, launches and screenshots, and carries the device knowledge this phase cost: the emulator must be woken before a screenshot or it captures black, the first launch after install needs ~15 seconds while Room extracts 100 MB, and `connectedAndroidTest` uninstalls the app when it finishes — so anything testing an upgrade must drive `adb install -r` plus `am instrument` or it silently tests a fresh install.
 
 ### Phase 3 — Stroke order
 
