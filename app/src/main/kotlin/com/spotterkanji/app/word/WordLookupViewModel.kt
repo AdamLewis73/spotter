@@ -8,6 +8,7 @@ import com.spotterkanji.data.tokenize.KuromojiTokenizer
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiSummary
+import com.spotterkanji.domain.text.isKanji
 import com.spotterkanji.domain.tokenize.Token
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -106,6 +107,25 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private suspend fun load(token: Token) {
+        // D-49: a lone kanji goes straight to the kanji screen.
+        //
+        // 生 by itself is a word — several, in fact — AND a kanji. Routing it
+        // through the word screen produces two screens headed 生, both listing
+        // readings, joined by a single component chip pointing at a screen that
+        // looks like the one you are already on. Its word senses are not lost;
+        // they appear under "As a word" in the Overview tab.
+        //
+        // Multi-character words are unaffected: 先生 still opens a word screen
+        // and still drills into 生 via a chip, reaching the same kanji screen.
+        //
+        // The word lookup still runs, and that is not redundant. Back has to
+        // return to the word screen — it holds the text field, and without it
+        // the user is stranded on a kanji screen with no way to search again.
+        // An early return here left `entries` empty, so the screen behind
+        // announced "生 is not in the dictionary" about a character whose ten
+        // senses were on display a moment earlier.
+        val loneKanji = token.text.length == 1 && token.text.first().isKanji()
+
         // Surface form first, dictionary form second. A sign reads 生きた and the
         // dictionary holds 生きる, so without the fallback an inflected word
         // simply reports "not in the dictionary" — which is wrong, and looks
@@ -117,6 +137,9 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         _state.value = _state.value.copy(
             entries = entries,
             kanji = repository.kanjiIn(resolved),
+            // Only the character with no dictionary entry at all leaves the word
+            // screen showing (D-40); a known one is already on the kanji screen.
+            openKanji = if (loneKanji) repository.kanjiDetail(token.text) else _state.value.openKanji,
             searching = false,
         )
     }

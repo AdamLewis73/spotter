@@ -7,6 +7,7 @@ import com.spotterkanji.domain.dictionary.KanjiExample
 import com.spotterkanji.domain.dictionary.KanjiReadingGroup
 import com.spotterkanji.domain.dictionary.KanjiSummary
 import com.spotterkanji.domain.dictionary.Sense
+import com.spotterkanji.domain.text.isKanji
 import org.json.JSONArray
 
 /**
@@ -136,16 +137,6 @@ class RoomDictionaryRepository(
  * not breach the layering rule (D-60) — but it is also the reason this parsing
  * lives in `:data` and not in `:domain`.
  */
-/**
- * CJK Unified Ideographs, plus the extension A and compatibility blocks that
- * JMdict actually uses. Deliberately not `Character.isIdeographic`, which also
- * matches characters this dictionary has no entries for.
- */
-private fun Char.isKanji(): Boolean =
-    this in '一'..'鿿' ||
-        this in '㐀'..'䶿' ||
-        this in '豈'..'﫿'
-
 private fun String?.toStringList(): List<String> {
     if (this.isNullOrBlank()) return emptyList()
     val array = JSONArray(this)

@@ -45,10 +45,11 @@ invisible until something checksums the artefact.
 explicit that this is judged against real screens rather than on paper: look at
 先生, 上手 and 生 with them off, turn them on, look again.
 
-**No UI tests yet.** The screen is verified by eye and the data path by
-instrumented tests; the ViewModel's stale-result guard — each keystroke cancels
-the previous lookup so a slow query for 先 cannot overwrite a newer one for 先生
-— is exactly the kind of logic that deserves a test and does not have one.
+**Still no Compose UI tests**, though the ViewModel now has six instrumented
+ones covering routing, tokenization and the empty case. What remains untested is
+anything that needs the composition itself: the stale-result guard (each
+keystroke cancels the previous lookup, so a slow answer for 先 cannot overwrite a
+newer one for 先生), and that a chip tap opens the kanji screen.
 
 ## Done
 
@@ -76,12 +77,12 @@ the previous lookup so a slow query for 先 cannot overwrite a newer one for 先
 - [x] Text-input screen: paste `先生と生産`, get tokens, tap one to read it
 - [x] Word screen — one section per reading, component chips last (D-48, D-06)
 - [x] Kanji screen — Overview / Examples tabs; Stroke Order is Phase 3 (D-05)
-- [ ] Single kanji routes straight to the kanji screen (D-49)
+- [x] Single kanji routes straight to the kanji screen (D-49)
 - [ ] Checkpoint: UUID keys, `updated_at`, soft delete, schema export on,
       destructive migration off (D-15 – D-18) before any user-data write
 - [ ] Checkpoint: `snapshot_gloss` on `study_item` (D-43), same commit
 - [ ] Relevant `V-##` cases from `verification.md` added to this list
-- [ ] `/launch` skill at `.claude/skills/launch/SKILL.md` (roadmap housekeeping)
+- [x] `/launch` skill at `.claude/skills/launch/SKILL.md` (roadmap housekeeping)
 
 ## Open questions
 
@@ -226,6 +227,11 @@ unverified — hence pinning the 9.2 line, whose requirements are documented
   points at the Variant API; `androidComponents.onVariants { … addGenerated
   SourceDirectory(...) }` is the supported route and carries the task
   dependency automatically, so no `preBuild.dependsOn` is needed.
+- **`BackHandler` does nothing without `android:enableOnBackInvokedCallback`.**
+  Without it the system logs `Setting back callback null` and back leaves the
+  app instead of closing the kanji screen. Nothing warns at build time, and the
+  attribute is documented as defaulting to true at recent target SDKs — it did
+  not here.
 - **The staleness check compared timestamps, and timestamps lie.** `git checkout`
   and branch switches reset mtime without changing content, so a current
   database looked stale — it fired on a `build.py` byte-identical to git. It now
