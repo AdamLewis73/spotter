@@ -1,7 +1,7 @@
 # Phase 2 — Android app, text input only
 
 **Status:** in progress
-**Updated:** 2026-08-11
+**Updated:** 2026-08-19
 
 ## Current state
 
@@ -43,21 +43,17 @@ invisible until something checksums the artefact.
 
 In the order they are worth doing, and the reasoning matters more than the list:
 
-1. **V-21 — mark obsolete readings as archaic (D-53).** The only item here that
-   is a *correctness* problem rather than a polish one. 上手 currently shows
-   じょうて alongside じょうず with nothing to separate them, and the `ok` tag is
-   already sitting in `word.reading_info` waiting to be read.
-2. **The UI pass** the project owner asked for on 2026-08-19. The screens work
+1. **The UI pass** the project owner asked for on 2026-08-19. The screens work
    and read as cluttered — the word screen stacks five reading cards for 先生,
    and the kanji screen's Overview prints every kun'yomi in one long run. Not
    yet designed; it is a deliberate, separate pass rather than a tidy-up folded
    into feature work.
-3. **Decide D-51**, whether example sentences get rendered. Sequenced *after*
+2. **Decide D-51**, whether example sentences get rendered. Sequenced *after*
    the UI pass on purpose: the roadmap wants this judged against real screens,
    and judging "do sentences earn their space" against a layout already known to
    be too busy would answer the wrong question. Build them behind a switch, look
    at 先生, 上手 and 生 both ways, then decide.
-4. **JMdict longest-match alternates (D-07)** — the missing half of V-06.
+3. **JMdict longest-match alternates (D-07)** — the missing half of V-06.
 
 **Still no Compose UI tests**, though the ViewModel now has six instrumented
 ones covering routing, tokenization and the empty case. What remains untested is
@@ -113,6 +109,8 @@ fixed when that code is next touched; see the phase-01 open questions.
       and dark, plus Noto Sans JP bundled (D-34)
 - [x] Kuromoji tokenization behind the `Tokenizer` interface (D-07, D-08)
 - [ ] JMdict longest-match alternates (D-07)
+- [x] Obsolete, irregular and rare readings marked; search-only readings hidden
+      but never to nothing (V-21, D-53, D-66)
 - [x] Text-input screen: paste `先生と生産`, get tokens, tap one to read it
 - [x] Word screen — one section per reading, component chips last (D-48, D-06)
 - [x] Kanji screen — Overview / Examples tabs; Stroke Order is Phase 3 (D-05)
@@ -130,12 +128,26 @@ answer is that Phase 2 is **less finished than the rest of this list suggests**.
 | **V-07** conjugated verbs resolve to the dictionary form (D-07) | **Met.** `生きた` → `生きる` via `Token.baseForm`, with the lookup falling back to it. Tokenizer half unit-tested; the lookup fallback is exercised only by hand |
 | **V-06** segmentation **plus alternates** (D-07) | **Half met.** Kuromoji gives 先生 / と / 生産. The JMdict longest-match half is not built, so 先 inside 先生 cannot be asked about — and V-06 says plainly that both halves matter because that interaction is the pedagogical premise |
 | **V-08** reading labels vs. furigana use different scripts (D-14, D-37) | **Half met.** Reading labels follow the convention and are tested. There is no furigana rendering at all yet, so the half about ruby is untested |
-| **V-21** obsolete readings are visibly distinguished (D-53, D-48) | **Not met, and user-visible.** 上手 renders all five readings with no marking, so an archaic reading looks as ordinary as じょうず. `word.reading_info` carries the `ok` tag already — the data is there and the UI ignores it |
+| **V-21** obsolete readings are visibly distinguished (D-53, D-48, D-66) | **Met**, 2026-08-19. 上手 opens on じょうず; じょうしゅ and じょうて are muted, labelled *archaic* and sorted last, with the inherited *common* badge suppressed. Confirmed on a device for 上手, 中国 and 明日 |
 | **V-23** sense filtering never empties a word (D-54, D-40) | **Not applicable yet.** No sense filtering exists to test |
 
-**V-21 is the one worth fixing before anything cosmetic.** Showing a learner an
-outdated reading as though it were current is the app teaching something false,
-which is a different class of problem from the screen being busy.
+**V-21 was fixed first, and it was larger than the line above suggested.** The
+column it depends on was read by nothing: `reading_info` carries five `re_inf`
+codes, not one, and the worst offender was not `ok` at all. `sk` — search-only
+kana, 6,647 rows — was rendering as ordinary readings on words far commoner than
+上手: **中国 opened on ちゅうこく**, a misreading JMdict stores purely so search
+matches, badged *common* above ちゅうごく. D-66 records the resulting policy for
+all five codes.
+
+Two things that were not obvious going in, both now in D-66:
+
+- **It was an ordering bug as much as a labelling one.** 上手's archaic readings
+  inherit the writing's frequency rank (V-04), tie with じょうず, and win the
+  alphabetical tiebreak — so the screen *opened* on じょうしゅ. Marking alone
+  would have left it at the top.
+- **`gikun` is not a defect marker**, and the obvious implementation treats it as
+  one. 明日 あした, 大人 おとな and 海豚 いるか all carry the tag and are all the
+  ordinary current reading.
 - [x] `/launch` skill at `.claude/skills/launch/SKILL.md` (roadmap housekeeping)
 
 ## Open questions
@@ -259,6 +271,23 @@ genuinely part of its public surface.
 - A screenshot taken within ~4 s of launch catches the splash screen, and one
   taken right after `cmd uimode night` catches a blank frame mid-recreation.
   Both look like bugs and are not; force-stop, restart, then wait.
+
+### Driving the screen from a script — 2026-08-19
+
+`MainActivity` reads an optional `query` string extra and seeds the text field
+with it:
+
+```
+adb shell am start -n com.spotterkanji.app/.MainActivity --es query 上手
+```
+
+Added because there was **no way to type Japanese into the app from a script**.
+`adb shell input text` is ASCII-only, and this emulator image answers
+`cmd clipboard` with "No shell command implementation" — so verifying a claim
+about a particular word meant typing it by hand on the emulator, which is
+exactly the friction `/launch` exists to remove. The extra is read in all build
+types on purpose: it pre-fills a search box and grants nothing, and a hook that
+only works in debug cannot check a release build.
 
 ### Versions
 

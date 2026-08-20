@@ -6,7 +6,9 @@ import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiExample
 import com.spotterkanji.domain.dictionary.KanjiReadingGroup
 import com.spotterkanji.domain.dictionary.KanjiSummary
+import com.spotterkanji.domain.dictionary.ReadingStatus
 import com.spotterkanji.domain.dictionary.Sense
+import com.spotterkanji.domain.dictionary.forDisplay
 import com.spotterkanji.domain.text.isKanji
 import org.json.JSONArray
 
@@ -31,6 +33,10 @@ class RoomDictionaryRepository(
         val sensesByWord = dao.sensesFor(words.map { it.id }).groupBy { it.wordId }
 
         return words.map { word ->
+            // `reading_info` is a JSON array of JMdict re_inf codes. The codes
+            // are decoded in :domain, not here — what "ok" means to a reader is
+            // a display rule, and this class only knows how to unwrap the JSON.
+            val readingTags = word.readingInfo.toStringList()
             DictionaryEntry(
                 text = word.text,
                 reading = word.reading,
@@ -43,8 +49,14 @@ class RoomDictionaryRepository(
                 },
                 frequencyRank = word.freqRank,
                 isCommon = word.isCommon != 0,
+                readingStatus = ReadingStatus.of(readingTags),
+                isGikun = ReadingStatus.isGikun(readingTags),
             )
-        }
+            // Current readings first, search-only ones dropped where the word has
+            // anything else to show (V-21, D-66). The query cannot do either: it
+            // orders by frequency, and an archaic reading inherits the writing's
+            // frequency, so 上手 arrives here headed by じょうしゅ.
+        }.forDisplay()
     }
 
     override suspend fun kanjiIn(text: String): List<KanjiSummary> {

@@ -129,7 +129,10 @@ private fun OverviewTab(detail: KanjiDetail) {
                         modifier = Modifier.padding(tokens.spaceMd),
                         verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
                     ) {
-                        Text(entry.reading, style = MaterialTheme.typography.titleLarge)
+                        // The same marking as the word screen (V-21): 生 alone
+                        // routes straight here (D-49), so this is the only place
+                        // an archaic reading of a lone kanji would ever appear.
+                        ReadingHeading(entry)
                         entry.senses.forEachIndexed { i, sense ->
                             Text(
                                 text = "${i + 1}. ${sense.glosses.joinToString("; ")}",

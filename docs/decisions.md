@@ -94,6 +94,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-63 | The app is **Spotter**; "Kanji Scanner" is the store subtitle, not the name | Product |
 | D-64 | Wall-clock time lives outside the dictionary, in a `build-info.json` sidecar | Data |
 | D-65 | `build_id` identifies the artefact: sources **and** builder, normalised | Data |
+| D-66 | Search-only readings are hidden, but never to nothing; `gikun` is not a defect | UI / Data |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -848,6 +849,35 @@ Removed from the Overview tab:
 The visual-component question — *what pieces is this kanji built from?* — is the genuinely useful version of "radical", and it is deferred separately in `roadmap.md` (KRADFILE), where the obstacle is component *naming* rather than data.
 
 *Consequence:* Overview would be left holding only meanings and readings, which is thin. D-49 refills it with the "As a word" section for kanji that are also standalone words.
+
+**D-66 — Search-only readings are hidden — but never to nothing. `gikun` is not a defect marker.**
+
+D-53 settled that obsolete kana is shown and marked. Building V-21 turned up the rest of the column it lives in: `word.reading_info` carries **five** JMdict `re_inf` codes, not one, and the app was reading none of them.
+
+| Tag | Meaning | Rows | Treatment |
+|---|---|---|---|
+| `sk` | search-only kana form | 6,647 | **hidden**, unless it is all the word has |
+| `ok` | out-dated kana | 1,301 | shown, marked *archaic* (D-53) |
+| `ik` | irregular kana usage | 512 | shown, marked *irregular* |
+| `gikun` | gikun / jukujikun | 506 | **not marked at all** |
+| `rk` | rarely used kana form | 285 | shown, marked *rare* |
+
+**`sk` is hidden because it is not a reading.** JMdict carries these so a search matches, not so anyone reads them: katakana renderings (私 ワタシ), stretched colloquial spellings (綺麗 きれーい), and outright common misreadings (中国 ちゅうこく, 七 ひち). Displayed as ordinary readings they do more damage than the archaic ones, because they land on far commoner words — 中国 opened on ちゅうこく, badged *common*, above ちゅうごく.
+
+**But hiding them can never empty a word.** 3,143 written forms have no other reading — almost all kana-only variants such as あっかんべえ and ゼイゼイ言う. An unconditional filter would report a word the dictionary plainly holds as missing, which is exactly the failure D-40 exists to prevent, reached from a different direction. So the rule is *drop them where anything else can be shown*, and where nothing else can, show them marked *non-standard*.
+
+*Why hide rather than mark, when D-53 argued so firmly for marking:* D-53's reasoning is that someone photographing a temple inscription genuinely needs じょうしゅ — the archaic reading is real, attested, and the answer to what is in front of them. No one is ever looking at ちゅうこく. It is not a reading of 中国 in any period; it is an index entry.
+
+**`gikun` is not a defect marker, and treating it as one is the trap in the obvious implementation.** 明日 あした, 大人 おとな and 海豚 いるか are all tagged `gikun`, and all three are the ordinary current reading. The tag says the reading attaches to the word as a whole rather than character by character — the jukujikun fact `overview.md` flags as invalidating per-character reading display (D-06), and the thing whole-word furigana will need (D-14). It is orthogonal to currency: 15 readings carry `gikun` *and* `ok` together. So it is modelled as a separate flag, carried and not rendered in v1.
+
+**Two consequences beyond hiding and marking**, both needed before V-21 reads as fixed:
+
+- **A marked reading never leads a word.** Readings sort by status first, frequency second. 上手's じょうしゅ ties じょうず on frequency and beat it on kana order, so the screen *opened* on the obsolete reading.
+- **A marked reading is never badged *common*.** `is_common` and `freq_rank` union the **writing's** priority tags into the reading's (V-04), so じょうしゅ inherits 上手's rank of 12. That is the right rule for ranking words against each other and the wrong thing to print beside a dead reading, so the badge is suppressed in the UI rather than the ingest changed.
+
+*On the unknown-tag case:* the mapping returns "current" for a code it does not recognise, because a dictionary refresh must not break the app over a tag it has not met. That leniency is only safe because it is loud somewhere else — `verify.py`'s V-21 case asserts the built dictionary contains exactly these five codes, so a sixth fails the build instead of quietly rendering as ordinary. Failing there means deciding what the new code means, not widening the set.
+
+*Cost:* the app now hides 6,647 rows of real dictionary data. Cheap to reverse — one filter, in one function — and the tags are still ingested either way, so nothing is lost from the database.
 
 ---
 

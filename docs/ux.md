@@ -57,7 +57,13 @@ Composed of:  上 above, up    手 hand
 
 Reading → meanings, repeated per reading. **Component chips come last**, below every reading, showing meanings only (D-06).
 
-**Obsolete readings appear too, marked as archaic** (D-53). 上手 has five readings; じょうて and じょうしゅ are historical and shown visually distinguished rather than hidden. Someone photographing a temple inscription or an old shopfront is exactly the person who needs them — and the app never knows which reading was scanned anyway, so hiding them would just leave a gap with no explanation. How strongly to mark them is a Phase 2 design question; V-21 covers the failure of not marking them at all.
+**Obsolete readings appear too, marked as archaic** (D-53). 上手 has five readings; じょうて and じょうしゅ are historical and shown visually distinguished rather than hidden. Someone photographing a temple inscription or an old shopfront is exactly the person who needs them — and the app never knows which reading was scanned anyway, so hiding them would just leave a gap with no explanation.
+
+The marking, settled in Phase 2 (D-66): the reading drops to the muted colour and is labelled — *archaic* for `ok`, *irregular* for `ik`, *rare* for `rk` — and **marked readings sort after current ones and never carry the *common* badge**. That last pair matters more than the label. 上手's archaic readings inherit the written form's frequency (V-04), so before the sort existed the screen *opened* on じょうしゅ, badged common. A restrained treatment on purpose, so the UI pass has something to refine rather than something to undo.
+
+**Search-only readings are hidden** (D-66), which is the one place the screen shows less than the dictionary holds. JMdict's `sk` forms exist so a search matches — 私 ワタシ, 綺麗 きれーい, and misreadings like 中国 ちゅうこく — and no one has ever read them. They are dropped wherever the word has another reading to show, and shown marked *non-standard* where they are all it has, so a word never resolves to nothing (D-40).
+
+**`gikun` is never marked.** 明日 あした and 大人 おとな carry the tag and are the ordinary reading; it records that the reading attaches to the word as a whole, which is what whole-word furigana needs (D-14), not that anything is wrong.
 
 **Example sentences are not rendered in v1** (D-51). They are ingested and sit in the dictionary, but only 41.4% of common senses have one, and that number is impossible to judge without seeing real screens. The slot in the layout — beneath each sense, above the next reading — is reserved:
 

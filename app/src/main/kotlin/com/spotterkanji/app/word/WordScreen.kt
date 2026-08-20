@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiSummary
+import com.spotterkanji.domain.dictionary.ReadingStatus
 import com.spotterkanji.domain.dictionary.Sense
 import com.spotterkanji.domain.tokenize.Token
 
@@ -160,9 +161,12 @@ private fun ReadingSection(entry: DictionaryEntry) {
             modifier = Modifier.padding(tokens.spaceMd),
             verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
         ) {
-            Text(text = entry.reading, style = MaterialTheme.typography.titleLarge)
+            ReadingHeading(entry)
 
-            if (entry.isCommon) {
+            // Gated on showsCommonBadge, not isCommon: the flag is inherited
+            // from the written form, so 上手 じょうしゅ is "common" in the data
+            // while being a reading nobody has used in centuries (V-21).
+            if (entry.showsCommonBadge) {
                 Text(
                     text = "common",
                     style = MaterialTheme.typography.labelLarge,
@@ -260,6 +264,18 @@ private val previewState = WordLookupState(
             ),
             frequencyRank = 2,
             isCommon = true,
+        ),
+        // Not a real reading of 先生 — it is 上手's じょうて, borrowed so the
+        // preview shows a marked reading beside an unmarked one. The pair is
+        // the whole point of V-21, and a preview of only the happy case is how
+        // the marking silently stops rendering without anyone noticing.
+        DictionaryEntry(
+            text = "先生",
+            reading = "じょうて",
+            senses = listOf(Sense(listOf("skillful", "proficient", "good (at)"))),
+            frequencyRank = 12,
+            isCommon = true,
+            readingStatus = ReadingStatus.ARCHAIC,
         ),
     ),
     kanji = listOf(

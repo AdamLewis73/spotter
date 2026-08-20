@@ -213,23 +213,37 @@ Two conventions that are easy to conflate, on screen at the same time:
 
 If both render in the same script, one convention has been applied globally.
 
-### V-21 · Obsolete readings are visibly distinguished (D-53, D-48)
+### V-21 · Obsolete readings are visibly distinguished (D-53, D-48, D-66)
 
 Scan or paste **上手**. Under D-48 the word screen lists every reading as a section, so all five appear:
 
 | Reading | Tag | Expected treatment |
 |---|---|---|
-| じょうず | — | normal |
+| じょうず | — | normal, badged *common*, **and first** |
 | うわて | — | normal |
 | かみて | — | normal |
-| じょうて | `ok` | **marked archaic** |
-| じょうしゅ | `ok` | **marked archaic** |
+| じょうて | `ok` | **marked archaic**, muted, no *common* badge |
+| じょうしゅ | `ok` | **marked archaic**, muted, no *common* badge |
 
 The failure this catches: じょうて rendering identically to じょうず. Nothing errors, the screen looks complete, and the app has quietly taught a reading that has not been current for centuries — to a learner with no way to know the difference.
+
+**It is an ordering failure as much as a labelling one.** じょうしゅ and じょうず both carry 上手's frequency rank of 12 — inherited from the *writing* under V-04's rule — so the query's tiebreak falls to alphabetical kana and the obsolete reading wins. Before this case was met the screen **opened on じょうしゅ**, badged *common*. Marking alone would have left the archaic reading at the top of the screen.
 
 Note the app never knows *which* reading was scanned (D-44, D-53), so this cannot be solved by only showing archaic readings when they were the one photographed. Every reading is always shown; the marking is what carries the information.
 
 Also confirm the reverse: a word with no `ok` readings shows no archaic marking anywhere. A marker applied globally is as wrong as one never applied, and looks just as plausible.
+
+#### The rest of the column (D-66)
+
+`reading_info` carries five `re_inf` codes, and V-21 is not met by handling only `ok`. Three further checks, each catching the same class of silence from a different direction:
+
+| Paste | Expect | The failure |
+|---|---|---|
+| **中国** | **ちゅうごく alone** | ちゅうこく is a search-only misreading and used to render *first*, badged common. `sk` lands on far commoner words than `ok` does |
+| **明日** | あした, あす, みょうにち — **all unmarked** | All three are tagged or flanked by `gikun`, which is not a defect marker. A rule of "tagged means suspect" labels the ordinary reading of an everyday word archaic |
+| **あっかんべえ** | resolves, marked *non-standard* | Its only reading is `sk`. An unconditional filter reports a word the dictionary plainly holds as missing — D-40's failure, reached from a different direction. 3,143 written forms are in this position |
+
+**The vocabulary itself is checked by `verify.py`**, not by eye: the app maps four codes and treats an unrecognised one as an ordinary reading, so the case asserts the built dictionary contains exactly `ok`, `ik`, `rk`, `sk` and `gikun`. A sixth code arriving in a source refresh then fails the build rather than silently rendering as normal — which would reintroduce this very bug through the back door.
 
 ### V-23 · Sense filtering never empties a word (D-54, D-40)
 

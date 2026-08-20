@@ -59,8 +59,10 @@ CREATE TABLE word (
     reading       TEXT    NOT NULL,     -- せんせい
     ent_seq       INTEGER NOT NULL,     -- JMdict entry id. A HINT, not identity (D-11).
     reading_info  TEXT,                 -- JSON array of re_inf tags: ["ok"], ["gikun"], ...
-                                        --   "ok" = out-dated kana (上手 じょうて). Display
-                                        --   policy still open — ingested either way.
+                                        --   Five codes occur. Display policy is D-66:
+                                        --   ok/ik/rk shown and marked, sk hidden unless it
+                                        --   is all a word has, gikun never marked. All are
+                                        --   ingested regardless — the policy is UI-side.
     freq_rank     INTEGER,              -- derived from ke_pri/re_pri; NULL = unranked.
                                         --   NULL must sort LAST, not first (V-04): only
                                         --   ~26% of entries carry any priority tag.

@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,10 +39,32 @@ class MainActivity : ComponentActivity() {
         // content clear of the system bars. This matters more than usual for a
         // camera app whose overlay will want the full frame (D-33).
         enableEdgeToEdge()
+
+        // A word to open on, supplied by the launch intent:
+        //
+        //     adb shell am start -n com.spotterkanji.app/.MainActivity --es query 上手
+        //
+        // This exists because `adb shell input text` is ASCII-only and the
+        // emulator has no clipboard command, so there was no way to get Japanese
+        // into the text field from a script — which made "run it and look"
+        // impossible for any *particular* word, on a screen whose failures are
+        // silent rather than loud. Every bug this phase has produced was found
+        // by looking at a specific word.
+        //
+        // Read unconditionally rather than behind a debug flag: it pre-fills a
+        // dictionary search box and grants nothing, and a hook that only works
+        // in debug builds is a hook that cannot check a release build.
+        val seed = intent?.getStringExtra(EXTRA_QUERY)
+
         setContent {
             SpotterTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val viewModel: WordLookupViewModel = viewModel()
+                    // Once per composition, not once per recomposition — without
+                    // the key the seed would fight every keystroke the user makes.
+                    LaunchedEffect(seed) {
+                        seed?.takeIf { it.isNotBlank() }?.let(viewModel::onQueryChanged)
+                    }
                     val state by viewModel.state.collectAsStateWithLifecycle()
                     val openKanji = state.openKanji
 
@@ -70,5 +93,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private companion object {
+        const val EXTRA_QUERY = "query"
     }
 }

@@ -107,8 +107,11 @@ extracts the asset.
 - [x] Indexes for lookup patterns — all six verified by EXPLAIN QUERY PLAN
 - [x] Output size measured — **99.7 MB on disk, 30.3 MB gzipped**
 - [x] Attribution text collected — `docs/attribution.md`
-- [x] Verification harness — `verify.py`, **10 of 10 cases pass**
-      *(V-05 is a review check with no user DB yet; V-21 and V-23 are Phase 2 UI cases)*
+- [x] Verification harness — `verify.py`, **11 of 11 cases pass**
+      *(V-05 is a review check with no user DB yet; V-23 is a Phase 2 UI case.
+      V-21 gained a data half in Phase 2 — it asserts the `re_inf` vocabulary is
+      exactly the five codes the app decodes, so a sixth arriving in a source
+      refresh fails the build instead of rendering as an ordinary reading)*
 
 ## Open questions
 

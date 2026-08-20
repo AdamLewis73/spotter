@@ -42,6 +42,19 @@ export ANDROID_HOME="/c/Users/sword/AppData/Local/Android/Sdk"
 
 3. **Launch:** `adb shell am start -n com.spotterkanji.app/.MainActivity`.
 
+   To open on a **particular word**, seed the query:
+
+   ```
+   adb shell am start -n com.spotterkanji.app/.MainActivity --es query 上手
+   ```
+
+   This is the only way to get Japanese into the text field from a script.
+   `adb shell input text` is ASCII-only and this emulator image has no
+   `cmd clipboard`, so without the extra the screen can only be driven by hand —
+   which is no use on a screen whose bugs are silent. Every fault found in this
+   phase was found by looking at a *specific* word: 上手 for archaic readings,
+   中国 for search-only ones, 生 for the routing.
+
 4. **Look at it.** `adb exec-out screencap -p > <scratch>/shot.png` and read the
    image. Do not report that something works without looking.
 
@@ -55,6 +68,9 @@ warning from the log. Attach the screenshot.
 
 ## Notes
 
+- **`am force-stop` then relaunch still shows the splash for several seconds.**
+  A screenshot at 9 s caught the Android robot and looked like a hang. Allow
+  ~20 s after a force-stop, and ~40 s on the first launch after an install.
 - **The first launch after install is slow.** Room extracts a ~100 MB dictionary
   out of the APK on first query; allow 15 seconds before screenshotting or you
   will capture a spinner and think it hung.
