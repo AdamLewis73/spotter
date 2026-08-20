@@ -55,11 +55,17 @@ In the order they are worth doing, and the reasoning matters more than the list:
    at 先生, 上手 and 生 both ways, then decide.
 3. **JMdict longest-match alternates (D-07)** — the missing half of V-06.
 
-**Still no Compose UI tests**, though the ViewModel now has six instrumented
-ones covering routing, tokenization and the empty case. What remains untested is
-anything that needs the composition itself: the stale-result guard (each
-keystroke cancels the previous lookup, so a slow answer for 先 cannot overwrite a
-newer one for 先生), and that a chip tap opens the kanji screen.
+**Compose UI tests now exist**, four of them, covering V-21's marking on the
+word screen — that an archaic reading is labelled, that a current one is
+labelled nowhere, that each status says its own word, and that 上手 leads with
+じょうず carrying the only *common* badge. Verified by deliberately breaking the
+label: three of the four fail, and the one asserting *absence* correctly still
+passes.
+
+What remains untested is the rest of the composition: the stale-result guard
+(each keystroke cancels the previous lookup, so a slow answer for 先 cannot
+overwrite a newer one for 先生), and that a chip tap opens the kanji screen. The
+harness is now in place for both.
 
 ## What a fresh session should know
 
@@ -271,6 +277,39 @@ genuinely part of its public surface.
 - A screenshot taken within ~4 s of launch catches the splash screen, and one
   taken right after `cmd uimode night` catches a blank frame mid-recreation.
   Both look like bugs and are not; force-stop, restart, then wait.
+
+### Compose UI tests, and the Espresso that blocked them — 2026-08-19
+
+The first Compose test in the project failed before reaching an assertion:
+
+```
+NoSuchMethodException: android.hardware.input.InputManager.getInstance
+```
+
+**Espresso was resolving to 3.5.0** — from 2022. Nothing here calls Espresso;
+it arrives transitively behind Compose's test rule, which routes idle-
+synchronisation through it, and a transitive dependency takes whatever version
+the graph settles on while every *direct* dependency in this project is pinned
+current. Espresso reflects into that hidden platform method, which no longer
+exists on an API 37 image, so all four tests died identically.
+
+Pinned to 3.7.0 — verified against Google Maven rather than remembered — purely
+to force the version up. `espresso-core` is listed in `app/build.gradle.kts`
+despite no code importing it, which looks redundant and is not.
+
+Two smaller traps:
+
+- **`ui-test-manifest` is a `debugImplementation`, not an androidTest one.** It
+  contributes the empty activity `createComposeRule()` launches into, which has
+  to merge into the manifest of the app under test.
+- **`setContent` may be called only once per test.** Looping it over three
+  statuses fails with "Cannot call setContent twice per test" — a message about
+  the harness, not about the thing under test. Render the cases together in a
+  `Column` instead.
+
+`createComposeRule()` is deprecated in favour of a `v2` package that swaps the
+coroutine dispatcher. Not migrated: the change alters when effects run, and the
+note to make it is worth more than doing it blind alongside a correctness fix.
 
 ### Driving the screen from a script — 2026-08-19
 
