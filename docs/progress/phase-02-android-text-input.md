@@ -41,15 +41,54 @@ invisible until something checksums the artefact.
 
 ## Next action
 
-**Decide D-51**, whether example sentences get rendered. The roadmap is
-explicit that this is judged against real screens rather than on paper: look at
-先生, 上手 and 生 with them off, turn them on, look again.
+In the order they are worth doing, and the reasoning matters more than the list:
+
+1. **V-21 — mark obsolete readings as archaic (D-53).** The only item here that
+   is a *correctness* problem rather than a polish one. 上手 currently shows
+   じょうて alongside じょうず with nothing to separate them, and the `ok` tag is
+   already sitting in `word.reading_info` waiting to be read.
+2. **The UI pass** the project owner asked for on 2026-08-19. The screens work
+   and read as cluttered — the word screen stacks five reading cards for 先生,
+   and the kanji screen's Overview prints every kun'yomi in one long run. Not
+   yet designed; it is a deliberate, separate pass rather than a tidy-up folded
+   into feature work.
+3. **Decide D-51**, whether example sentences get rendered. Sequenced *after*
+   the UI pass on purpose: the roadmap wants this judged against real screens,
+   and judging "do sentences earn their space" against a layout already known to
+   be too busy would answer the wrong question. Build them behind a switch, look
+   at 先生, 上手 and 生 both ways, then decide.
+4. **JMdict longest-match alternates (D-07)** — the missing half of V-06.
 
 **Still no Compose UI tests**, though the ViewModel now has six instrumented
 ones covering routing, tokenization and the empty case. What remains untested is
 anything that needs the composition itself: the stale-result guard (each
 keystroke cancels the previous lookup, so a slow answer for 先 cannot overwrite a
 newer one for 先生), and that a chip tap opens the kanji screen.
+
+## What a fresh session should know
+
+Written down because it lives nowhere else in the repo.
+
+**The build works and the app does something real.** Type Japanese, get
+segmented words, tap one, read its meanings, tap a kanji, see every common word
+grouped by the reading it takes there. That last screen is D-04 and is the
+project's only genuine differentiator — a competitive review in August 2026 found
+the rest of the feature set already shipping elsewhere (D-61).
+
+**Everything about the data layer is verified on a device, not assumed.** The
+dictionary ships in the APK, refreshes itself when either its build id or Room's
+schema version changes, and 22 instrumented tests cover it. Where a claim is
+unproven this file says so.
+
+**The recurring failure mode in this phase has been silence, not crashes.** A
+verifier that mutated the database it verified; a `build_id` that did not change
+when the builder did; `BackHandler` doing nothing because of a missing manifest
+attribute; a word screen announcing 生 was not in the dictionary. None threw. The
+habit that caught them was running the thing and looking at it, and it is worth
+keeping — `/launch` exists to make that cheap.
+
+**Two guards in dictbuild will misfire on the next source refresh** and should be
+fixed when that code is next touched; see the phase-01 open questions.
 
 ## Done
 
@@ -81,7 +120,22 @@ newer one for 先生), and that a chip tap opens the kanji screen.
 - [ ] Checkpoint: UUID keys, `updated_at`, soft delete, schema export on,
       destructive migration off (D-15 – D-18) before any user-data write
 - [ ] Checkpoint: `snapshot_gloss` on `study_item` (D-43), same commit
-- [ ] Relevant `V-##` cases from `verification.md` added to this list
+### Verification cases — assessed 2026-08-19, and three are unmet
+
+Folding these in rather than leaving the line item vague, because the honest
+answer is that Phase 2 is **less finished than the rest of this list suggests**.
+
+| Case | State |
+|---|---|
+| **V-07** conjugated verbs resolve to the dictionary form (D-07) | **Met.** `生きた` → `生きる` via `Token.baseForm`, with the lookup falling back to it. Tokenizer half unit-tested; the lookup fallback is exercised only by hand |
+| **V-06** segmentation **plus alternates** (D-07) | **Half met.** Kuromoji gives 先生 / と / 生産. The JMdict longest-match half is not built, so 先 inside 先生 cannot be asked about — and V-06 says plainly that both halves matter because that interaction is the pedagogical premise |
+| **V-08** reading labels vs. furigana use different scripts (D-14, D-37) | **Half met.** Reading labels follow the convention and are tested. There is no furigana rendering at all yet, so the half about ruby is untested |
+| **V-21** obsolete readings are visibly distinguished (D-53, D-48) | **Not met, and user-visible.** 上手 renders all five readings with no marking, so an archaic reading looks as ordinary as じょうず. `word.reading_info` carries the `ok` tag already — the data is there and the UI ignores it |
+| **V-23** sense filtering never empties a word (D-54, D-40) | **Not applicable yet.** No sense filtering exists to test |
+
+**V-21 is the one worth fixing before anything cosmetic.** Showing a learner an
+outdated reading as though it were current is the app teaching something false,
+which is a different class of problem from the screen being busy.
 - [x] `/launch` skill at `.claude/skills/launch/SKILL.md` (roadmap housekeeping)
 
 ## Open questions
