@@ -71,6 +71,10 @@ Two things to settle in Phase 2: whether to show them at all, and how to keep me
 
 ### Kanji screen — three tabs
 
+**Two of them are built.** Overview and Examples exist as of Phase 2; Stroke
+Order arrives with Phase 3, which is what the stroke count is waiting for. This
+section describes the finished screen, not the current one.
+
 | Tab | Content |
 |---|---|
 | **Overview** | Meanings, on'yomi / kun'yomi, and — when the kanji is also a standalone word — an **As a word** section listing its senses (D-49). Example sentences there follow the same v1 rule as the word screen: ingested, not rendered (D-51) |

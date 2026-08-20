@@ -18,7 +18,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | # | Phase | Status | Output |
 |---|---|---|---|
 | 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
-| 2 | Android app, text input only | **In progress** | Paste 先生 → word + kanji screens |
+| 2 | Android app, text input only | **In progress** — word and kanji screens work; see the phase file for unmet `V-##` cases | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | Not started | KanjiVG animation |
 | 4 | CameraX + ML Kit | Not started | Raw recognized text into the Phase 2 pipeline |
 | 5 | Tappable overlay | Not started | The real scan experience |
@@ -54,9 +54,7 @@ That number is deliberately not being judged on paper. Build the word screen wit
 
 Also still open if they stay: sense-attached only, or word-level examples too where no sense-attached one exists.
 
-**Housekeeping for this phase — create a `/launch` skill.** There is no build-and-run command for this project yet; one was deliberately deferred because there was nothing to launch. Once the app module exists, add `.claude/skills/launch/SKILL.md` alongside the existing `orient` and `phase` skills. It needs the real Gradle task, the application id, and a rule for selecting a device or emulator (and for stopping rather than silently starting one). It should surface real Gradle and logcat output on failure instead of summarizing.
-
-The bundled `/run` skill covers the generic case in the meantime, which is why this is housekeeping rather than a blocker.
+**Housekeeping — `/launch` exists** (`.claude/skills/launch/SKILL.md`), added 2026-08-19 alongside `orient` and `phase`. It builds, installs, launches and screenshots, and carries the device knowledge this phase cost: the emulator must be woken before a screenshot or it captures black, the first launch after install needs ~15 seconds while Room extracts 100 MB, and `connectedAndroidTest` uninstalls the app when it finishes — so anything testing an upgrade must drive `adb install -r` plus `am instrument` or it silently tests a fresh install.
 
 ### Phase 3 — Stroke order
 
@@ -99,7 +97,7 @@ The project owner has asked to be consulted at these points rather than having a
 | Phase 1 | Dictionary schema and natural-key strategy | Regenerating the dictionary is trivial; migrating user data that references it is not (D-11) |
 | Phase 1 | Which datasets to ingest — JmdictFurigana is in (D-13) | Adding one later means a full rebuild plus a schema change |
 | Phase 2, first commit | Module structure; `:domain` and `:data` free of `android.*` | This is the iOS-portability line — retrofitting is a rewrite |
-| Phase 2, first UI commit | Material 3 plus a design-token layer (D-35) | Touches every composable if done later |
+| ~~Phase 2, first UI commit~~ | ~~Material 3 plus a design-token layer (D-35)~~ — **done 2026-08-11**: fixed palette, light and dark, plus bundled Noto Sans JP (D-34) | Touches every composable if done later |
 | Phase 2, first user-data write | UUID keys, `updated_at`, soft delete, schema export on, destructive migration off (D-15 – D-18) | Getting this wrong deletes user data in production |
 | Phase 2, first user-data write | `snapshot_gloss` on `study_item` (D-43) | Adding it later is a migration, **and** every word saved before it has a permanently empty snapshot — the gloss cannot be recovered for a word the dictionary has since dropped |
 | Phase 5 | Bounding box stored in the scan record (D-22) | Cheap now; later requires re-running OCR over every saved image |

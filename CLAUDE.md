@@ -72,8 +72,10 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 99.7 MB `spotter.db` (30.3 MB gzipped) from four pinned sources in ~45 seconds, byte-reproducible from identical sources (D-58, D-64). `verify.py` passes 10 of 10 verification cases.
 
-**Current phase:** Phase 2 — Android app, text input only. **In progress.** `:app` / `:data` / `:domain` build, with `:domain` a plain Kotlin/JVM module so `android.*` is a compile error there (D-60). The dictionary ships inside the APK (`:app:stageDictionaryAsset`). **Nothing reads it yet** — no Room layer — and the app is still a placeholder screen.
+**Current phase:** Phase 2 — Android app, text input only. **In progress and usable.** Type Japanese → Kuromoji segments it → tap a word → readings, meanings and component chips → tap a chip → the kanji screen, whose Examples tab is D-04. The dictionary ships in the APK and refreshes itself when it changes.
 
-Build with `./gradlew :app:assembleDebug` (needs `JAVA_HOME` pointing at Android Studio's JBR). Scaffold gotchas and pinned versions are in `docs/progress/phase-02-android-text-input.md` — **read its Notes before touching build files**, especially that AGP 9 removed the Kotlin Android plugin.
+**Read `docs/progress/phase-02-android-text-input.md` before working on this phase.** It carries the next actions in priority order, an honest assessment of which `V-##` cases are still unmet, and the build gotchas — several of which present as misleading errors.
 
-Two checkpoints remain in this phase: **Material 3 design tokens** before the first real UI (D-35), and the **user-data rules** before the first write (D-15–D-18, D-43).
+Run it with **`/launch`**. Build with `./gradlew :app:assembleDebug`, which needs `JAVA_HOME` pointing at Android Studio's JBR — there is no other JDK on this machine. Read that progress file's **Notes** before touching build files; AGP 9 removed the Kotlin Android plugin, so most published advice is now a build error.
+
+**Design tokens are done** (D-35, fixed palette plus bundled Noto Sans JP). One checkpoint remains in this phase: the **user-data rules** before the first write (D-15–D-18, D-43) — which nothing does yet, so it lands with Save in Phase 6.
