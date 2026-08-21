@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
                         KanjiScreen(
                             detail = openKanji,
                             onBack = viewModel::onKanjiClosed,
+                            onSave = {},
                             modifier = Modifier.safeDrawingPadding(),
                         )
                     } else {
@@ -87,6 +88,12 @@ class MainActivity : ComponentActivity() {
                             onQueryChanged = viewModel::onQueryChanged,
                             onTokenSelected = viewModel::onTokenSelected,
                             onKanjiSelected = viewModel::onKanjiSelected,
+                            // Saving arrives in Phase 6 with the user-data
+                            // checkpoint (D-15–D-18, D-43). The control is built
+                            // now because it is part of the screen's structure,
+                            // not because it works.
+                            onSave = {},
+                            onDismiss = viewModel::onResultDismissed,
                             modifier = Modifier.safeDrawingPadding(),
                         )
                     }

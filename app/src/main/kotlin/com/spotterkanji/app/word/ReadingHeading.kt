@@ -40,13 +40,17 @@ internal fun ReadingHeading(entry: DictionaryEntry, modifier: Modifier = Modifie
         horizontalArrangement = Arrangement.spacedBy(spacing.spaceSm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Current readings carry the accent; marked ones drop to the muted
+        // neutral. The colour is the primary signal — it lets the eye find the
+        // readings while scrolling past English glosses — and withholding it is
+        // what places an archaic reading outside the sequence (D-67, V-21).
         Text(
             text = entry.reading,
             style = MaterialTheme.typography.titleLarge,
             color = if (entry.readingStatus.isMarked) {
                 MaterialTheme.colorScheme.onSurfaceVariant
             } else {
-                MaterialTheme.colorScheme.onSurface
+                MaterialTheme.colorScheme.primary
             },
         )
         entry.readingStatus.label()?.let { label ->

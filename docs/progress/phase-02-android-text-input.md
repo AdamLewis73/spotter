@@ -293,24 +293,28 @@ roadmap at all and need deciding before they are built: the review card is a
 **handwriting** exercise rather than the recall card D-26/D-29 assumed, and
 Profile is a fourth destination the design itself flags against D-36.
 
-**What was changed from the design, and why:**
+**What was changed from the design, and why.** A first pass got this wrong in a
+way worth recording: each omission below was individually defensible and the sum
+of them was not the design. The screens ended up being the *old* layout wearing
+the new palette — no back or save buttons, no accent rule, no stroke-order tab,
+readings in the body colour rather than the accent. **A mockup is a spec for
+intent, not a set of claims to fact-check.** Correcting its placeholder
+ to 5 was the tell.
+
+What genuinely differs now:
 
 - **The accent is jade, not amber.** Amber on near-black is a very well-known
   brand pairing. Hue only — lightness and chroma are the design's (D-67).
-- **2a's sheet chrome is not built.** Centred headword with a back arrow and a
-  save button belongs to the sheet a scan opens (D-30); there is no scan until
-  Phase 4 and no save until Phase 6. The headword and count strip *are* built,
-  because they carry information; the buttons would have been decoration.
-- **Example meanings are left-aligned, not right.** The design right-aligns them
-  and it works at its 320px frame width. At 411dp "life" ended up at the far
-  edge of the screen with a hand's breadth of nothing between it and 生活. A
-  shared left edge keeps them scannable.
-- **The count strip says 5, not 4.** The mock labels 上手 `4 READINGS · 2
-  ARCHAIC`; the dictionary holds five.
-- **Part-of-speech tags are not shown.** 2a puts `na-adj` beside sense 1. The
-  stored values are raw JMdict codes (`adj-na`, `exp`, `vs`, `n-adv`), and
-  showing them raw adds jargon to the screen this pass exists to calm. Wants a
-  code-to-label table and a decision, not a quiet include.
+- **The text field has no counterpart in the design.** 2a is drawn as the sheet
+  a scan opens, and until Phase 4 the field is the only way to put a word on the
+  screen.
+- **Save is inert** until Phase 6 and the user-data checkpoint; **back** clears
+  the result, which is the nearest true equivalent to dismissing a sheet to the
+  photograph behind it; the **drag handle** becomes real in Phase 5. All three
+  are built, because a control that appears later moves everything around it.
+- **Stroke order is a real tab** carrying the stroke count and saying Phase 3
+  fills it in. The alternative — adding a third tab later — shifts the two that
+  already exist.
 - **The Overview tab's reading run was fixed anyway.** Not in the design, but it
   was half the original complaint — 生's twenty kun'yomi were three lines of
   undifferentiated kana.

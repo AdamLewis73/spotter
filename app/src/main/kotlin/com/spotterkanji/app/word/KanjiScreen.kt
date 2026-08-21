@@ -32,6 +32,15 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.tooling.preview.Preview
 import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
@@ -57,45 +66,112 @@ import com.spotterkanji.domain.dictionary.Sense
 fun KanjiScreen(
     detail: KanjiDetail,
     onBack: () -> Unit,
+    onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tokens = SpotterTheme.tokens
     var tab by remember(detail.character) { mutableIntStateOf(0) }
 
     Column(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.padding(horizontal = tokens.spaceMd)) {
-            Column {
-                IconButton(onClick = onBack, modifier = Modifier.padding(top = tokens.spaceSm)) {
-                    // The kanji screen replaces the word screen in place rather
-                    // than stacking beside it, so a back affordance is the only
-                    // way out (D-32).
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-                Text(
-                    text = detail.character,
-                    style = MaterialTheme.typography.displayLarge,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                )
-                Text(
-                    text = detail.meanings.joinToString(", "),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(bottom = tokens.spaceSm),
-                )
-            }
+        // A row, not a stacked block: back, the character, its meanings beside
+        // it, and save. The design keeps the whole header to one line so the
+        // examples - the reason the screen exists (D-04) - start above the fold.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(tokens.spaceMd),
+            horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // The kanji screen replaces the word screen in place rather than
+            // stacking beside it, so a back affordance is the only way out
+            // (D-32).
+            GlyphButton(
+                glyph = "‹",
+                contentDescription = "Back",
+                tint = MaterialTheme.colorScheme.onSurface,
+                border = MaterialTheme.colorScheme.outline,
+                onClick = onBack,
+            )
+            Text(
+                text = detail.character,
+                style = MaterialTheme.typography.headlineMedium,
+                fontFamily = SpotterJapanese,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = detail.meanings.joinToString(", "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            // Inert until Phase 6, like the word screen's (D-67).
+            GlyphButton(
+                glyph = "✚",
+                contentDescription = "Save",
+                tint = MaterialTheme.colorScheme.primary,
+                border = MaterialTheme.colorScheme.primary,
+                onClick = onSave,
+            )
         }
 
         TabRow(selectedTabIndex = tab) {
             Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Overview") })
             Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Examples") })
+            // Present because the design has it, and because a tab that appears
+            // later moves every tab beside it. Phase 3 fills it in; until then it
+            // says so rather than pretending to be empty (D-05).
+            Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Stroke order") })
         }
 
         when (tab) {
             0 -> OverviewTab(detail)
-            else -> ExamplesTab(detail)
+            1 -> ExamplesTab(detail)
+            else -> StrokeOrderTab(detail)
         }
+    }
+}
+
+@Composable
+private fun GlyphButton(
+    glyph: String,
+    contentDescription: String,
+    tint: Color,
+    border: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(38.dp)
+            .border(1.dp, border, RoundedCornerShape(11.dp))
+            .clickable(onClick = onClick, onClickLabel = contentDescription),
+    ) {
+        Text(text = glyph, style = MaterialTheme.typography.bodyLarge, color = tint)
+    }
+}
+
+/**
+ * Phase 3's tab, standing empty and saying so.
+ *
+ * The stroke data is already in the dictionary - KanjiVG paths for 6,416
+ * characters, all 2,501 of the ranked ones - so this is a rendering job, not a
+ * data one. Naming the stroke count is the one useful thing the tab can do
+ * today, and it is where D-50 says the count belongs.
+ */
+@Composable
+private fun StrokeOrderTab(detail: KanjiDetail) {
+    val tokens = SpotterTheme.tokens
+    Column(modifier = Modifier.padding(tokens.spaceMd)) {
+        Text(
+            text = "${detail.strokeCount} STROKES",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = "Stroke order animation arrives in Phase 3.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = tokens.spaceSm),
+        )
     }
 }
 
@@ -276,20 +352,50 @@ private fun ReadingClassHeader(label: String, explanation: String?, showDivider:
         ),
     ) {
         if (showDivider) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(top = if (showDivider) tokens.spaceMd else 0.dp),
-        )
-        explanation?.let {
+        ) {
+            // On'yomi gets the filled accent pill, kun'yomi an outlined one. Not
+            // decoration: on'yomi is what a kanji takes inside a compound, which
+            // is the case a scanner meets most often, so it leads. The outlined
+            // form keeps kun'yomi legible as a peer rather than a footnote.
+            val filled = label.startsWith("ON")
             Text(
-                text = it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (filled) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier
+                    .then(
+                        if (filled) {
+                            Modifier.background(
+                                MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(4.dp),
+                            )
+                        } else {
+                            Modifier.border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline,
+                                RoundedCornerShape(4.dp),
+                            )
+                        },
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
             )
+            explanation?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -303,9 +409,16 @@ private fun ReadingGroupBlock(group: KanjiReadingGroup, character: String) {
     ) {
         Text(
             text = group.reading,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.bodyLarge.copy(letterSpacing = 0.12.em),
             fontFamily = SpotterJapanese,
-            color = MaterialTheme.colorScheme.primary,
+            // Accent for on'yomi, plain for kun - the same distinction the class
+            // pill makes, carried down to the group so it survives scrolling the
+            // header off screen.
+            color = if (group.type == "on") {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
         )
         group.examples.forEach { ExampleRow(it, character) }
     }
@@ -347,7 +460,7 @@ private fun ExampleRow(example: KanjiExample, character: String) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = example.reading,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.2.em),
                 fontFamily = SpotterJapanese,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -357,17 +470,13 @@ private fun ExampleRow(example: KanjiExample, character: String) {
                 fontFamily = SpotterJapanese,
             )
         }
-        // Left-aligned, not right. The design right-aligns these, which works in
-        // a 320px mock and falls apart at real phone width: "life" ended up at
-        // the far edge of a 411dp screen with a hand's breadth of nothing
-        // between it and 生活, and the eye stopped pairing them. A shared left
-        // edge keeps the meanings scannable as a column.
         example.meaning?.let {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1.1f),
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -408,5 +517,5 @@ private val previewDetail = KanjiDetail(
 @Preview(showBackground = true, name = "Examples")
 @Composable
 private fun KanjiScreenPreview() {
-    SpotterTheme { Surface { KanjiScreen(previewDetail, onBack = {}) } }
+    SpotterTheme { Surface { KanjiScreen(previewDetail, onBack = {}, onSave = {}) } }
 }

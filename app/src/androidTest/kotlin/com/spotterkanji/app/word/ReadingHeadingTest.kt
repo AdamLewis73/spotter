@@ -135,6 +135,8 @@ class ReadingHeadingTest {
                         onQueryChanged = {},
                         onTokenSelected = {},
                         onKanjiSelected = {},
+                        onSave = {},
+                        onDismiss = {},
                     )
                 }
             }

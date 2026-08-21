@@ -94,6 +94,18 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    /**
+     * Close the result and go back to an empty search.
+     *
+     * The design's back arrow dismisses the sheet to the photograph behind it
+     * (D-30). There is no photograph until Phase 4, so the nearest true
+     * equivalent is clearing what was looked up.
+     */
+    fun onResultDismissed() {
+        lookupJob?.cancel()
+        _state.value = WordLookupState()
+    }
+
     fun onKanjiClosed() {
         _state.value = _state.value.copy(openKanji = null)
     }

@@ -1,30 +1,44 @@
 package com.spotterkanji.app.word
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.domain.dictionary.DictionaryEntry
@@ -34,32 +48,25 @@ import com.spotterkanji.domain.dictionary.Sense
 import com.spotterkanji.domain.tokenize.Token
 
 /**
- * Type a word, see what it means.
+ * Type a word, see what it means — frame **2a** of the design (D-67).
  *
- * This is the word screen from `ux.md`, minus the camera in front of it. The
- * layout follows D-48 — **one section per reading**, meanings underneath,
- * component chips **last** — restyled to the D-67 design.
+ * The layout follows D-48: one section per reading, meanings underneath,
+ * component chips last. The design's contribution is the *hierarchy* within
+ * that, and it is carried almost entirely by rules and colour rather than by
+ * boxes:
  *
- * **What changed and why (D-67).** 先生 used to render as five stacked cards of
- * equal weight, four of them repeating "teacher; instructor; master" almost
- * verbatim, with the chips pushed off the bottom of the screen. Three fixes,
- * none of which removes information:
+ * - **The first reading is fenced off with an accent rule**; later current
+ *   readings get a plain hairline. That single line is what says "this is the
+ *   one you want" without demoting the others or adding a badge.
+ * - **Readings are set in the accent colour**, so the eye can find them while
+ *   scrolling past English.
+ * - **Archaic readings sit under a dashed rule at reduced opacity** — present,
+ *   legible, and visibly not part of the main sequence (V-21, D-53).
  *
- * - **A count, stated rather than discovered.** `5 READINGS · 2 ARCHAIC` sits
- *   under the headword, so the shape of the answer is known before scrolling.
- *   It also turns a thin word into useful information rather than an empty
- *   screen — `overview.md`'s usage-completeness principle: one reading means
- *   *this one is easy*.
- * - **Readings become a list, not a stack of cards.** A card says "this is a
- *   separate thing"; five of them say it five times. Dividers group without
- *   shouting, which is what a reading of the same written form actually is.
- * - **The chips stay last** (D-48) but no longer follow five card-heights of
- *   scrolling, so the cost D-48 accepted got cheaper without reopening it.
- *
- * The design's sheet chrome — centred headword with a back arrow and a save
- * button — is deliberately **not** here. It belongs to the sheet a scan opens
- * (D-30), and there is no scan and no save until Phases 4 and 6. The text field
- * is still the only way in.
+ * Two things here are inert until later phases and are built anyway, because
+ * they are structure rather than decoration: the **drag handle** becomes real
+ * when this is the sheet a scan opens (D-30, Phase 5), and **save** is wired to
+ * a callback that does nothing until Phase 6.
  */
 @Composable
 fun WordScreen(
@@ -67,11 +74,16 @@ fun WordScreen(
     onQueryChanged: (String) -> Unit,
     onTokenSelected: (Token) -> Unit,
     onKanjiSelected: (String) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tokens = SpotterTheme.tokens
 
-    Column(modifier = modifier.fillMaxSize().padding(tokens.spaceMd)) {
+    Column(modifier = modifier.fillMaxSize().padding(horizontal = tokens.spaceMd)) {
+        // Not in the design, and unavoidable: 2a is drawn as the sheet a scan
+        // opens, and until Phase 4 there is no scan. This field is the only way
+        // to put a word on the screen.
         OutlinedTextField(
             value = state.query,
             onValueChange = onQueryChanged,
@@ -79,7 +91,7 @@ fun WordScreen(
             placeholder = { Text("先生と生産") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(top = tokens.spaceMd),
         )
 
         if (state.showTokens) {
@@ -97,19 +109,19 @@ fun WordScreen(
 
             state.notFound -> NotFound(state.query)
 
-            else -> LazyColumn(contentPadding = PaddingValues(vertical = tokens.spaceMd)) {
+            else -> LazyColumn(contentPadding = PaddingValues(bottom = tokens.spaceLg)) {
                 if (state.entries.isNotEmpty()) {
-                    item { WordHeading(state.entries) }
+                    item { WordHeader(state.entries, onSave = onSave, onDismiss = onDismiss) }
                 }
                 // One section per reading. 上手 produces five, and the app does
                 // not choose between them — it cannot know which one a
                 // photograph meant, and guessing would be worse than showing the
                 // options (D-44, D-48).
                 items(state.entries.size) { index ->
-                    ReadingSection(state.entries[index], showDivider = index > 0)
+                    ReadingBlock(state.entries[index], isFirst = index == 0)
                 }
                 if (state.kanji.isNotEmpty() && state.entries.isNotEmpty()) {
-                    item { ComponentChips(state.kanji, onKanjiSelected) }
+                    item { ComponentBoxes(state.kanji, onKanjiSelected) }
                 }
             }
         }
@@ -117,47 +129,105 @@ fun WordScreen(
 }
 
 /**
- * The written form, and how much there is to know about it.
+ * Drag handle, back, headword, save — and the count beneath.
  *
- * The headword repeats what was typed, which looks redundant and is not: the
- * lookup falls back to the dictionary form, so typing 生きた lands on 生きる and
- * this line is the only thing that says so.
- *
- * The count is deliberately plain about archaic readings rather than hiding them
- * in the list. Someone who sees `5 READINGS · 2 ARCHAIC` knows before scrolling
- * that two of what follows are not for learning (V-21, D-53).
+ * The count states the shape of the answer before any scrolling: how many
+ * readings, and how many of them are not for learning. A word with one reading
+ * is not a thin screen but useful information — *this one is easy* — which is
+ * `overview.md`'s usage-completeness principle made visible.
  */
 @Composable
-private fun WordHeading(entries: List<DictionaryEntry>) {
+private fun WordHeader(
+    entries: List<DictionaryEntry>,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     val tokens = SpotterTheme.tokens
     val archaic = entries.count { it.readingStatus.isMarked }
-    val summary = buildString {
-        append(entries.size)
-        append(if (entries.size == 1) " READING" else " READINGS")
-        if (archaic > 0) {
-            append(" · ")
-            append(archaic)
-            append(" ARCHAIC")
-        }
-    }
 
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(bottom = tokens.spaceMd),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = entries.first().text,
-            style = MaterialTheme.typography.headlineMedium,
-            fontFamily = SpotterJapanese,
-            color = MaterialTheme.colorScheme.onSurface,
+    Column(modifier = Modifier.fillMaxWidth().padding(top = tokens.spaceMd)) {
+        // Inert until this becomes a real bottom sheet (D-30, Phase 5).
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(bottom = tokens.spaceMd)
+                .width(34.dp)
+                .height(4.dp)
+                .background(
+                    MaterialTheme.colorScheme.outline,
+                    RoundedCornerShape(2.dp),
+                ),
         )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Back clears the result rather than leaving the app: on the scan
+            // sheet this dismisses back to the photograph, and the nearest real
+            // equivalent here is returning to an empty search.
+            OutlinedGlyphButton(
+                glyph = "‹",
+                contentDescription = "Close",
+                tint = MaterialTheme.colorScheme.onSurface,
+                border = MaterialTheme.colorScheme.outline,
+                onClick = onDismiss,
+            )
+            Text(
+                text = entries.first().text,
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontSize = 38.sp,
+                    lineHeight = 44.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.04.em,
+                ),
+                fontFamily = SpotterJapanese,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            // Accent-outlined, unlike back. Saving is the one thing this screen
+            // asks you to do, and it is the only accent-bordered control on it.
+            OutlinedGlyphButton(
+                glyph = "✚",
+                contentDescription = "Save",
+                tint = MaterialTheme.colorScheme.primary,
+                border = MaterialTheme.colorScheme.primary,
+                onClick = onSave,
+            )
+        }
+
         Text(
-            text = summary,
+            text = buildString {
+                append(entries.size)
+                append(if (entries.size == 1) " READING" else " READINGS")
+                if (archaic > 0) append(" · $archaic ARCHAIC")
+            },
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = tokens.spaceXs),
+            modifier = Modifier.fillMaxWidth().padding(top = tokens.spaceXs),
         )
+    }
+}
+
+@Composable
+private fun OutlinedGlyphButton(
+    glyph: String,
+    contentDescription: String,
+    tint: androidx.compose.ui.graphics.Color,
+    border: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(44.dp)
+            .border(1.dp, border, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick, onClickLabel = contentDescription),
+    ) {
+        Text(text = glyph, style = MaterialTheme.typography.bodyLarge, color = tint)
     }
 }
 
@@ -211,18 +281,34 @@ private fun TokenStrip(
     }
 }
 
+/**
+ * One reading, its rule, and its senses.
+ *
+ * The rule above carries the hierarchy: accent for the leading reading, a plain
+ * hairline for the current ones after it, dashed for anything marked. The marked
+ * block is also dimmed as a whole rather than recoloured piece by piece, which
+ * keeps its meanings readable while placing the entire section behind the others.
+ */
 @Composable
-private fun ReadingSection(entry: DictionaryEntry, showDivider: Boolean) {
+private fun ReadingBlock(entry: DictionaryEntry, isFirst: Boolean) {
     val tokens = SpotterTheme.tokens
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Between readings only — a rule above the first would fence the list off
-        // from the headword it belongs to.
-        if (showDivider) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-        }
+    val marked = entry.readingStatus.isMarked
+    val rule = when {
+        marked -> MaterialTheme.colorScheme.outline
+        isFirst -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outline
+    }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(top = tokens.spaceMd)) {
+        ReadingRule(color = rule, dashed = marked)
         Column(
-            modifier = Modifier.padding(vertical = tokens.spaceMd),
-            verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
+            modifier = Modifier
+                .padding(top = tokens.spaceMd)
+                // 55% — the design's figure. Enough to place the block behind
+                // the current readings, not so much that its meanings stop being
+                // readable; an archaic reading is still the right answer for
+                // someone photographing a temple inscription (D-53).
+                .then(if (marked) Modifier.alpha(0.55f) else Modifier),
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
@@ -240,83 +326,141 @@ private fun ReadingSection(entry: DictionaryEntry, showDivider: Boolean) {
                     )
                 }
             }
-
-            entry.senses.forEachIndexed { index, sense ->
-                SenseRow(index + 1, sense, entry.senses.size)
+            Column(
+                modifier = Modifier.padding(top = tokens.spaceSm),
+                verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
+            ) {
+                entry.senses.forEachIndexed { index, sense ->
+                    SenseRow(index + 1, sense)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun SenseRow(number: Int, sense: Sense, total: Int) {
-    val tokens = SpotterTheme.tokens
-    Row(horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm)) {
-        // A word with one sense is not a numbered list of one. Dropping the "1."
-        // is the difference between "here is what it means" and "here is item one
-        // of one", and most words in the dictionary have a single sense.
-        if (total > 1) {
-            Text(
-                text = "$number",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = tokens.spaceXs),
+private fun ReadingRule(color: androidx.compose.ui.graphics.Color, dashed: Boolean) {
+    val stroke = if (dashed) {
+        androidx.compose.ui.graphics.drawscope.Stroke(
+            width = 1.dp.value,
+            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
+                floatArrayOf(6f, 6f),
+            ),
+        )
+    } else {
+        null
+    }
+    androidx.compose.foundation.Canvas(
+        modifier = Modifier.fillMaxWidth().height(1.dp),
+    ) {
+        if (stroke != null) {
+            drawLine(
+                color = color,
+                start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                end = androidx.compose.ui.geometry.Offset(size.width, 0f),
+                strokeWidth = size.height,
+                pathEffect = stroke.pathEffect,
+            )
+        } else {
+            drawLine(
+                color = color,
+                start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                end = androidx.compose.ui.geometry.Offset(size.width, 0f),
+                strokeWidth = size.height,
             )
         }
+    }
+}
+
+/**
+ * A numbered sense, with its part of speech where the dictionary records one.
+ *
+ * The number column is fixed-width so the glosses share a left edge down the
+ * whole screen, and it is present even on a single-sense reading — the design
+ * numbers those too, and the alignment is what makes a five-reading word scan as
+ * one list rather than five.
+ */
+@Composable
+private fun SenseRow(number: Int, sense: Sense) {
+    val tokens = SpotterTheme.tokens
+    Row(horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm)) {
+        Text(
+            text = "$number",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(16.dp).padding(top = 3.dp),
+        )
         // One sense, several glosses, rendered as ONE line: "teacher; instructor;
         // master" is a single meaning expressed three ways, not three meanings
         // (D-47). Splitting them would overstate how much there is to learn.
+        //
+        // The part of speech rides at the end of the glosses rather than on its
+        // own line — it qualifies them, and giving it a line of its own would
+        // double the height of every sense in the app.
         Text(
-            text = sense.glosses.joinToString("; "),
-            style = MaterialTheme.typography.bodyLarge,
+            text = buildAnnotatedString {
+                append(sense.glosses.joinToString("; "))
+                sense.partsOfSpeech.firstOrNull()?.let {
+                    append("  ")
+                    withStyle(
+                        SpanStyle(
+                            fontStyle = FontStyle.Italic,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                    ) {
+                        append(it)
+                    }
+                }
+            },
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
 
+/**
+ * The component kanji, as equal-width boxes rather than chips.
+ *
+ * No heading. The design drops "Composed of" and lets the boxes speak, which
+ * they can: two bordered cells holding a kanji over its meaning are not
+ * mistakable for anything else on this screen, and the label was a line of
+ * chrome explaining something already obvious.
+ */
 @Composable
-private fun ComponentChips(kanji: List<KanjiSummary>, onKanjiSelected: (String) -> Unit) {
+private fun ComponentBoxes(kanji: List<KanjiSummary>, onKanjiSelected: (String) -> Unit) {
     val tokens = SpotterTheme.tokens
-    Column(
-        verticalArrangement = Arrangement.spacedBy(tokens.spaceSm),
-        modifier = Modifier.padding(top = tokens.spaceMd),
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = tokens.spaceLg),
+        horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
     ) {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-        Text(
-            text = "COMPOSED OF",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = tokens.spaceMd),
-        )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm)) {
-            kanji.forEach { summary ->
-                SuggestionChip(
+        kanji.forEach { summary ->
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline,
+                        RoundedCornerShape(10.dp),
+                    )
                     // The only route to the kanji screen (D-05), which is why
                     // D-48 accepts the cost of putting these last.
-                    onClick = { onKanjiSelected(summary.character) },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        labelColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                    label = {
-                        // Meanings only, never readings (D-06): a kanji's reading
-                        // inside a word is not the sum of its parts — 明日 is
-                        // あした and cannot be split across 明 and 日 at all.
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = summary.character,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontFamily = SpotterJapanese,
-                            )
-                            Text(
-                                text = summary.meanings.take(2).joinToString(", "),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
+                    .clickable { onKanjiSelected(summary.character) }
+                    .padding(horizontal = tokens.spaceSm, vertical = tokens.spaceSm),
+            ) {
+                // Meanings only, never readings (D-06): a kanji's reading inside
+                // a word is not the sum of its parts — 明日 is あした and cannot
+                // be split across 明 and 日 at all.
+                Text(
+                    text = summary.character,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = SpotterJapanese,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = summary.meanings.take(2).joinToString(", "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -356,7 +500,7 @@ private val previewState = WordLookupState(
             text = "先生",
             reading = "せんせい",
             senses = listOf(
-                Sense(listOf("teacher", "instructor", "master")),
+                Sense(listOf("teacher", "instructor", "master"), partsOfSpeech = listOf("n")),
                 Sense(listOf("sensei", "title for a teacher, doctor, lawyer or artist")),
             ),
             frequencyRank = 2,
@@ -386,7 +530,14 @@ private val previewState = WordLookupState(
 private fun WordScreenPreviewLight() {
     SpotterTheme(darkTheme = false) {
         Surface {
-            WordScreen(previewState, onQueryChanged = {}, onTokenSelected = {}, onKanjiSelected = {})
+            WordScreen(
+                previewState,
+                onQueryChanged = {},
+                onTokenSelected = {},
+                onKanjiSelected = {},
+                onSave = {},
+                onDismiss = {},
+            )
         }
     }
 }
@@ -396,7 +547,14 @@ private fun WordScreenPreviewLight() {
 private fun WordScreenPreviewDark() {
     SpotterTheme(darkTheme = true) {
         Surface {
-            WordScreen(previewState, onQueryChanged = {}, onTokenSelected = {}, onKanjiSelected = {})
+            WordScreen(
+                previewState,
+                onQueryChanged = {},
+                onTokenSelected = {},
+                onKanjiSelected = {},
+                onSave = {},
+                onDismiss = {},
+            )
         }
     }
 }
