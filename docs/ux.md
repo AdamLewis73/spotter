@@ -57,6 +57,8 @@ Composed of:  上 above, up    手 hand
 
 Reading → meanings, repeated per reading. **Component chips come last**, below every reading, showing meanings only (D-06).
 
+**As built (D-67):** the written form sits centred above the list with a count beneath it — `5 READINGS · 2 ARCHAIC`. Stating the shape of the answer up front is what stops a five-reading word reading as an unbounded scroll, and it turns a one-reading word into information rather than an empty screen. The readings themselves are a divided list, not a stack of cards: a card says "this is a separate thing", and five of them say it five times about five readings of one written form.
+
 **Obsolete readings appear too, marked as archaic** (D-53). 上手 has five readings; じょうて and じょうしゅ are historical and shown visually distinguished rather than hidden. Someone photographing a temple inscription or an old shopfront is exactly the person who needs them — and the app never knows which reading was scanned anyway, so hiding them would just leave a gap with no explanation.
 
 The marking, settled in Phase 2 (D-66): the reading drops to the muted colour and is labelled — *archaic* for `ok`, *irregular* for `ik`, *rare* for `rk` — and **marked readings sort after current ones and never carry the *common* badge**. That last pair matters more than the label. 上手's archaic readings inherit the written form's frequency (V-04), so before the sort existed the screen *opened* on じょうしゅ, badged common. A restrained treatment on purpose, so the UI pass has something to refine rather than something to undo.

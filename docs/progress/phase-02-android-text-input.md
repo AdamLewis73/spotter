@@ -43,17 +43,10 @@ invisible until something checksums the artefact.
 
 In the order they are worth doing, and the reasoning matters more than the list:
 
-1. **The UI pass** the project owner asked for on 2026-08-19. The screens work
-   and read as cluttered — the word screen stacks five reading cards for 先生,
-   and the kanji screen's Overview prints every kun'yomi in one long run. Not
-   yet designed; it is a deliberate, separate pass rather than a tidy-up folded
-   into feature work.
-2. **Decide D-51**, whether example sentences get rendered. Sequenced *after*
-   the UI pass on purpose: the roadmap wants this judged against real screens,
-   and judging "do sentences earn their space" against a layout already known to
-   be too busy would answer the wrong question. Build them behind a switch, look
-   at 先生, 上手 and 生 both ways, then decide.
-3. **JMdict longest-match alternates (D-07)** — the missing half of V-06.
+1. **Decide D-51**, whether example sentences get rendered — now unblocked. The
+   UI pass is done, so the layout this was waiting to be judged against exists.
+   Build them behind a switch, look at 先生, 上手 and 生 both ways, then decide.
+2. **JMdict longest-match alternates (D-07)** — the missing half of V-06.
 
 **Compose UI tests now exist**, four of them, covering V-21's marking on the
 word screen — that an archaic reading is labelled, that a current one is
@@ -117,6 +110,8 @@ fixed when that code is next touched; see the phase-01 open questions.
 - [ ] JMdict longest-match alternates (D-07)
 - [x] Obsolete, irregular and rare readings marked; search-only readings hidden
       but never to nothing (V-21, D-53, D-66)
+- [x] UI pass on the word and kanji screens, from the Claude Design import
+      (D-67) — new palette and type, plus 2a and 2b
 - [x] Text-input screen: paste `先生と生産`, get tokens, tap one to read it
 - [x] Word screen — one section per reading, component chips last (D-48, D-06)
 - [x] Kanji screen — Overview / Examples tabs; Stroke Order is Phase 3 (D-05)
@@ -277,6 +272,48 @@ genuinely part of its public surface.
 - A screenshot taken within ~4 s of launch catches the splash screen, and one
   taken right after `cmd uimode night` catches a blank frame mid-recreation.
   Both look like bugs and are not; force-stop, restart, then wait.
+
+### The UI pass, and what the design did not cover — 2026-08-20
+
+Implemented from a Claude Design project ("Kanji app mobile design"), imported
+with the `DesignSync` tool. Two notes for anyone importing another one:
+
+- **`list_projects` returns nothing useful.** It is filtered to *design-system*
+  projects that the user can write to, and an ordinary design project is
+  `PROJECT_TYPE_PROJECT`. Go straight to `get_project` / `list_files` /
+  `get_file` with the project id out of the share URL.
+- **The design canvas is one ~90 KB HTML file** of inline-styled frames. Do not
+  read it whole. Split on the frame ids (`id="2a"`), strip tags, and read the
+  text — the rationale paragraphs and frame captions carry most of the intent.
+
+**The design covers six screens; four of them are Phases 6–7** (Saved, list
+detail, Review, Profile) and are left unbuilt. They all write user data, which
+is the D-15–D-18 + D-43 checkpoint. Two things in them are also not in the
+roadmap at all and need deciding before they are built: the review card is a
+**handwriting** exercise rather than the recall card D-26/D-29 assumed, and
+Profile is a fourth destination the design itself flags against D-36.
+
+**What was changed from the design, and why:**
+
+- **The accent is jade, not amber.** Amber on near-black is a very well-known
+  brand pairing. Hue only — lightness and chroma are the design's (D-67).
+- **2a's sheet chrome is not built.** Centred headword with a back arrow and a
+  save button belongs to the sheet a scan opens (D-30); there is no scan until
+  Phase 4 and no save until Phase 6. The headword and count strip *are* built,
+  because they carry information; the buttons would have been decoration.
+- **Example meanings are left-aligned, not right.** The design right-aligns them
+  and it works at its 320px frame width. At 411dp "life" ended up at the far
+  edge of the screen with a hand's breadth of nothing between it and 生活. A
+  shared left edge keeps them scannable.
+- **The count strip says 5, not 4.** The mock labels 上手 `4 READINGS · 2
+  ARCHAIC`; the dictionary holds five.
+- **Part-of-speech tags are not shown.** 2a puts `na-adj` beside sense 1. The
+  stored values are raw JMdict codes (`adj-na`, `exp`, `vs`, `n-adv`), and
+  showing them raw adds jargon to the screen this pass exists to calm. Wants a
+  code-to-label table and a decision, not a quiet include.
+- **The Overview tab's reading run was fixed anyway.** Not in the design, but it
+  was half the original complaint — 生's twenty kun'yomi were three lines of
+  undifferentiated kana.
 
 ### Compose UI tests, and the Espresso that blocked them — 2026-08-19
 

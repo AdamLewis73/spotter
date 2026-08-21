@@ -63,7 +63,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-32 | Kanji screen swaps in place inside the sheet | UI |
 | D-33 | Overlay dims the image; detected text stays bright | UI |
 | D-34 | Bundle Noto Sans JP explicitly | UI |
-| D-35 | Material 3 design tokens from the first UI commit | UI |
+| D-35 | Material 3 design tokens from the first UI commit | UI | *(palette SUPERSEDED by D-67)*
 | D-36 | Three bottom-nav destinations: Scan · Saved · Review | UI |
 | D-37 | Reading labels follow dictionary kana convention | UI / Data |
 | D-38 | Dictionary stays disposable; stable dictionary IDs rejected | Data |
@@ -95,6 +95,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-64 | Wall-clock time lives outside the dictionary, in a `build-info.json` sidecar | Data |
 | D-65 | `build_id` identifies the artefact: sources **and** builder, normalised | Data |
 | D-66 | Search-only readings are hidden, but never to nothing; `gikun` is not a defect | UI / Data |
+| D-67 | Warm near-black ground, one jade accent, IBM Plex beside Noto Sans JP | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -736,7 +737,7 @@ Unicode unifies Chinese and Japanese characters onto shared codepoints, but the 
 
 In an app whose purpose is teaching people to read and write kanji, displaying the wrong glyph form is a correctness bug, not a polish issue.
 
-**D-35 — Material 3 with a design-token layer from the first UI commit.**
+**D-35 — Material 3 with a design-token layer from the first UI commit.** *Its palette is SUPERSEDED by D-67; the token layer itself stands and is the reason D-67 was cheap.*
 Centralized colors, type scale, and spacing. Roughly ten minutes of setup at the start; a refactor touching every composable if retrofitted later.
 
 **D-36 — Three bottom-navigation destinations: Scan · Saved · Review.**
@@ -878,6 +879,30 @@ D-53 settled that obsolete kana is shown and marked. Building V-21 turned up the
 *On the unknown-tag case:* the mapping returns "current" for a code it does not recognise, because a dictionary refresh must not break the app over a tag it has not met. That leniency is only safe because it is loud somewhere else — `verify.py`'s V-21 case asserts the built dictionary contains exactly these five codes, so a sixth fails the build instead of quietly rendering as ordinary. Failing there means deciding what the new code means, not widening the set.
 
 *Cost:* the app now hides 6,647 rows of real dictionary data. Cheap to reverse — one filter, in one function — and the tags are still ingested either way, so nothing is lost from the database.
+
+**D-67 — Warm near-black, one jade accent, and IBM Plex beside Noto Sans JP.**
+
+Supersedes **D-35's palette**. D-35's *token layer* stands, and is the entire reason this cost an afternoon rather than a rewrite: every composable already read colour and type through `Color.kt` and `Type.kt`, so the identity changed in two files.
+
+The indigo-and-teal Material scheme was an early placeholder — `Color.kt` said as much at the time: *"a working starting point, not a finished identity"*. The replacement came from a design pass done in Claude Design, imported and implemented directly.
+
+**The ground is warm near-black `#14120F`, not Material's blue-grey.** This matters more for this app than for most: the scan overlay dims a photograph and keeps detected text bright (D-33), so the chrome sits directly against the user's own images. A warm neutral recedes behind a photograph; a blue-grey tints one's sense of what was photographed.
+
+**One accent, jade `#2DC08E`** — `oklch(0.72 0.14 165)`. Measured, not eyeballed: 8.1:1 against the ground, and because the accent carries dark text *on* it, that figure reads both directions. Light mode holds the same hue at `L=0.52` (`#007E57`, 4.8:1 on warm paper); the dark accent would be 2.2:1 there, legible as a fill and not as text, which is the trap a single shared accent sets.
+
+*Why jade and not the amber the design proposed:* amber on near-black is a very well-known brand pairing and not one a language-learning app should evoke. Only the hue moved — lightness and chroma are unchanged, so every contrast relationship the design was drawn against still holds. It also stays clear of the red-and-white every Japan-themed app reaches for, which the original palette note already argued against.
+
+*One rule the accent imposes, to be honoured before Phase 7 makes it awkward:* **green means correct.** The FSRS grading buttons must be neutral outlines with the accent on the primary action only, or the palette starts making a claim about whether the answer was right.
+
+**No second accent hue.** Material wants a secondary; every role it would fill is served by the neutral ramp instead. That is what keeps the accent meaning something when it does appear.
+
+**Type: IBM Plex Sans for Latin, IBM Plex Mono for metadata, Noto Sans JP for Japanese.** D-34 is untouched — Noto is still bundled and still the only thing allowed to render Japanese. Plex is added so English meanings have a different texture from the Japanese they explain: a gloss reads as commentary rather than as more of the same sentence, which on this app's central screen is doing real work.
+
+- Sans is variable, one 537 KB file. Mono has no variable build, so its two weights are two 136 KB statics.
+- Both are **bundled, not fetched**. The design's HTML pulls Plex from Google Fonts, which would breach the offline principle. The OFL requires the notice to travel with the font, so the licence text ships in-app beside Noto's (`attribution.md`).
+- **The trap:** Plex contains no Japanese. Given Japanese it falls back to the *system* CJK font — the exact failure D-34 exists to prevent, arriving quietly as a subtly Chinese-shaped 直 rather than as tofu. Compose's `FontFamily(a, b)` matches one font per weight and does **not** do per-glyph fallback, so listing Noto after Plex would look like a safety net while being none. Families are therefore assigned per role at the call site, and anything that can hold Japanese names `SpotterJapanese` explicitly.
+
+*Cost:* ~810 KB of fonts, against a 9.2 MB Noto and a 100 MB dictionary. And a standing obligation: a new composable rendering Japanese must remember to ask for the Japanese family. That is a real sharp edge, mitigated only by the type scale defaulting the Japanese-bearing styles (`titleLarge`, `headlineMedium`, `displayLarge`) to Noto already.
 
 ---
 

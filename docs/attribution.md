@@ -59,6 +59,11 @@ This is a statement of what the licences say, not legal advice — worth a prope
 > Open Font License, Version 1.1.
 > https://fonts.google.com/noto/specimen/Noto+Sans+JP
 >
+> **IBM Plex Sans** and **IBM Plex Mono** — the Latin and metadata faces (D-67).
+> © 2017 IBM Corp., with Reserved Font Name "Plex". Licensed under the SIL
+> Open Font License, Version 1.1.
+> https://fonts.google.com/specimen/IBM+Plex+Sans
+>
 > **Software**
 >
 > **Kuromoji** — the morphological analyser that decides where Japanese words
@@ -70,7 +75,9 @@ KanjiVG's terms are the most prescriptive: attribution must state the use of Kan
 
 **Bundled software is a third category, separate again from the datasets and the font.** Kuromoji is Apache 2.0, which requires the licence and any NOTICE to be distributed with the binary. Its jars each carry `META-INF/LICENSE.md`, and the Android packaging step is configured to keep one copy rather than drop both — dropping them would be the easy accident, since the merge error that forces the decision reads like a build annoyance rather than a licensing one.
 
-**The font is a separate obligation from the datasets**, and easy to overlook because it is not part of the dictionary. The SIL Open Font License permits bundling and redistribution, but requires the copyright notice and licence to travel with the font — so the full OFL text ships in the app alongside this notice, not merely a link. Note the copyright names **Adobe**, not Google: Noto Sans JP derives from Source Han Sans.
+**The fonts are a separate obligation from the datasets**, and easy to overlook because they are not part of the dictionary. The SIL Open Font License permits bundling and redistribution, but requires the copyright notice and licence to travel with the font — so the full OFL text ships in the app alongside this notice, not merely a link. Both licences live in `app/src/main/assets/licenses/`.
+
+Two copyright holders, and neither is the obvious one. Noto Sans JP names **Adobe**, not Google, because it derives from Source Han Sans; IBM Plex names **IBM Corp.** Both carry a Reserved Font Name — 'Source' and "Plex" respectively — which means a modified copy may not keep the name. Nothing here modifies them, but subsetting a bundled font to save space would count, and that is a plausible future optimisation on a 9.2 MB file.
 
 Tatoeba is credited even though we ingest no Tatoeba file directly — the example sentences in `JMdict_e_examp` cite Tatoeba sentence ids, so the sentences are theirs (D-51).
 

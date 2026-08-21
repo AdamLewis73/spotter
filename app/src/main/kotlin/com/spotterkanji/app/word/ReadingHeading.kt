@@ -1,12 +1,16 @@
 package com.spotterkanji.app.word
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.ReadingStatus
@@ -46,10 +50,20 @@ internal fun ReadingHeading(entry: DictionaryEntry, modifier: Modifier = Modifie
             },
         )
         entry.readingStatus.label()?.let { label ->
+            // An outlined badge rather than loose text (D-67). A bare word beside
+            // a reading reads as part of the entry; a bordered one reads as a
+            // note about it, which is what it is.
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.outline,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline,
+                        shape = RoundedCornerShape(4.dp),
+                    )
+                    .padding(horizontal = spacing.spaceXs, vertical = 1.dp),
             )
         }
     }
@@ -69,8 +83,8 @@ internal fun ReadingHeading(entry: DictionaryEntry, modifier: Modifier = Modifie
  */
 private fun ReadingStatus.label(): String? = when (this) {
     ReadingStatus.CURRENT -> null
-    ReadingStatus.RARE -> "rare"
-    ReadingStatus.IRREGULAR -> "irregular"
-    ReadingStatus.ARCHAIC -> "archaic"
-    ReadingStatus.SEARCH_ONLY -> "non-standard"
+    ReadingStatus.RARE -> "RARE"
+    ReadingStatus.IRREGULAR -> "IRREGULAR"
+    ReadingStatus.ARCHAIC -> "ARCHAIC"
+    ReadingStatus.SEARCH_ONLY -> "NON-STANDARD"
 }

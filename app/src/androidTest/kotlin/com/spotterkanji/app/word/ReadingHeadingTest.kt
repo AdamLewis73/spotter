@@ -61,7 +61,7 @@ class ReadingHeadingTest {
         setHeading(entry("じょうて", ReadingStatus.ARCHAIC))
 
         compose.onNodeWithText("じょうて").assertIsDisplayed()
-        compose.onNodeWithText("archaic").assertIsDisplayed()
+        compose.onNodeWithText("ARCHAIC").assertIsDisplayed()
     }
 
     /**
@@ -73,7 +73,7 @@ class ReadingHeadingTest {
         setHeading(entry("じょうず", common = true))
 
         compose.onNodeWithText("じょうず").assertIsDisplayed()
-        listOf("archaic", "irregular", "rare", "non-standard").forEach { label ->
+        listOf("ARCHAIC", "IRREGULAR", "RARE", "NON-STANDARD").forEach { label ->
             compose.onAllNodesWithText(label).assertCountEquals(0)
         }
     }
@@ -100,7 +100,7 @@ class ReadingHeadingTest {
             }
         }
 
-        listOf("rare", "irregular", "non-standard").forEach {
+        listOf("RARE", "IRREGULAR", "NON-STANDARD").forEach {
             compose.onNodeWithText(it).assertIsDisplayed()
         }
     }
@@ -146,11 +146,11 @@ class ReadingHeadingTest {
         }
 
         // Two archaic readings, two labels.
-        compose.onAllNodesWithText("archaic").assertCountEquals(2)
+        compose.onAllNodesWithText("ARCHAIC").assertCountEquals(2)
 
-        // And exactly one "common": all three of 上手's ranked readings carry the
+        // And exactly one "COMMON": all three of 上手's ranked readings carry the
         // flag in the data, because it is inherited from the written form (V-04).
         // Only じょうず may show it.
-        compose.onAllNodesWithText("common").assertCountEquals(1)
+        compose.onAllNodesWithText("COMMON").assertCountEquals(1)
     }
 }

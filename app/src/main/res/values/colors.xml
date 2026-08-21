@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Must match SpotterLightColors.surface in Color.kt.
+    <!-- Must match SpotterLightColors.background in Color.kt — `background`,
+         not `surface`: this paints the page, and under D-67 the two are no
+         longer the same colour (warm paper behind lighter cards).
          Duplicated in XML only because the window background is painted by the
          platform before Compose exists — there is no way to read a Compose
          colour from a theme attribute. Change one, change the other. -->
-    <color name="window_background">#FFFDFBFF</color>
+    <color name="window_background">#FFF2EEE5</color>
 </resources>

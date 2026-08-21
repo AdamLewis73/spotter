@@ -4,15 +4,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -20,9 +20,12 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiSummary
@@ -34,15 +37,29 @@ import com.spotterkanji.domain.tokenize.Token
  * Type a word, see what it means.
  *
  * This is the word screen from `ux.md`, minus the camera in front of it. The
- * layout follows D-48: **one section per reading**, meanings underneath, and
- * component chips **last**.
+ * layout follows D-48 — **one section per reading**, meanings underneath,
+ * component chips **last** — restyled to the D-67 design.
  *
- * Chips go last deliberately, and it is a cost accepted rather than an
- * oversight — they are the only route to the kanji screen (D-05), so burying
- * them adds scrolling to a core drill-down. The judgement is that someone who
- * wants the kanji breakdown is already engaged and will scroll, while someone
- * who just wants the meaning should not have to scroll past the breakdown to
- * reach it.
+ * **What changed and why (D-67).** 先生 used to render as five stacked cards of
+ * equal weight, four of them repeating "teacher; instructor; master" almost
+ * verbatim, with the chips pushed off the bottom of the screen. Three fixes,
+ * none of which removes information:
+ *
+ * - **A count, stated rather than discovered.** `5 READINGS · 2 ARCHAIC` sits
+ *   under the headword, so the shape of the answer is known before scrolling.
+ *   It also turns a thin word into useful information rather than an empty
+ *   screen — `overview.md`'s usage-completeness principle: one reading means
+ *   *this one is easy*.
+ * - **Readings become a list, not a stack of cards.** A card says "this is a
+ *   separate thing"; five of them say it five times. Dividers group without
+ *   shouting, which is what a reading of the same written form actually is.
+ * - **The chips stay last** (D-48) but no longer follow five card-heights of
+ *   scrolling, so the cost D-48 accepted got cheaper without reopening it.
+ *
+ * The design's sheet chrome — centred headword with a back arrow and a save
+ * button — is deliberately **not** here. It belongs to the sheet a scan opens
+ * (D-30), and there is no scan and no save until Phases 4 and 6. The text field
+ * is still the only way in.
  */
 @Composable
 fun WordScreen(
@@ -80,22 +97,67 @@ fun WordScreen(
 
             state.notFound -> NotFound(state.query)
 
-            else -> LazyColumn(
-                contentPadding = PaddingValues(vertical = tokens.spaceMd),
-                verticalArrangement = Arrangement.spacedBy(tokens.spaceMd),
-            ) {
-                // One card per reading. 上手 produces three, and the app does not
-                // choose between them — it cannot know which one a photograph
-                // meant, and guessing would be worse than showing the options
-                // (D-44, D-48).
+            else -> LazyColumn(contentPadding = PaddingValues(vertical = tokens.spaceMd)) {
+                if (state.entries.isNotEmpty()) {
+                    item { WordHeading(state.entries) }
+                }
+                // One section per reading. 上手 produces five, and the app does
+                // not choose between them — it cannot know which one a
+                // photograph meant, and guessing would be worse than showing the
+                // options (D-44, D-48).
                 items(state.entries.size) { index ->
-                    ReadingSection(state.entries[index])
+                    ReadingSection(state.entries[index], showDivider = index > 0)
                 }
                 if (state.kanji.isNotEmpty() && state.entries.isNotEmpty()) {
                     item { ComponentChips(state.kanji, onKanjiSelected) }
                 }
             }
         }
+    }
+}
+
+/**
+ * The written form, and how much there is to know about it.
+ *
+ * The headword repeats what was typed, which looks redundant and is not: the
+ * lookup falls back to the dictionary form, so typing 生きた lands on 生きる and
+ * this line is the only thing that says so.
+ *
+ * The count is deliberately plain about archaic readings rather than hiding them
+ * in the list. Someone who sees `5 READINGS · 2 ARCHAIC` knows before scrolling
+ * that two of what follows are not for learning (V-21, D-53).
+ */
+@Composable
+private fun WordHeading(entries: List<DictionaryEntry>) {
+    val tokens = SpotterTheme.tokens
+    val archaic = entries.count { it.readingStatus.isMarked }
+    val summary = buildString {
+        append(entries.size)
+        append(if (entries.size == 1) " READING" else " READINGS")
+        if (archaic > 0) {
+            append(" · ")
+            append(archaic)
+            append(" ARCHAIC")
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(bottom = tokens.spaceMd),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = entries.first().text,
+            style = MaterialTheme.typography.headlineMedium,
+            fontFamily = SpotterJapanese,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = summary,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = tokens.spaceXs),
+        )
     }
 }
 
@@ -119,8 +181,8 @@ private fun TokenStrip(
     val spacing = SpotterTheme.tokens
     Column(modifier = Modifier.padding(top = spacing.spaceMd)) {
         Text(
-            text = "Tap a word",
-            style = MaterialTheme.typography.labelLarge,
+            text = "TAP A WORD",
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         FlowRow(
@@ -135,6 +197,7 @@ private fun TokenStrip(
                         Text(
                             text = token.text,
                             style = MaterialTheme.typography.bodyLarge,
+                            fontFamily = SpotterJapanese,
                             color = if (token.isContentWord) {
                                 MaterialTheme.colorScheme.onSurface
                             } else {
@@ -149,58 +212,81 @@ private fun TokenStrip(
 }
 
 @Composable
-private fun ReadingSection(entry: DictionaryEntry) {
+private fun ReadingSection(entry: DictionaryEntry, showDivider: Boolean) {
     val tokens = SpotterTheme.tokens
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Between readings only — a rule above the first would fence the list off
+        // from the headword it belongs to.
+        if (showDivider) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+        }
         Column(
-            modifier = Modifier.padding(tokens.spaceMd),
+            modifier = Modifier.padding(vertical = tokens.spaceMd),
             verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
         ) {
-            ReadingHeading(entry)
-
-            // Gated on showsCommonBadge, not isCommon: the flag is inherited
-            // from the written form, so 上手 じょうしゅ is "common" in the data
-            // while being a reading nobody has used in centuries (V-21).
-            if (entry.showsCommonBadge) {
-                Text(
-                    text = "common",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ReadingHeading(entry)
+                // Gated on showsCommonBadge, not isCommon: the flag is inherited
+                // from the written form, so 上手 じょうしゅ is "common" in the
+                // data while being a reading nobody has used in centuries (V-21).
+                if (entry.showsCommonBadge) {
+                    Text(
+                        text = "COMMON",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
 
             entry.senses.forEachIndexed { index, sense ->
-                SenseRow(index + 1, sense)
+                SenseRow(index + 1, sense, entry.senses.size)
             }
         }
     }
 }
 
 @Composable
-private fun SenseRow(number: Int, sense: Sense) {
-    // One sense, several glosses, rendered as ONE line: "teacher; instructor;
-    // master" is a single meaning expressed three ways, not three meanings
-    // (D-47). Splitting them would overstate how much there is to learn.
-    Text(
-        text = "$number. ${sense.glosses.joinToString("; ")}",
-        style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+private fun SenseRow(number: Int, sense: Sense, total: Int) {
+    val tokens = SpotterTheme.tokens
+    Row(horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm)) {
+        // A word with one sense is not a numbered list of one. Dropping the "1."
+        // is the difference between "here is what it means" and "here is item one
+        // of one", and most words in the dictionary have a single sense.
+        if (total > 1) {
+            Text(
+                text = "$number",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = tokens.spaceXs),
+            )
+        }
+        // One sense, several glosses, rendered as ONE line: "teacher; instructor;
+        // master" is a single meaning expressed three ways, not three meanings
+        // (D-47). Splitting them would overstate how much there is to learn.
+        Text(
+            text = sense.glosses.joinToString("; "),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
 }
 
 @Composable
 private fun ComponentChips(kanji: List<KanjiSummary>, onKanjiSelected: (String) -> Unit) {
     val tokens = SpotterTheme.tokens
-    Column(verticalArrangement = Arrangement.spacedBy(tokens.spaceSm)) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(tokens.spaceSm),
+        modifier = Modifier.padding(top = tokens.spaceMd),
+    ) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
         Text(
-            text = "Composed of",
-            style = MaterialTheme.typography.labelLarge,
+            text = "COMPOSED OF",
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = tokens.spaceMd),
         )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm)) {
             kanji.forEach { summary ->
@@ -215,10 +301,21 @@ private fun ComponentChips(kanji: List<KanjiSummary>, onKanjiSelected: (String) 
                         // Meanings only, never readings (D-06): a kanji's reading
                         // inside a word is not the sum of its parts — 明日 is
                         // あした and cannot be split across 明 and 日 at all.
-                        Text(
-                            text = "${summary.character}  ${summary.meanings.take(2).joinToString(", ")}",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = summary.character,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontFamily = SpotterJapanese,
+                            )
+                            Text(
+                                text = summary.meanings.take(2).joinToString(", "),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     },
                 )
             }
