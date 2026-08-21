@@ -299,7 +299,7 @@ of them was not the design. The screens ended up being the *old* layout wearing
 the new palette — no back or save buttons, no accent rule, no stroke-order tab,
 readings in the body colour rather than the accent. **A mockup is a spec for
 intent, not a set of claims to fact-check.** Correcting its placeholder
- to 5 was the tell.
+`4 READINGS` to 5 was the tell.
 
 What genuinely differs now:
 
