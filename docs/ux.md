@@ -82,17 +82,22 @@ Coverage is 41.4% of common senses, and the gaps read as ordinary rather than br
 
 ### Kanji screen — three tabs
 
-**All three exist; two of them do anything.** Overview and Examples were built
-in Phase 2, and Stroke order stands empty carrying the stroke count and naming
-Phase 3 — built early so that adding it later would not shift the two beside it.
-Phase 3 replaces its body and nothing above it. This
-section describes the finished screen, not the current one.
+**All three are built.** Overview and Examples landed in Phase 2; Stroke order
+was built empty at the same time so that filling it in later would not shift the
+two beside it, and Phase 3 replaced its body without touching anything above it.
+
+Stroke order follows artboard **3b** of the design project: a 200dp stage with a
+centre crosshair, transport controls, and an **Every stroke** grid holding one
+cumulative frame per stroke. The stage has two modes — **Watch** plays the
+character being written, **Trace** makes the same stage writable so the learner
+draws it over the ghost. Trace practice carries no scoring and no scheduler,
+which is what keeps it independent of review (D-72).
 
 | Tab | Content |
 |---|---|
 | **Overview** | Meanings, on'yomi / kun'yomi, and — when the kanji is also a standalone word — an **As a word** section listing its senses (D-49). Example sentences there follow the same v1 rule as the word screen: ingested, not rendered (D-51) |
 | **Examples** | Other **words** containing this kanji, grouped by reading, frequency-sorted (D-04) |
-| **Stroke Order** | KanjiVG animation — paths drawn sequentially — plus the stroke count. **Show the number of paths being animated, not KANJIDIC2's figure**: the two disagree for ~1.7% of kanji, mostly 辶 forms, and 辻 labelled "5 strokes" while visibly drawing 6 is a contradiction the user watches happen (V-09) |
+| **Stroke Order** | KanjiVG animation — paths drawn sequentially — plus play/pause, a speed control, and a tappable per-stroke grid. **The counter shows the number of paths being animated, not KANJIDIC2's figure**: the two disagree for ~1.7% of kanji, mostly 辶 forms, and 辻 labelled "5 strokes" while visibly drawing 6 is a contradiction the user watches happen (V-09). Strokes not yet drawn stay visible as a faint ghost, so the stage is never empty and the animation reads as a character filling in. A kanji outside KanjiVG's 6,416 says so and falls back to KANJIDIC2's count |
 
 **Grade, classical radical and JLPT level are deliberately absent** (D-50, D-42). "5 strokes · Grade 1 · Radical 100" is three facts, two of which mean nothing to a non-Japanese learner. Stroke count moved to the Stroke Order tab, where it needs no explanation.
 

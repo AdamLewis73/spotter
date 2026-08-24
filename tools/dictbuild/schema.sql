@@ -208,8 +208,17 @@ CREATE INDEX idx_kiw_group ON kanji_in_word (kanji_char, reading_group, word_fre
 -- WITHOUT ROWID cost 3.4 MB, swamping the 1.2 MB the coordinate rounding saved.
 -- SQLite's own guidance is that WITHOUT ROWID suits small rows; this is the one
 -- table here that isn't.
+--
+-- `kanji_char` spells out NOT NULL, which PRIMARY KEY looks like it should
+-- imply and does not. SQLite permits NULL in a PRIMARY KEY column unless it is
+-- INTEGER PRIMARY KEY or the table is WITHOUT ROWID — a documented deviation
+-- from the standard kept for backward compatibility. This table is neither, so
+-- the column was genuinely nullable and `PRAGMA table_info` reported it so.
+-- Room derives its expected schema from a non-null Kotlin property and compares
+-- notNull exactly, so the mismatch failed the database open. Every other table
+-- here escaped it by being WITHOUT ROWID or integer-keyed.
 CREATE TABLE strokes (
-    kanji_char TEXT PRIMARY KEY REFERENCES kanji(char),
+    kanji_char TEXT PRIMARY KEY NOT NULL REFERENCES kanji(char),
     svg_paths  TEXT NOT NULL   -- JSON array of path 'd' strings, in drawing order.
                                -- Length must equal kanji.stroke_count (V-09).
 );

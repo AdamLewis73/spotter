@@ -17,6 +17,16 @@ Nothing yet — needs Phase 6's saved items to schedule.
 - [ ] Scheduling attached to the item, not to any list (D-29)
 - [ ] Review tab in the bottom nav (D-36)
 - [ ] Quiz flow over due items
+- [ ] **Handwriting review — design artboard 2c, "Review — write it"** (D-72): a
+      canvas the learner writes the word on, a *Clear* control, a **Check**
+      button that reveals the answer beside their attempt, then the four grades.
+      This is the **blind** version, and it is what distinguishes it from the
+      trace practice already built on the stroke order tab: there the ghost is
+      visible the whole time and nothing is graded, because practice is a
+      reference capability. Here the answer is hidden until Check, which is what
+      makes a grade mean anything.
+      Most of the drawing machinery exists — `StrokeOrder.kt` already parses the
+      paths, scales them, captures gestures and hit-tests strokes.
 - [ ] Relevant `V-##` cases from `verification.md` added to this list
 
 ## Open questions

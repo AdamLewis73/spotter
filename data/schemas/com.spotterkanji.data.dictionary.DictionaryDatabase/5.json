@@ -1,0 +1,398 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 5,
+    "identityHash": "deb8f288cb3ba5accb77ab7458871314",
+    "entities": [
+      {
+        "tableName": "word",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `text` TEXT NOT NULL, `reading` TEXT NOT NULL, `ent_seq` INTEGER NOT NULL, `reading_info` TEXT, `freq_rank` INTEGER, `is_common` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reading",
+            "columnName": "reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entSeq",
+            "columnName": "ent_seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readingInfo",
+            "columnName": "reading_info",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "freqRank",
+            "columnName": "freq_rank",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isCommon",
+            "columnName": "is_common",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "word_sense",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`word_id` INTEGER NOT NULL, `sense_order` INTEGER NOT NULL, `glosses` TEXT NOT NULL, `part_of_speech` TEXT, `misc` TEXT, PRIMARY KEY(`word_id`, `sense_order`), FOREIGN KEY(`word_id`) REFERENCES `word`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "wordId",
+            "columnName": "word_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senseOrder",
+            "columnName": "sense_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "glosses",
+            "columnName": "glosses",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partOfSpeech",
+            "columnName": "part_of_speech",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "misc",
+            "columnName": "misc",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "word_id",
+            "sense_order"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "word",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "word_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "example",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `word_id` INTEGER NOT NULL, `sense_order` INTEGER NOT NULL, `japanese` TEXT NOT NULL, `english` TEXT NOT NULL, `tatoeba_id` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`word_id`) REFERENCES `word`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wordId",
+            "columnName": "word_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senseOrder",
+            "columnName": "sense_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "japanese",
+            "columnName": "japanese",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "english",
+            "columnName": "english",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tatoebaId",
+            "columnName": "tatoeba_id",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_example_word",
+            "unique": false,
+            "columnNames": [
+              "word_id",
+              "sense_order"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_example_word` ON `${TABLE_NAME}` (`word_id`, `sense_order`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "word",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "word_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "kanji",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`char` TEXT NOT NULL, `meanings` TEXT NOT NULL, `on_readings` TEXT NOT NULL, `kun_readings` TEXT NOT NULL, `stroke_count` INTEGER NOT NULL, `freq_rank` INTEGER, PRIMARY KEY(`char`))",
+        "fields": [
+          {
+            "fieldPath": "character",
+            "columnName": "char",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meanings",
+            "columnName": "meanings",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "onReadings",
+            "columnName": "on_readings",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kunReadings",
+            "columnName": "kun_readings",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "strokeCount",
+            "columnName": "stroke_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "freqRank",
+            "columnName": "freq_rank",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "char"
+          ]
+        }
+      },
+      {
+        "tableName": "kanji_in_word",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji_char` TEXT NOT NULL, `word_id` INTEGER NOT NULL, `position` INTEGER NOT NULL, `surface_reading` TEXT NOT NULL, `canonical_reading` TEXT, `reading_group` TEXT, `reading_type` TEXT, `word_freq` INTEGER NOT NULL, PRIMARY KEY(`kanji_char`, `word_id`, `position`), FOREIGN KEY(`word_id`) REFERENCES `word`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`kanji_char`) REFERENCES `kanji`(`char`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "kanjiChar",
+            "columnName": "kanji_char",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wordId",
+            "columnName": "word_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "surfaceReading",
+            "columnName": "surface_reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "canonicalReading",
+            "columnName": "canonical_reading",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "readingGroup",
+            "columnName": "reading_group",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "readingType",
+            "columnName": "reading_type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "wordFreq",
+            "columnName": "word_freq",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji_char",
+            "word_id",
+            "position"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_kiw_group",
+            "unique": false,
+            "columnNames": [
+              "kanji_char",
+              "reading_group",
+              "word_freq",
+              "word_id",
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_kiw_group` ON `${TABLE_NAME}` (`kanji_char`, `reading_group`, `word_freq`, `word_id`, `position`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "word",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "word_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "kanji",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "kanji_char"
+            ],
+            "referencedColumns": [
+              "char"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "strokes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji_char` TEXT NOT NULL, `svg_paths` TEXT NOT NULL, PRIMARY KEY(`kanji_char`), FOREIGN KEY(`kanji_char`) REFERENCES `kanji`(`char`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "kanjiChar",
+            "columnName": "kanji_char",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "svgPaths",
+            "columnName": "svg_paths",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji_char"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "kanji",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "kanji_char"
+            ],
+            "referencedColumns": [
+              "char"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "meta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`build_id` TEXT NOT NULL, `source_versions` TEXT NOT NULL, PRIMARY KEY(`build_id`))",
+        "fields": [
+          {
+            "fieldPath": "buildId",
+            "columnName": "build_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceVersions",
+            "columnName": "source_versions",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "build_id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'deb8f288cb3ba5accb77ab7458871314')"
+    ]
+  }
+}

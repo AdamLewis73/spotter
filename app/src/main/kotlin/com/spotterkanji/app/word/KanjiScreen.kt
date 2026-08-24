@@ -117,9 +117,7 @@ fun KanjiScreen(
         TabRow(selectedTabIndex = tab) {
             Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Overview") })
             Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Examples") })
-            // Present because the design has it, and because a tab that appears
-            // later moves every tab beside it. Phase 3 fills it in; until then it
-            // says so rather than pretending to be empty (D-05).
+            // Screen 3b of the design project. `StrokeOrder.kt` (D-05).
             Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Stroke order") })
         }
 
@@ -147,32 +145,6 @@ private fun GlyphButton(
             .clickable(onClick = onClick, onClickLabel = contentDescription),
     ) {
         Text(text = glyph, style = MaterialTheme.typography.bodyLarge, color = tint)
-    }
-}
-
-/**
- * Phase 3's tab, standing empty and saying so.
- *
- * The stroke data is already in the dictionary - KanjiVG paths for 6,416
- * characters, all 2,501 of the ranked ones - so this is a rendering job, not a
- * data one. Naming the stroke count is the one useful thing the tab can do
- * today, and it is where D-50 says the count belongs.
- */
-@Composable
-private fun StrokeOrderTab(detail: KanjiDetail) {
-    val tokens = SpotterTheme.tokens
-    Column(modifier = Modifier.padding(tokens.spaceMd)) {
-        Text(
-            text = "${detail.strokeCount} STROKES",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = "Stroke order animation arrives in Phase 3.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = tokens.spaceSm),
-        )
     }
 }
 
@@ -517,10 +489,34 @@ private val previewDetail = KanjiDetail(
     asWord = listOf(
         DictionaryEntry("生", "なま", listOf(Sense(listOf("raw", "uncooked"))), isCommon = true),
     ),
+    // 生's real KanjiVG outlines, copied from the shipped dictionary rather
+    // than invented, so the preview exercises the same coordinate space and
+    // curve commands the device will draw.
+    strokePaths = listOf(
+        "M31.3,25.9c0.4,1.4,0.3,2.6-0.1,3.8c-2.3,6.7-7.2,17.2-15,24.2",
+        "M31.1,40.7c2.4,0.3,4,0.1,5.6-0.1c9.5-1.1,25.1-4.1,35.4-5.8c2.5-0.4,4.9-0.7,7.4-0.3",
+        "M52.3,12.6c1.3,1.3,2,3.1,2,5.2c0,4,0,65.1,0,69.8",
+        "M29.4,64c2.6,0.7,5.4,0.3,8-0C49.5,62.5,62.2,61,72.5,59.9c2.4-0.3,5-0.8,7.4-0.2",
+        "M15.8,90.2c3,0.8,6.2,0.9,8.4,0.8C40.6,90,68.1,86.5,83.3,85.8c3.6-0.2,7.7,0,10.1,0.7",
+    ),
 )
 
 @Preview(showBackground = true, name = "Examples")
 @Composable
 private fun KanjiScreenPreview() {
     SpotterTheme { Surface { KanjiScreen(previewDetail, onBack = {}, onSave = {}) } }
+}
+
+/**
+ * The stroke tab on its own, because the screen preview above always opens on
+ * Overview and there is no way to drive a tab from a preview.
+ *
+ * Renders 生's real paths, so this is a genuine check that the parse and the
+ * scaling work — not a mock. It shows the first frame rather than the animation;
+ * previews do not run `LaunchedEffect`.
+ */
+@Preview(showBackground = true, name = "Stroke order")
+@Composable
+private fun StrokeOrderPreview() {
+    SpotterTheme { Surface { StrokeOrderTab(previewDetail) } }
 }

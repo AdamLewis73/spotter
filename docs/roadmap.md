@@ -19,7 +19,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 |---|---|---|---|
 | 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
 | 2 | Android app, text input only | **Feature-complete** — every `V-##` case this phase owns is met; the user-data checkpoint lands with Save in Phase 6 | Paste 先生 → word + kanji screens |
-| 3 | Stroke order tab | Not started | KanjiVG animation |
+| 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | Not started | Raw recognized text into the Phase 2 pipeline |
 | 5 | Tappable overlay | Not started | The real scan experience |
 | 6 | Saved lists | Not started | Multiple lists, many-to-many |
@@ -61,6 +61,10 @@ Word-level examples where no sense-attached one exists stay deferred; nothing in
 ### Phase 3 — Stroke order
 
 Self-contained, visually rewarding, and good Compose practice. Renders KanjiVG's per-stroke SVG paths sequentially.
+
+**Done.** Built to design artboard **3b**: a stage with a centre crosshair, the character drawn stroke by stroke, play/pause, a speed control, and an **Every stroke** grid of cumulative frames that scrubs the animation when tapped. V-09's display rule is met — the counter reports the number of paths being animated, never KANJIDIC2's figure.
+
+The artboard's **Trace** button switches the stage into a writable trace mode (D-72): the ghost stays up, the expected stroke is lifted out of it, and the learner draws over it. No scoring and no scheduler, which is what keeps practice independent of review — artboard 2c's blind write-then-grade remains a separate Phase 7 screen.
 
 ### Phase 4 — Camera
 

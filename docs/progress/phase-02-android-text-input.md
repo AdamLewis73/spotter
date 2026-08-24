@@ -23,7 +23,8 @@ with its 先 / 生 boxes visible.
 carries meanings, on/kun readings and the "As a word" senses (D-49); Examples
 carries D-04 — every common word grouped by the reading the kanji takes there,
 under ON'YOMI and KUN'YOMI headings, with the studied character picked out inside
-each example (先**生**); Stroke order stands empty and says Phase 3 fills it.
+each example (先**生**); Stroke order stood empty and said Phase 3 would fill
+it, which Phase 3 has since done.
 
 **Tokenization works.** `先生と生産` segments into 先生 / と / 生産 as chips; tapping
 one shows its entry. Confirmed on a device — tapping 生産 gives せいさん
@@ -385,7 +386,8 @@ What genuinely differs now:
   are built, because a control that appears later moves everything around it.
 - **Stroke order is a real tab** carrying the stroke count and saying Phase 3
   fills it in. The alternative — adding a third tab later — shifts the two that
-  already exist.
+  already exist. *(Phase 3 has since replaced its body and nothing above it,
+  which is the payoff this bought.)*
 - **The Overview tab's reading run was fixed anyway.** Not in the design, but it
   was half the original complaint — 生's twenty kun'yomi were three lines of
   undifferentiated kana.

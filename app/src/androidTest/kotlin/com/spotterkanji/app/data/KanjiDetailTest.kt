@@ -75,6 +75,43 @@ class KanjiDetailTest {
     }
 
     /**
+     * Phase 3's data, checked against the real dictionary rather than trusted.
+     *
+     * The count must equal the stroke count the same row reports — that is V-09,
+     * and it is what the animation depends on: a path list shorter than the
+     * count draws an incomplete character with no error anywhere.
+     */
+    @Test
+    fun stroke_paths_arrive_one_per_stroke() = runBlocking {
+        val detail = repository.kanjiDetail("生")!!
+
+        assertEquals("生 has five strokes", 5, detail.strokeCount)
+        assertEquals(
+            "one path per stroke (V-09)",
+            detail.strokeCount,
+            detail.strokePaths.size,
+        )
+        assertTrue(
+            "every path should be an SVG moveto followed by curves",
+            detail.strokePaths.all { it.startsWith("M") && it.length > 10 },
+        )
+    }
+
+    /**
+     * The parse has to survive the whole table, not just 生. 鬱 is the 29-stroke
+     * case V-09 names, and 一 the one-stroke degenerate case where a JSON array
+     * of one is easy to mistake for a bare string.
+     */
+    @Test
+    fun stroke_paths_hold_for_the_extremes() = runBlocking {
+        listOf("一" to 1, "手" to 4, "先" to 6, "鬱" to 29).forEach { (character, strokes) ->
+            val detail = repository.kanjiDetail(character)!!
+            assertEquals("$character stroke count", strokes, detail.strokeCount)
+            assertEquals("$character path count", strokes, detail.strokePaths.size)
+        }
+    }
+
+    /**
      * Not every character is in KANJIDIC2, and a missing one is a real case
      * rather than an error — a saved item must still render when its data goes
      * missing (D-40).

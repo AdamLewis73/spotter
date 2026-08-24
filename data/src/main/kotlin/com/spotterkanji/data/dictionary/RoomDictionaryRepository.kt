@@ -163,6 +163,10 @@ class RoomDictionaryRepository(
             // D-49: a single character scanned on its own lands here directly,
             // so its own word senses have to be reachable from this screen.
             asWord = lookup(character),
+            // Null where the dictionary has no KanjiVG data for this character;
+            // toStringList() turns that into the empty list the tab renders as
+            // "no stroke data" rather than as a blank canvas.
+            strokePaths = dao.strokePaths(character).toStringList(),
         )
     }
 

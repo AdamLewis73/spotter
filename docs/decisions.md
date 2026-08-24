@@ -99,6 +99,8 @@ Scan for the relevant entry rather than reading the whole file.
 | D-68 | Readings with identical meanings share one block | UI |
 | D-69 | Example sentences ship, under the entry's primary current reading | UI / Data |
 | D-70 | Alternates are words that **overlap** the token, not just those inside it | UI |
+| D-71 | ~~Stroke order is playback only; tracing belongs to review~~ — SUPERSEDED by D-72 | UI |
+| D-72 | Trace practice lives on the stroke order tab, independent of review | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -960,6 +962,40 @@ This subsumes the multi-granularity split `roadmap.md` expected to need Sudachi 
 *Cost:* one strip of chips that is empty for most words. That is the intended behaviour rather than a failure to find anything, and it keeps D-61's bargain — the row appears only when it has something to say.
 
 *Known rough edge:* tapping an alternate leaves no token highlighted on the strip, because the word selected is not one of Kuromoji's tokens. Accurate, and mildly odd to look at. Revisit when the scan overlay makes selection visible on the photograph instead (Phase 5).
+
+**D-71 — SUPERSEDED by D-72. The stroke order tab plays; it does not accept handwriting. Tracing belongs to the review flow.**
+
+The design project's stroke order artboard (3b) carries a **Trace** button beside the transport controls. It is not built, and the reason is worth recording so it is not read as an oversight and re-added.
+
+The design's actual tracing surface is a different artboard: **2c, "Review — write it"** — a full screen with a handwriting canvas, a *Clear* control, a **Check** button that reveals the answer, and the four FSRS grading buttons. Tracing in this design is not a viewer feature that happens to live on a reference tab; it is *the review interaction*, and it needs the scheduler behind it to mean anything. That is Phase 7.
+
+So a Trace button on the kanji screen today would be the one control on the screen that goes nowhere. D-61 makes that the worse option: a missing feature costs a user nothing, and a dead control costs them a tap and their trust in every other control beside it.
+
+**What this decides, beyond the button:** handwriting input is a *review* capability, not a *reference* one. When Phase 7 builds 2c, the question of whether the kanji screen should also offer free practice can be asked again with the canvas already written — at which point it is a link to something real rather than a new feature. Recorded in the deferred table in `roadmap.md`.
+
+*Not affected:* the tab's own controls. Play/pause, the per-stroke scrub grid, and the speed chips all drive the animation that is already there, and D-04's "show, don't assert" argues for letting a learner take that at their own pace.
+
+
+**D-72 — The stroke order tab offers trace practice, on the stage itself, with no scoring and no scheduler. Supersedes D-71.**
+
+D-71 read the artboard's **Trace** button as a link to the design's writing surface (artboard 2c) and deferred it to Phase 7 on the grounds that handwriting is the review interaction. That inference was wrong in one important way: it treated *practice* and *assessment* as the same feature because the design happened to draw them on the same kind of canvas.
+
+They are not the same feature. **Practice is a reference capability** — you have just looked up a kanji, you want to write it, and being told to come back after building a review queue is absurd. **Assessment is a review capability** — it needs a scheduler, a due date, and a grade to mean anything. Requiring the second in order to have the first is what D-71 got wrong.
+
+So the tab is a two-mode stage, and the artboard's Trace button is the switch:
+
+- **Watch** plays the character being written.
+- **Trace** makes the same stage writable. The ghost stays up, the expected stroke is lifted out of it in the accent colour, and the learner draws over it. Completing a stroke advances the counter.
+
+**No scoring, and that is the point.** The ghost *is* the answer, visible the whole time, so there is nothing to grade — which is exactly what keeps this independent of FSRS. Nothing here writes to user data, nothing schedules, and nothing needs Phase 6 or 7 to exist. Artboard 2c's *blind* write-then-check, with the four grades, remains a separate screen in Phase 7 and is unaffected.
+
+**A stroke counts if it starts and ends near the right places** — a generous tolerance in KanjiVG units, compared only against the stroke currently expected. This is deliberately not handwriting recognition and not shape matching: a learner who begins and ends a stroke in the right places has done what this screen teaches. Being strict would make it a dexterity test on a touchscreen, which teaches nothing about kanji.
+
+*The one real correctness claim:* **a stroke drawn backwards is rejected**, because a reversed stroke puts the start near the target's end. Stroke direction is a genuine and common beginner error, and catching it for free is most of the pedagogical value here.
+
+*Why on the stage rather than behind a button:* a separate practice screen would need its own header, its own way back, and its own copy of the grid — and it would put the thing you want to trace one navigation step away from the thing you just watched. One stage in two modes keeps D-61's bargain, because the tab still does one thing: it is about how this character is written.
+
+*Cost to reverse:* low. The modes are a single enum on one composable, and no data model or schema depends on any of it.
 
 ---
 
