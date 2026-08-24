@@ -3,6 +3,7 @@ package com.spotterkanji.app.data
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.spotterkanji.domain.dictionary.ReadingStatus
+import com.spotterkanji.domain.tokenize.LongestMatch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -207,6 +208,48 @@ class DictionaryReadTest {
                 entry.senses.all { it.examples.isEmpty() },
             )
         }
+    }
+
+    /**
+     * V-06's second half, against the real dictionary (D-07).
+     *
+     * The unit tests use a hand-built word set, which proves the algorithm and
+     * not that the dictionary answers. This is the half that would catch
+     * `existingWords` returning nothing — at which point longest-match still
+     * runs, still returns a list, and the list is always empty. No error, no
+     * visible fault, and the app quietly loses the ability to ask about a word
+     * inside a word.
+     */
+    @Test
+    fun longest_match_finds_the_compound_and_the_word_inside_it() = runBlocking {
+        val text = "先生と生産"
+        val known = repository.existingWords(LongestMatch.candidates(text))
+        val atZero = LongestMatch.matchesIn(text, known).filter { it.start == 0 }
+
+        assertEquals(listOf("先生", "先"), atZero.map { it.text })
+    }
+
+    /**
+     * The case that shaped the presentation rule: Kuromoji reads 東京都 as
+     * 東京 / 都, so neither the full place name nor 京都 — which straddles the
+     * boundary — is reachable from the strip without a second pass.
+     */
+    @Test
+    fun words_kuromojis_parse_hides_are_still_found() = runBlocking {
+        val text = "東京都"
+        val known = repository.existingWords(LongestMatch.candidates(text))
+        val found = LongestMatch.matchesIn(text, known).map { it.text }
+
+        assertTrue("expected the full place name, got $found", "東京都" in found)
+        assertTrue("expected 京都 across the boundary, got $found", "京都" in found)
+    }
+
+    /** The batched query is the only database step; it must not invent words. */
+    @Test
+    fun existing_words_returns_only_real_entries() = runBlocking {
+        val out = repository.existingWords(setOf("先生", "架空語", "東京"))
+
+        assertEquals(setOf("先生", "東京"), out)
     }
 
     /** A word that is genuinely absent returns empty rather than throwing. */

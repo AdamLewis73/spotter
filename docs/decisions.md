@@ -98,6 +98,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-67 | Warm near-black ground, one jade accent, IBM Plex beside Noto Sans JP | UI |
 | D-68 | Readings with identical meanings share one block | UI |
 | D-69 | Example sentences ship, under the entry's primary current reading | UI / Data |
+| D-70 | Alternates are words that **overlap** the token, not just those inside it | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -937,6 +938,28 @@ D-51 ingested them and deferred the question, because 41.4% coverage of common s
 *Still deferred:* word-level examples where no sense-attached one exists. Nothing in the data made the case for them, and the sense-attached ones already cover the words a scanner meets.
 
 *Cost to reverse:* one flag and a table drop on the next rebuild — the dictionary is disposable (D-38).
+
+**D-70 — An alternate is any dictionary word that *overlaps* the selected token, not merely one contained in it.**
+
+D-07 describes longest-match as finding the longest match at a position and keeping "the shorter ones as alternates". Built that way and run on real text, it surfaces almost nothing useful — and the reason only became visible on a device.
+
+**Kuromoji is better at compounds than D-07 assumed.** It already splits 選挙管理委員会 into 選挙 / 管理 / 委員 / 会, so there is nothing shorter hiding inside any token. What is unreachable is the **compound itself**, which is in the dictionary and which no token names. The problem runs in the opposite direction from the one D-07 anticipated.
+
+| Input | Kuromoji's parse | Unreachable without a second pass |
+|---|---|---|
+| 東京都 | 東京 / 都 | **東京都** (contains the token) and **京都** (crosses the boundary) |
+| 選挙管理委員会 | 選挙 / 管理 / 委員 / 会 | **選挙管理委員会** (the compound itself) |
+| 立入禁止 | 立入禁止 | 立入, 禁止 (inside the token) |
+
+So the rule is **overlap**: any dictionary word sharing a character with the selected token, excluding the token itself and anything already on the strip in its own right (都 is a token; it is not repeated). All three relations — inside, containing, crossing — are the same question from the learner's side: *what other words are here that I cannot tap?*
+
+This subsumes the multi-granularity split `roadmap.md` expected to need Sudachi for, in **both** directions, whichever way Kuromoji happened to cut.
+
+**Single-character alternates are filtered from the display, and the mechanism still finds them.** V-06 requires that longest-match report 先 inside 先生, and it does — `matchesIn` returns it, and a test asserts it. The filter is presentation only: every single-character alternate is already a component box directly below (D-06), and a lone kanji routes to the same kanji screen from either (D-49), so listing them would repeat that row with no new destination. 先生 therefore shows no alternates at all, which is right: no *word* hides inside it, only its two characters.
+
+*Cost:* one strip of chips that is empty for most words. That is the intended behaviour rather than a failure to find anything, and it keeps D-61's bargain — the row appears only when it has something to say.
+
+*Known rough edge:* tapping an alternate leaves no token highlighted on the strip, because the word selected is not one of Kuromoji's tokens. Accurate, and mildly odd to look at. Revisit when the scan overlay makes selection visible on the photograph instead (Phase 5).
 
 ---
 

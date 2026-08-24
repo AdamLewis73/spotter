@@ -198,6 +198,10 @@ Input: `先生と生産`
 
 Both halves matter. Only the Kuromoji parse means longest-match isn't running, and the compound-versus-word interaction — the app's whole pedagogical premise — silently won't work. The user could never ask about 先 on its own.
 
+**Met 2026-08-23.** Also check **東京都**, which is the case that shaped the presentation rule (D-70): Kuromoji parses it as 東京 / 都, so both the full place name and 京都 — which straddles the token boundary — are unreachable from the strip. Both must appear as alternates. The failure mode is silence in the purest form: with `existingWords` returning nothing, longest-match still runs, still returns a list, and the list is simply always empty.
+
+Note the **display** filters single-character alternates (D-70), because each is already a component box below and routes to the same kanji screen (D-06, D-49). The mechanism must still report 先 — assert that against `matchesIn`, not against the screen.
+
 ### V-07 · Conjugated verbs resolve to dictionary form (D-07)
 
 Input: `生きた`

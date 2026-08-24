@@ -48,6 +48,7 @@ import com.spotterkanji.domain.dictionary.ReadingStatus
 import com.spotterkanji.domain.dictionary.Sense
 import com.spotterkanji.domain.dictionary.mergedByMeaning
 import com.spotterkanji.domain.tokenize.Token
+import com.spotterkanji.domain.tokenize.WordMatch
 
 /**
  * Type a word, see what it means — frame **2a** of the design (D-67).
@@ -76,6 +77,7 @@ fun WordScreen(
     onQueryChanged: (String) -> Unit,
     onTokenSelected: (Token) -> Unit,
     onKanjiSelected: (String) -> Unit,
+    onAlternateSelected: (WordMatch) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -102,6 +104,10 @@ fun WordScreen(
                 selected = state.selected,
                 onTokenSelected = onTokenSelected,
             )
+        }
+
+        if (state.alternates.isNotEmpty()) {
+            AlternateStrip(state.alternates, onAlternateSelected)
         }
 
         when {
@@ -234,6 +240,55 @@ private fun OutlinedGlyphButton(
             .clickable(onClick = onClick, onClickLabel = contentDescription),
     ) {
         Text(text = glyph, style = MaterialTheme.typography.bodyLarge, color = tint)
+    }
+}
+
+/**
+ * The words hiding inside the selected one (D-07, V-06).
+ *
+ * Kuromoji commits to a single parse, and it is usually the right one — but a
+ * run of characters contains overlapping words, and being able to ask about
+ * either is the app's whole pedagogical premise. 選挙管理委員会 offers 選挙,
+ * 管理, 委員会 and 委員; 東京都 offers 京都, which no parse of that string will
+ * ever mention.
+ *
+ * Absent for most words, and that is the intended behaviour rather than a
+ * failure to find anything: 先生 contains no *word* but its own two characters,
+ * and those are the component boxes further down (D-06).
+ */
+@Composable
+private fun AlternateStrip(
+    alternates: List<WordMatch>,
+    onAlternateSelected: (WordMatch) -> Unit,
+) {
+    val spacing = SpotterTheme.tokens
+    Column(modifier = Modifier.padding(top = spacing.spaceMd)) {
+        Text(
+            text = "ALSO HERE",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(spacing.spaceSm),
+            modifier = Modifier.padding(top = spacing.spaceXs),
+        ) {
+            alternates.forEach { match ->
+                Text(
+                    text = match.text,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontFamily = SpotterJapanese,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline,
+                            RoundedCornerShape(10.dp),
+                        )
+                        .clickable { onAlternateSelected(match) }
+                        .padding(horizontal = spacing.spaceSm, vertical = spacing.spaceXs),
+                )
+            }
+        }
     }
 }
 
@@ -579,6 +634,7 @@ private fun WordScreenPreviewLight() {
                 onQueryChanged = {},
                 onTokenSelected = {},
                 onKanjiSelected = {},
+                onAlternateSelected = {},
                 onSave = {},
                 onDismiss = {},
             )
@@ -596,6 +652,7 @@ private fun WordScreenPreviewDark() {
                 onQueryChanged = {},
                 onTokenSelected = {},
                 onKanjiSelected = {},
+                onAlternateSelected = {},
                 onSave = {},
                 onDismiss = {},
             )

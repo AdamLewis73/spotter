@@ -92,6 +92,11 @@ class RoomDictionaryRepository(
         }.forDisplay()
     }
 
+    override suspend fun existingWords(texts: Set<String>): Set<String> {
+        if (texts.isEmpty()) return emptySet()
+        return dao.existingWords(texts).toSet()
+    }
+
     override suspend fun kanjiIn(text: String): List<KanjiSummary> {
         // Kana contribute no chip — 生きる is one kanji plus okurigana. Distinct,
         // because 日々 would otherwise query and render 日 twice.

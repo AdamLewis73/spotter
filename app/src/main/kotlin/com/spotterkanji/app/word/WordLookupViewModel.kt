@@ -9,7 +9,9 @@ import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiSummary
 import com.spotterkanji.domain.text.isKanji
+import com.spotterkanji.domain.tokenize.LongestMatch
 import com.spotterkanji.domain.tokenize.Token
+import com.spotterkanji.domain.tokenize.WordMatch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +31,14 @@ data class WordLookupState(
     /** Which token's entry is on screen. */
     val selected: Token? = null,
     val entries: List<DictionaryEntry> = emptyList(),
+    /**
+     * Shorter dictionary words hiding inside the selected token (D-07, V-06).
+     *
+     * Kuromoji gives one parse; this is the other half. 選挙管理委員会 offers
+     * 選挙 · 管理 · 委員会 · 委員, and 東京都 offers 京都 — a word no single
+     * parse of the string will ever mention.
+     */
+    val alternates: List<WordMatch> = emptyList(),
     val kanji: List<KanjiSummary> = emptyList(),
     val searching: Boolean = false,
     /**
@@ -57,6 +67,14 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
 
     private var lookupJob: Job? = null
 
+    /**
+     * Every dictionary word in the current query, from the longest-match pass.
+     *
+     * Held rather than recomputed per selection: it is one batched query for the
+     * whole line, and the answer does not change while the text does not.
+     */
+    private var matches: List<WordMatch> = emptyList()
+
     fun onQueryChanged(query: String) {
         _state.value = _state.value.copy(query = query)
 
@@ -67,6 +85,7 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         lookupJob?.cancel()
 
         if (query.isBlank()) {
+            matches = emptyList()
             _state.value = WordLookupState(query = query)
             return
         }
@@ -76,7 +95,16 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
 
             // Kuromoji loads a ~12 MB dictionary on first use and segmentation
             // is pure CPU work; neither belongs on the main thread.
-            val tokens = withContext(Dispatchers.Default) { tokenizer.tokenize(query.trim()) }
+            val trimmed = query.trim()
+            val tokens = withContext(Dispatchers.Default) { tokenizer.tokenize(trimmed) }
+
+            // The second pass D-07 requires, over the same text. One query for
+            // every candidate substring in the line — a hundred or so for a
+            // typical sign — rather than one per substring.
+            matches = LongestMatch.matchesIn(
+                trimmed,
+                repository.existingWords(LongestMatch.candidates(trimmed)),
+            )
 
             // Open on the first word worth explaining rather than on whatever
             // came first — for 先生と生産 that is 先生, not the particle と.
@@ -108,6 +136,17 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
 
     fun onKanjiClosed() {
         _state.value = _state.value.copy(openKanji = null)
+    }
+
+    /**
+     * Look up a word found *inside* the selected token.
+     *
+     * Routed through the same path as a token tap by building a token for the
+     * match, so an alternate behaves exactly like a word on the strip — including
+     * D-49's rule that a lone kanji goes straight to the kanji screen.
+     */
+    fun onAlternateSelected(match: WordMatch) {
+        onTokenSelected(Token(match.text, match.start, match.endExclusive))
     }
 
     fun onTokenSelected(token: Token) {
@@ -148,6 +187,7 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         val resolved = entries.firstOrNull()?.text ?: token.text
         _state.value = _state.value.copy(
             entries = entries,
+            alternates = LongestMatch.alternatesFor(token, _state.value.tokens, matches),
             kanji = repository.kanjiIn(resolved),
             // Only the character with no dictionary entry at all leaves the word
             // screen showing (D-40); a known one is already on the kanji screen.

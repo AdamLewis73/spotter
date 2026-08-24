@@ -44,10 +44,17 @@ invisible until something checksums the artefact.
 
 ## Next action
 
-In the order they are worth doing, and the reasoning matters more than the list:
+Nothing. Every verification case this phase owns is met, and what remains on
+the list below is the **user-data checkpoint** (D-15–D-18, D-43), which by design
+lands with Save in Phase 6 rather than here.
 
-1. **JMdict longest-match alternates (D-07)** — the missing half of V-06, and
-   the last unmet verification case in this phase.
+Two small things are open and neither blocks anything:
+
+- Example meanings on the kanji screen are right-aligned as the design draws
+  them; at 411dp the gap between a short meaning and its word is wide.
+- Part-of-speech tags render as raw JMdict codes (`adj-na`, `n`). A
+  code-to-label table would read better and needs a decision about which codes
+  are worth naming.
 
 **Compose UI tests now exist**, four of them, covering V-21's marking on the
 word screen — that an archaic reading is labelled, that a current one is
@@ -108,7 +115,7 @@ fixed when that code is next touched; see the phase-01 open questions.
 - [x] Checkpoint: Material 3 + design-token layer (D-35) — fixed palette, light
       and dark, plus Noto Sans JP bundled (D-34)
 - [x] Kuromoji tokenization behind the `Tokenizer` interface (D-07, D-08)
-- [ ] JMdict longest-match alternates (D-07)
+- [x] JMdict longest-match alternates (D-07, D-70, V-06)
 - [x] Example sentences rendered, one reading per entry (D-69, D-51, V-27)
 - [x] Readings with identical meanings share a block (D-68)
 - [x] Obsolete, irregular and rare readings marked; search-only readings hidden
@@ -130,7 +137,7 @@ answer is that Phase 2 is **less finished than the rest of this list suggests**.
 | Case | State |
 |---|---|
 | **V-07** conjugated verbs resolve to the dictionary form (D-07) | **Met.** `生きた` → `生きる` via `Token.baseForm`, with the lookup falling back to it. Tokenizer half unit-tested; the lookup fallback is exercised only by hand |
-| **V-06** segmentation **plus alternates** (D-07) | **Half met.** Kuromoji gives 先生 / と / 生産. The JMdict longest-match half is not built, so 先 inside 先生 cannot be asked about — and V-06 says plainly that both halves matter because that interaction is the pedagogical premise |
+| **V-06** segmentation **plus alternates** (D-07) | **Met**, 2026-08-23. Longest-match runs as a second pass over the same line, one batched query for every candidate substring. 先生 / 先 at position 0, and — the case that mattered more — 東京都 and 京都 from a parse that gives only 東京 / 都 (D-70) |
 | **V-08** reading labels vs. furigana use different scripts (D-14, D-37) | **Half met.** Reading labels follow the convention and are tested. There is no furigana rendering at all yet, so the half about ruby is untested |
 | **V-21** obsolete readings are visibly distinguished (D-53, D-48, D-66) | **Met**, 2026-08-19. 上手 opens on じょうず; じょうしゅ and じょうて are muted, labelled *archaic* and sorted last, with the inherited *common* badge suppressed. Confirmed on a device for 上手, 中国 and 明日 |
 | **V-23** sense filtering never empties a word (D-54, D-40) | **Not applicable yet.** No sense filtering exists to test |
@@ -164,12 +171,9 @@ Two things that were not obvious going in, both now in D-66:
   while it runs. Test on a real device, not only the emulator.
 
 
-- **Do example sentences get rendered? (D-51)** Already in the dictionary,
-  shown nowhere. 41.4% coverage of common senses, ceiling ~43%. Deliberately
-  not being judged on paper — build the word screen without them, look at 先生,
-  上手 and 生 on a device, then turn them on and look again.
-- If they stay: sense-attached only, or word-level examples too where no
-  sense-attached one exists?
+- ~~**Do example sentences get rendered? (D-51)**~~ — **answered: yes (D-69).**
+  Word-level examples where no sense-attached one exists stay deferred; nothing
+  in the data made the case for them.
 - Hilt now or after the app works? `architecture.md` says after.
 
 ## Notes
@@ -276,6 +280,34 @@ genuinely part of its public surface.
 - A screenshot taken within ~4 s of launch catches the splash screen, and one
   taken right after `cmd uimode night` catches a blank frame mid-recreation.
   Both look like bugs and are not; force-stop, restart, then wait.
+
+### Longest-match: the problem ran the other way — 2026-08-23
+
+D-07 describes longest-match as finding the longest word at a position and
+keeping the shorter ones as alternates. Built exactly that way, it surfaced
+almost nothing, and the reason was only visible on a device.
+
+**Kuromoji is better at compounds than D-07 assumed.** It already splits
+選挙管理委員会 into 選挙 / 管理 / 委員 / 会 — so nothing shorter hides inside any
+token, and what is actually unreachable is the **compound itself**. Same for
+東京都, which parses as 東京 / 都: the full place name and 京都, which straddles
+the boundary, are both invisible from the strip.
+
+So an alternate is any word that **overlaps** the token, not one contained in it
+(D-70). That covers inside, containing and crossing — which are one question from
+the learner's side.
+
+Two things worth knowing if this is revisited:
+
+- **Single-character alternates are filtered from the display, not the
+  mechanism.** V-06 requires 先 inside 先生 be found, and it is; it just is not
+  listed, because it is already a component box below and routes to the same
+  kanji screen (D-06, D-49). 先生 shows no alternates at all, correctly.
+- **The whole thing is one query.** `LongestMatch.candidates` builds every
+  substring up to 12 characters and `existingWords` asks about all of them at
+  once. A query per substring would be a hundred round trips on a line the user
+  is waiting for. The `UNIQUE (text, reading)` index serves it on its leftmost
+  column, which is what `schema.sql` means about FTS5 buying nothing.
 
 ### Example sentences, and two traps in the data — 2026-08-23
 

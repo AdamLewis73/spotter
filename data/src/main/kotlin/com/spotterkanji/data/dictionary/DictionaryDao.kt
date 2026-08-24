@@ -46,6 +46,18 @@ interface DictionaryDao {
     )
     suspend fun examplesFor(wordIds: List<Long>): List<ExampleRow>
 
+    /**
+     * The written forms among [texts] that exist as words (D-07).
+     *
+     * `DISTINCT` because a written form has a row per reading — 上手 is five —
+     * and longest-match only asks whether the string is a word at all.
+     *
+     * Served by the `UNIQUE (text, reading)` index on its leftmost column, so
+     * this is N indexed equality lookups rather than a scan.
+     */
+    @Query("SELECT DISTINCT text FROM word WHERE text IN (:texts)")
+    suspend fun existingWords(texts: Set<String>): List<String>
+
     @Query("SELECT * FROM kanji WHERE char IN (:characters)")
     suspend fun kanji(characters: List<String>): List<KanjiRow>
 
