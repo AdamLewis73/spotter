@@ -962,7 +962,6 @@ This subsumes the multi-granularity split `roadmap.md` expected to need Sudachi 
 
 *Known rough edge:* tapping an alternate leaves no token highlighted on the strip, because the word selected is not one of Kuromoji's tokens. Accurate, and mildly odd to look at. Revisit when the scan overlay makes selection visible on the photograph instead (Phase 5).
 
-
 **D-71 — The stroke order tab plays; it does not accept handwriting. Tracing belongs to the review flow.**
 
 The design project's stroke order artboard (3b) carries a **Trace** button beside the transport controls. It is not built, and the reason is worth recording so it is not read as an oversight and re-added.

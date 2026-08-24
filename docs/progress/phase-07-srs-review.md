@@ -17,6 +17,13 @@ Nothing yet — needs Phase 6's saved items to schedule.
 - [ ] Scheduling attached to the item, not to any list (D-29)
 - [ ] Review tab in the bottom nav (D-36)
 - [ ] Quiz flow over due items
+- [ ] **Handwriting review — design artboard 2c, "Review — write it"** (D-71): a
+      canvas the learner writes the word on, a *Clear* control, a **Check**
+      button that reveals the answer beside their attempt, then the four grades.
+      Routed here from Phase 3, which left the stroke order tab's **Trace**
+      button unbuilt because tracing is this interaction, not a viewer feature.
+      The stroke paths it would compare against already ship — `KanjiDetail`
+      carries them, and `StrokeOrder.kt` already parses and draws them.
 - [ ] Relevant `V-##` cases from `verification.md` added to this list
 
 ## Open questions

@@ -62,6 +62,10 @@ Word-level examples where no sense-attached one exists stay deferred; nothing in
 
 Self-contained, visually rewarding, and good Compose practice. Renders KanjiVG's per-stroke SVG paths sequentially.
 
+**Done.** Built to design artboard **3b**: a stage with a centre crosshair, the character drawn stroke by stroke, play/pause, a speed control, and an **Every stroke** grid of cumulative frames that scrubs the animation when tapped. V-09's display rule is met — the counter reports the number of paths being animated, never KANJIDIC2's figure.
+
+The artboard's **Trace** button was deliberately not built (D-71): the design's tracing surface is artboard 2c, a *review* screen, so handwriting is a Phase 7 interaction rather than a viewer feature.
+
 ### Phase 4 — Camera
 
 CameraX plus ML Kit's Japanese model, feeding recognized text into a pipeline that already works and is already trusted.
