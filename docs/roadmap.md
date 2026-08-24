@@ -54,7 +54,7 @@ That number is deliberately not being judged on paper. Build the word screen wit
 
 Also still open if they stay: sense-attached only, or word-level examples too where no sense-attached one exists.
 
-**Housekeeping — `/launch` exists** (`.claude/skills/launch/SKILL.md`), added 2026-08-19 alongside `orient` and `phase`. It builds, installs, launches and screenshots, and carries the device knowledge this phase cost: the emulator must be woken before a screenshot or it captures black, the first launch after install needs ~15 seconds while Room extracts 100 MB, and `connectedAndroidTest` uninstalls the app when it finishes — so anything testing an upgrade must drive `adb install -r` plus `am instrument` or it silently tests a fresh install.
+**Housekeeping — `/launch` and `/inspect` exist** (`.claude/skills/launch/SKILL.md`, `.claude/skills/inspect/SKILL.md`), added 2026-08-19 alongside `orient` and `phase`, split in two on 2026-08-20. `/launch` builds, installs and starts the app, then leaves it up for the owner to drive by hand; `/inspect` does the same but drives it against specific words, screenshots and reports. Between them they carry the device knowledge this phase cost: the emulator must be woken before a screenshot or it captures black, the first launch after install needs ~15 seconds while Room extracts 100 MB, and `connectedAndroidTest` uninstalls the app when it finishes — so anything testing an upgrade must drive `adb install -r` plus `am instrument` or it silently tests a fresh install.
 
 ### Phase 3 — Stroke order
 

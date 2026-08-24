@@ -80,7 +80,7 @@ verifier that mutated the database it verified; a `build_id` that did not change
 when the builder did; `BackHandler` doing nothing because of a missing manifest
 attribute; a word screen announcing 生 was not in the dictionary. None threw. The
 habit that caught them was running the thing and looking at it, and it is worth
-keeping — `/launch` exists to make that cheap.
+keeping — `/inspect` exists to make that cheap.
 
 **Two guards in dictbuild will misfire on the next source refresh** and should be
 fixed when that code is next touched; see the phase-01 open questions.
@@ -149,7 +149,8 @@ Two things that were not obvious going in, both now in D-66:
 - **`gikun` is not a defect marker**, and the obvious implementation treats it as
   one. 明日 あした, 大人 おとな and 海豚 いるか all carry the tag and are all the
   ordinary current reading.
-- [x] `/launch` skill at `.claude/skills/launch/SKILL.md` (roadmap housekeeping)
+- [x] `/launch` skill at `.claude/skills/launch/SKILL.md`, and `/inspect` at
+      `.claude/skills/inspect/SKILL.md` (roadmap housekeeping)
 
 ## Open questions
 
@@ -365,7 +366,7 @@ Added because there was **no way to type Japanese into the app from a script**.
 `adb shell input text` is ASCII-only, and this emulator image answers
 `cmd clipboard` with "No shell command implementation" — so verifying a claim
 about a particular word meant typing it by hand on the emulator, which is
-exactly the friction `/launch` exists to remove. The extra is read in all build
+exactly the friction `/inspect` exists to remove. The extra is read in all build
 types on purpose: it pre-fills a search box and grants nothing, and a hook that
 only works in debug cannot check a release build.
 

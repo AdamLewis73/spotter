@@ -1,11 +1,16 @@
 ---
 name: launch
-description: Build Spotter and run it on a device or emulator, then report what is on screen. Use when asked to run, launch, install, or look at the app.
+description: Build Spotter and get it running on the emulator, then hand it to the user to drive by hand. Use when asked to run, start, open, or install the app.
+argument-hint: [word-to-open-on]
+arguments: word
 disable-model-invocation: true
 allowed-tools: Read Glob Grep Bash
 ---
 
-Build the app, get it onto a device, and report what actually happened.
+Get the app running in front of the user and leave it there. **They drive it
+from here** — do not screenshot it, do not narrate what is on screen, and do not
+shut the emulator down. To drive it yourself and report findings, that is
+`/inspect`, not this.
 
 ## Environment
 
@@ -31,8 +36,8 @@ export ANDROID_HOME="/c/Users/sword/AppData/Local/Android/Sdk"
    ```
 
    Then wait for `getprop sys.boot_completed` to return `1`, and send
-   `input keyevent KEYCODE_WAKEUP` — a freshly booted emulator sleeps, and a
-   screenshot of a sleeping device is solid black rather than an error.
+   `input keyevent KEYCODE_WAKEUP` — a freshly booted emulator sleeps, and the
+   user cannot tap a sleeping screen.
 
 2. **Build and install:** `./gradlew :app:installDebug`.
 
@@ -42,45 +47,41 @@ export ANDROID_HOME="/c/Users/sword/AppData/Local/Android/Sdk"
 
 3. **Launch:** `adb shell am start -n com.spotterkanji.app/.MainActivity`.
 
-   To open on a **particular word**, seed the query:
+   If the user named a word, open on it — `adb shell input text` is ASCII-only,
+   so the intent extra is the only way to get Japanese into the field without
+   typing it on the device:
 
    ```
    adb shell am start -n com.spotterkanji.app/.MainActivity --es query 上手
    ```
 
-   This is the only way to get Japanese into the text field from a script.
-   `adb shell input text` is ASCII-only and this emulator image has no
-   `cmd clipboard`, so without the extra the screen can only be driven by hand —
-   which is no use on a screen whose bugs are silent. Every fault found in this
-   phase was found by looking at a *specific* word: 上手 for archaic readings,
-   中国 for search-only ones, 生 for the routing.
+   The seeded text arrives **selected**, which pops Android's text-selection
+   toolbar over the top of the screen. Harmless — the user taps once to dismiss
+   it — but say so rather than letting it look like a glitch.
 
-4. **Look at it.** `adb exec-out screencap -p > <scratch>/shot.png` and read the
-   image. Do not report that something works without looking.
+4. **Confirm it came up**, without screenshotting: check that the activity is
+   resumed,
 
-5. **Check the log** for anything the screen does not show:
-   `adb logcat -d -s DictionaryProvider` and `adb logcat -d -b crash`.
+   ```
+   adb shell dumpsys activity activities | grep ResumedActivity
+   ```
 
-## Report
+   and that nothing landed in `adb logcat -d -b crash`. If it did crash, say so
+   and stop; otherwise tell the user it is ready, in a sentence.
 
-What is on screen, whether it matches what was expected, and any crash or
-warning from the log. Attach the screenshot.
+## Leave it running
+
+The emulator stays up — the whole point is that the user pokes at it afterwards.
+Never call `adb emu kill` in this skill, and do not offer to.
 
 ## Notes
 
-- **`am force-stop` then relaunch still shows the splash for several seconds.**
-  A screenshot at 9 s caught the Android robot and looked like a hang. Allow
-  ~20 s after a force-stop, and ~40 s on the first launch after an install.
 - **The first launch after install is slow.** Room extracts a ~100 MB dictionary
-  out of the APK on first query; allow 15 seconds before screenshotting or you
-  will capture a spinner and think it hung.
-- **`adb shell input text` cannot type Japanese.** To see a populated screen,
-  seed the query in `WordLookupViewModel`'s `init`, screenshot, then revert —
-  and revert before committing.
-- **`connectedAndroidTest` uninstalls the app when it finishes.** Anything that
-  depends on an existing install — testing a dictionary refresh, or an upgrade
-  across a schema change — must be driven with `adb install -r` plus
-  `adb shell am instrument`, or it silently tests a fresh install and proves
-  nothing.
-- **Shut the emulator down when finished:** `adb emu kill`. It is a background
-  process that outlives the task otherwise.
+  out of the APK on first query, so the first tap can hang for ~15 seconds. Warn
+  the user instead of assuming it wedged.
+- **`am force-stop` then relaunch still shows the splash for several seconds.**
+  Allow ~20 s after a force-stop, ~40 s on the first launch after an install.
+- **`connectedAndroidTest` uninstalls the app when it finishes** — so it also
+  takes away whatever the user was about to poke at. Anything that depends on an
+  existing install must be driven with `adb install -r` plus
+  `adb shell am instrument`.
