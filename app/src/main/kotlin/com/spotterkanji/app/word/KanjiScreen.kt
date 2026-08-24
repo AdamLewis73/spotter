@@ -151,24 +151,38 @@ private fun GlyphButton(
 }
 
 /**
- * Phase 3's tab, standing empty and saying so.
+ * Phase 3's tab. The paths are read; the drawing is not written yet.
  *
- * The stroke data is already in the dictionary - KanjiVG paths for 6,416
- * characters, all 2,501 of the ranked ones - so this is a rendering job, not a
- * data one. Naming the stroke count is the one useful thing the tab can do
- * today, and it is where D-50 says the count belongs.
+ * **The count comes from the paths, not from KANJIDIC2** — V-09 requires it.
+ * The two disagree for 109 of 6,416 kanji, almost all containing 辻's
+ * 辶 (shinnyou), which is genuinely drawn with two or three strokes depending on
+ * whether the printed or handwritten form is followed. Labelling 辻 "5 strokes"
+ * while the animation visibly draws 6 makes the user watch the contradiction
+ * happen, so the animation's own figure is the honest one.
+ *
+ * Where KanjiVG has nothing, the tab says so and falls back to KANJIDIC2's
+ * count, which is still true and still worth showing. That is the
+ * usage-completeness principle in `overview.md`: a thin screen should tell the
+ * learner what it knows rather than looking broken.
  */
 @Composable
 private fun StrokeOrderTab(detail: KanjiDetail) {
     val tokens = SpotterTheme.tokens
+    val hasPaths = detail.strokePaths.isNotEmpty()
+    val count = if (hasPaths) detail.strokePaths.size else detail.strokeCount
     Column(modifier = Modifier.padding(tokens.spaceMd)) {
         Text(
-            text = "${detail.strokeCount} STROKES",
+            text = if (count == 1) "1 STROKE" else "$count STROKES",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = "Stroke order animation arrives in Phase 3.",
+            text = if (hasPaths) {
+                "Stroke order animation arrives in Phase 3."
+            } else {
+                "No stroke diagram for this character — KanjiVG covers 6,416 kanji, " +
+                    "including every common one."
+            },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(top = tokens.spaceSm),
@@ -516,6 +530,16 @@ private val previewDetail = KanjiDetail(
     ),
     asWord = listOf(
         DictionaryEntry("生", "なま", listOf(Sense(listOf("raw", "uncooked"))), isCommon = true),
+    ),
+    // 生's real KanjiVG outlines, copied from the shipped dictionary rather
+    // than invented, so the preview exercises the same coordinate space and
+    // curve commands the device will draw.
+    strokePaths = listOf(
+        "M31.3,25.9c0.4,1.4,0.3,2.6-0.1,3.8c-2.3,6.7-7.2,17.2-15,24.2",
+        "M31.1,40.7c2.4,0.3,4,0.1,5.6-0.1c9.5-1.1,25.1-4.1,35.4-5.8c2.5-0.4,4.9-0.7,7.4-0.3",
+        "M52.3,12.6c1.3,1.3,2,3.1,2,5.2c0,4,0,65.1,0,69.8",
+        "M29.4,64c2.6,0.7,5.4,0.3,8-0C49.5,62.5,62.2,61,72.5,59.9c2.4-0.3,5-0.8,7.4-0.2",
+        "M15.8,90.2c3,0.8,6.2,0.9,8.4,0.8C40.6,90,68.1,86.5,83.3,85.8c3.6-0.2,7.7,0,10.1,0.7",
     ),
 )
 

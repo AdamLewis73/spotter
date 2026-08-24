@@ -29,6 +29,7 @@ import androidx.room.RoomDatabase
         ExampleRow::class,
         KanjiRow::class,
         KanjiInWordRow::class,
+        StrokesRow::class,
         MetaRow::class,
     ],
     version = DictionaryDatabase.SCHEMA_VERSION,
@@ -52,7 +53,7 @@ abstract class DictionaryDatabase : RoomDatabase() {
          * asset. `:app` does exactly that by comparing this number against the
          * copy's `PRAGMA user_version`.
          */
-        const val SCHEMA_VERSION: Int = 4
+        const val SCHEMA_VERSION: Int = 5
         /** Matches the file staged into assets by `:app:stageDictionaryAsset`. */
         const val ASSET_NAME: String = "spotter.db"
 

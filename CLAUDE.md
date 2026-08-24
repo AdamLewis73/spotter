@@ -74,7 +74,7 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **Phase 2 — Android app, text input only: feature-complete.** Type Japanese → Kuromoji segments it → tap a word → readings, meanings, example sentences and component boxes → tap one → the kanji screen, whose Examples tab is D-04. Longest-match offers the words the parse hides (東京都 → 京都). The dictionary ships in the APK and refreshes itself when it changes. Every `V-##` case this phase owns is met; the **user-data checkpoint** (D-15–D-18, D-43) is the one item left on its list and lands with Save in Phase 6 by design.
 
-**Current phase:** Phase 3 — stroke order. Not started. The KanjiVG paths already ship in `spotter.db`, and the kanji screen already has a **Stroke order tab** standing empty and saying so — this is a Compose drawing job, not a data one.
+**Current phase:** Phase 3 — stroke order. **In progress.** The data half is done: `strokes` has a Room entity, `KanjiDetail.strokePaths` carries KanjiVG's per-stroke SVG paths, and the **Stroke order tab** reports the count it would animate (V-09: the path count, never KANJIDIC2's). What remains is purely a Compose drawing job — parse the `d` strings with `PathParser`, draw, then animate in sequence.
 
 **Read `docs/progress/phase-03-stroke-order.md` first**, then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors.
 

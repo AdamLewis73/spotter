@@ -160,6 +160,41 @@ data class WordSenseRow(
 )
 
 /**
+ * KanjiVG's per-stroke outlines, one row per kanji (Phase 3).
+ *
+ * `svg_paths` is a JSON array of SVG path `d` strings in drawing order, parsed
+ * in the repository like every other JSON column here rather than by a Room
+ * TypeConverter, so the mapping stays visible at the call site.
+ *
+ * **`schema.sql` gained an explicit `NOT NULL` on `kanji_char` for this entity
+ * to be declarable at all.** `PRIMARY KEY` does not imply `NOT NULL` in SQLite
+ * outside `INTEGER PRIMARY KEY` and `WITHOUT ROWID` tables, and this table is
+ * neither (D-56) — so the column really was nullable, `PRAGMA table_info`
+ * reported `notnull=0`, and Room compares that field exactly against the
+ * non-null `String` below. The fix belongs in the builder, not here: Room
+ * rejects a nullable primary key at compile time, so there is no entity shape
+ * that reads the old file.
+ *
+ * The `REFERENCES kanji(char)` is mirrored for the usual reason — a real
+ * foreign key the entity omits fails the open with a message that never
+ * mentions foreign keys.
+ */
+@Entity(
+    tableName = "strokes",
+    foreignKeys = [
+        ForeignKey(
+            entity = KanjiRow::class,
+            parentColumns = ["char"],
+            childColumns = ["kanji_char"],
+        ),
+    ],
+)
+data class StrokesRow(
+    @PrimaryKey @ColumnInfo(name = "kanji_char") val kanjiChar: String,
+    @ColumnInfo(name = "svg_paths") val svgPaths: String,
+)
+
+/**
  * Example sentences, keyed to a word AND a sense (D-51).
  *
  * `tatoeba_id` is declared even though nothing reads it: Room validates every

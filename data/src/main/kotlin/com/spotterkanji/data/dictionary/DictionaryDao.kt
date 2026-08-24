@@ -91,6 +91,21 @@ interface DictionaryDao {
     )
     suspend fun readingExamples(character: String): List<KanjiExampleRow>
 
+    /**
+     * KanjiVG's stroke outlines for [character] as the raw JSON array, or null
+     * where the dictionary has no stroke data.
+     *
+     * Null is a real case, not an error: `strokes` covers 6,416 of the kanji
+     * KANJIDIC2 describes, so a `kanji` row can exist without one here. It does
+     * cover all 2,501 ranked characters (V-09), so the gap is confined to the
+     * rare tail.
+     *
+     * Selects the one column rather than the row because `kanji_char` is already
+     * the argument — nothing downstream needs it echoed back.
+     */
+    @Query("SELECT svg_paths FROM strokes WHERE kanji_char = :character")
+    suspend fun strokePaths(character: String): String?
+
     /** The dictionary's own version — a hash of the sources and builder (D-65). */
     @Query("SELECT build_id FROM meta LIMIT 1")
     suspend fun buildId(): String?

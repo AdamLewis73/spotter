@@ -1,68 +1,106 @@
 # Phase 3 — Stroke order tab
 
-**Status:** not started
-**Updated:** 2026-08-23
+**Status:** in progress — the data is read; the drawing is not written
+**Updated:** 2026-08-24
 
 ## Current state
 
-Not started. KanjiVG is already ingested by the Phase 1 builder, so the stroke
-path data ships in `spotter.db` and needs no new source work.
+**The paths are out of the dictionary and on the screen as a number; nothing is
+drawn yet.** `strokes` has a Room entity, `KanjiDetail.strokePaths` carries the
+per-stroke SVG `d` strings, and `StrokeOrderTab` reports the count it would
+animate. Verified on the emulator against 辻 and 㐂, and by two instrumented
+cases in `KanjiDetailTest`.
 
 ## Next action
 
-**Unblocked, and the tab already exists.** `KanjiScreen.kt` in `:app` has three
-tabs — Overview, Examples, **Stroke order** — and the third currently renders
-`StrokeOrderTab`, which shows the stroke count and the line "Stroke order
-animation arrives in Phase 3." Replacing that composable's body is the whole
-job; nothing above it needs to move.
+**Draw one static kanji.** Compose has no SVG path parser; `androidx.graphics.path`
+/ `PathParser` turns a `d` string into a `Path` that `Canvas` can draw. Then
+animate the strokes in sequence — the visually rewarding part, and the reason
+`roadmap.md` places this before the camera.
 
-The tab was built empty on purpose rather than added later: a tab that appears
-later shifts the two beside it, and the count is where D-50 says it belongs.
+Three measurements taken while plumbing the data, all worth having before
+drawing:
 
-In order:
+- **The canvas is 109×109.** Confirmed against the data, not just the KanjiVG
+  docs: the largest absolute coordinate in the whole table is 108.0. Negative
+  numbers appear and are not out-of-range — they are relative deltas in lowercase
+  commands.
+- **Only six path commands occur in the entire table:** `c` (166,031), `M`
+  (78,905), `C` (8,962), `s` (1,095), `m` (135), `S` (91). No arcs, no
+  quadratics, no `Z`. So the geometry is moveto plus cubic Béziers and nothing
+  else, which matters because animating a stroke means walking its length —
+  `PathMeasure` handles all of it, but a hand-rolled parser would only need
+  these.
+- **Paths are small:** ~820 bytes per kanji on average, under 2 KB at worst,
+  5.3 MB for the table. That is why they load with the rest of the kanji screen
+  rather than when the tab is opened — a second loading state would cost more
+  than the bytes.
 
-1. **Read the paths out of the dictionary.** `strokes.svg_paths` is a JSON array
-   of SVG path strings, one per stroke, joined to `kanji` on `kanji_char`.
-   Nothing maps that table yet — it needs a Room entity, and Room validates
-   every column of a table it maps.
-2. **Draw one static kanji** before animating anything. Compose has no SVG path
-   parser; `androidx.graphics.path` / `PathParser` turns a `d` string into a
-   `Path` that `Canvas` can draw.
-3. **Animate the strokes in sequence**, which is the visually rewarding part and
-   the reason `roadmap.md` places this before the camera.
+**The design still has no stroke-order frame.** The Claude Design project (D-67)
+does not cover this tab. Either draw one or design it in place; do not assume a
+frame exists.
 
-**Two traps waiting**, both already paid for elsewhere in the project:
+## What the two traps actually did
 
-- **Room's pre-packaged schema check.** Declaring a new entity is what fires it,
-  and the message names the *table* and not the field — diff Expected against
-  Found. `example` cost an hour on exactly this in Phase 2: an
-  `INTEGER PRIMARY KEY` without `NOT NULL` reads as nullable to Room, because
-  SQLite genuinely permits null there.
+Both fired, and **one of them fired for the opposite reason than predicted** —
+worth reading before touching another dictionary table.
 
-  `strokes` should be clear — its key is `kanji_char TEXT PRIMARY KEY`, and
-  SQLite forbids null in a TEXT primary key, so it reports as non-null. Check it
-  with `PRAGMA table_info`, `foreign_key_list` and `index_list` before writing
-  the entity anyway; that is faster than reading a validation dump. Note it does
-  carry `REFERENCES kanji(char)`, and a real foreign key the entity fails to
-  declare breaks the open with a message that says nothing about foreign keys.
-- **Adding an entity changes the exported schema**, and Room rewrites the
-  current version's JSON in place rather than complaining. Bump
-  `DictionaryDatabase.SCHEMA_VERSION` (now **4**) so the committed record of what
-  each version shipped stays true. The bump costs one slow launch while the
-  dictionary re-extracts.
+- **The nullable primary key was real, and the earlier note here had it
+  backwards.** This file predicted `strokes` would be safe because "SQLite
+  forbids null in a TEXT primary key". It does not. SQLite permits NULL in a
+  PRIMARY KEY column unless the column is `INTEGER PRIMARY KEY` or the table is
+  `WITHOUT ROWID` — a documented deviation from the SQL standard, kept for
+  backward compatibility. `strokes` is neither (D-56 made it a rowid table
+  deliberately, because `svg_paths` is the widest column in the schema), so
+  `PRAGMA table_info` genuinely reported `notnull=0`.
+
+  Room compares `notNull` exactly and derives `true` from a non-null Kotlin
+  property, so the open would have failed. There is no entity shape that reads
+  the old file either: Room rejects a nullable primary key at compile time. **So
+  the fix belonged in the builder** — `schema.sql` now spells out `NOT NULL`,
+  which every other table here had already, either explicitly or by being
+  `WITHOUT ROWID` or integer-keyed. `strokes` was the only one missing it.
+
+  Cost: one dictionary rebuild (~45 s). `schema.sql` is in `BUILDER_GLOBS`, so
+  `build_id` rolled to `31d9084cc633` and the device re-extracted, which is
+  exactly what D-65 is for.
+
+- **`PRAGMA table_info` first was the right call and paid for itself.** It is how
+  the above was caught before reading a Room validation dump. The foreign key
+  `REFERENCES kanji(char)` is mirrored on the entity, per the note that a real
+  constraint the entity omits fails the open with a message that never mentions
+  foreign keys.
+
+- **The schema export behaved.** `SCHEMA_VERSION` went 4 → 5 before the first
+  build, so `4.json` was left untouched and `5.json` is new. Bumping first is
+  what avoids the in-place rewrite this file warned about.
+
+## V-09's display rule was being broken, and is fixed
+
+`verification.md` V-09 requires the tab to show **the number of paths being
+animated, not KANJIDIC2's figure.** The placeholder tab showed
+`detail.strokeCount`, which is KANJIDIC2's — so it was already wrong for the 109
+kanji where the two disagree, before any animation existed to contradict.
+
+Now fixed and checked on device: 辻 reports **6 STROKES** (paths) rather than 5
+(KANJIDIC2). Where KanjiVG has no data at all the tab falls back to KANJIDIC2's
+count and says there is no diagram — checked with 㐂 — rather than rendering a
+blank canvas or "0 STROKES".
 
 ## Done
 
 - [x] Stroke order tab exists on the kanji screen, empty and saying so (D-67)
-- [ ] Room entity over the `strokes` table
-- [ ] Read per-stroke SVG paths out of the dictionary
+- [x] Room entity over the `strokes` table (needed a `NOT NULL` in `schema.sql`)
+- [x] Read per-stroke SVG paths out of the dictionary — `KanjiDetail.strokePaths`
+- [x] **V-09** claimed: the tab shows the path count, not KANJIDIC2's, and says
+      so when there is no diagram
 - [ ] Render one kanji statically in Compose
 - [ ] Animate strokes sequentially
-- [ ] Relevant `V-##` cases from `verification.md` added to this list
 
 ## Open questions
 
-None recorded yet.
+None blocking. The one design question is what the tab looks like, since
+D-67 never drew it — see **Next action**.
 
 ## Notes
 

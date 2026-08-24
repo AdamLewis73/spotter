@@ -28,7 +28,7 @@ data class KanjiReadingGroup(
 )
 
 /**
- * Everything the kanji screen shows, minus stroke order (Phase 3).
+ * Everything the kanji screen shows, across all three of its tabs.
  *
  * Deliberately absent, per D-50: **school grade** and **classical radical**.
  * Both are real data and neither is usable by someone who does not already read
@@ -52,4 +52,20 @@ data class KanjiDetail(
      * Overview tab would silently drop what the user actually scanned.
      */
     val asWord: List<DictionaryEntry>,
+    /**
+     * The Stroke order tab: KanjiVG's outlines, one SVG path per stroke, in the
+     * order a writer draws them.
+     *
+     * Empty where the dictionary has no stroke data — 6,416 kanji have it,
+     * including every ranked one (V-09), so an empty list means a character
+     * from the rare tail rather than a fault. The tab has to say so rather than
+     * rendering blank, per the usage-completeness principle in `overview.md`.
+     *
+     * Loaded with the rest of the screen rather than when the tab is opened:
+     * the paths average ~820 bytes per kanji and top out under 2 KB, which is
+     * not worth a second loading state in the UI.
+     *
+     * Coordinates are in KanjiVG's own 109×109 space, so the caller scales.
+     */
+    val strokePaths: List<String>,
 )

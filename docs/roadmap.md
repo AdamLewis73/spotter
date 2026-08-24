@@ -19,7 +19,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 |---|---|---|---|
 | 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
 | 2 | Android app, text input only | **Feature-complete** — every `V-##` case this phase owns is met; the user-data checkpoint lands with Save in Phase 6 | Paste 先生 → word + kanji screens |
-| 3 | Stroke order tab | Not started | KanjiVG animation |
+| 3 | Stroke order tab | **In progress** — paths read and counted; drawing not written | KanjiVG animation |
 | 4 | CameraX + ML Kit | Not started | Raw recognized text into the Phase 2 pipeline |
 | 5 | Tappable overlay | Not started | The real scan experience |
 | 6 | Saved lists | Not started | Multiple lists, many-to-many |
