@@ -5,12 +5,20 @@
 
 ## Current state
 
-**Done.** The Stroke order tab draws KanjiVG's real outlines: a 200dp stage with
-a centre crosshair, the character written stroke by stroke, play/pause, a working
-speed control, and an **Every stroke** grid of cumulative frames that scrubs when
-tapped. Verified on the emulator against 生 (5 strokes), 辻 (the V-09
-disagreement case), 鬱 (29 strokes, six grid rows) and 㐂 (no KanjiVG data), in
-both light and dark.
+**Done and merged** (PR #24). The Stroke order tab draws KanjiVG's real
+outlines on a 200dp stage with a centre crosshair, and it has two modes:
+
+- **Watch** — the character written stroke by stroke, with play/pause, a working
+  speed control, and an **Every stroke** grid of cumulative frames that scrubs
+  the animation when tapped.
+- **Trace** — the same stage, writable. The ghost stays up, the stroke expected
+  next is lifted out of it in the accent colour, and the learner draws over it.
+  No scoring and no scheduler (D-72).
+
+Verified on the emulator against 生 (5 strokes), 辻 (the V-09 disagreement
+case), 鬱 (29 strokes, six grid rows) and 㐂 (no KanjiVG data), in both light
+and dark; and tracing by gesture, where 生's first stroke advances the counter
+and the same stroke drawn in reverse does not.
 
 ## The design *does* cover this tab — the earlier note here was wrong
 
