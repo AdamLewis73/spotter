@@ -40,7 +40,7 @@ Three things are known to be harder than they look:
 - **Entry expansion (V-18).** A JMdict entry is not a word; `re_restr` and `stagk`/`stagr` must be honoured or the ingest invents words and misattributes meanings.
 - **Frequency derivation (V-04).** Priority tags live on writing and reading elements separately, so `word_frequency` needs a stated rule.
 
-**Settled:** the example-sentence source is `JMdict_e_examp`, which replaces plain `JMdict_e` rather than adding to it (D-51). Sentences are ingested but not rendered in v1 — see the Phase 2 note below.
+**Settled:** the example-sentence source is `JMdict_e_examp`, which replaces plain `JMdict_e` rather than adding to it (D-51). Sentences are rendered as of Phase 2 (D-69) — see the note below.
 
 ### Phase 2 — Android app with a text box
 

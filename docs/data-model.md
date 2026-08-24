@@ -54,7 +54,7 @@ Its examples nest inside each `<sense>`, carrying the Tatoeba sentence id, the w
 </sense>
 ```
 
-**Coverage is 41.4% of common senses** — those belonging to entries with a frequency tag. The ceiling across all sources is about 43%, because the corpus simply doesn't attest the rest. **These are ingested but not rendered in v1** (D-51); whether to show them is a Phase 2 decision made against real screens rather than a percentage.
+**Coverage is 41.4% of common senses** — those belonging to entries with a frequency tag. The ceiling across all sources is about 43%, because the corpus simply doesn't attest the rest. **These are rendered** (D-69, resolving D-51), one per entry under its best-ranked current reading — a sentence belongs to an entry, and an entry expands into a word per reading, so showing it under all of them claims readings the sentence does not contain (V-27).
 
 ### Notes on specific datasets
 

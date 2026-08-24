@@ -72,7 +72,7 @@ Format is `text|reading|index:kana;index:kana`.
 
 Both surviving candidates draw on the same underlying corpus — `JMdict_e_examp`'s examples cite Tatoeba ids, and Tanaka is the curated Japanese-English subset of Tatoeba. The difference is who does the joining.
 
-**Resolved by D-51** — `JMdict_e_examp`, ingested but not rendered in v1. Tanaka and the Tatoeba export were dropped from the manifest. Measurements that settled it:
+**Resolved by D-51** — `JMdict_e_examp`, ingested here and rendered in Phase 2 (D-69). Tanaka and the Tatoeba export were dropped from the manifest. Measurements that settled it:
 
 | | Common senses attached | Common entries with any example |
 |---|---:|---:|

@@ -64,7 +64,7 @@ A user photographs a sign reading `先生と生産`. This walks the whole system
 >
 > Composed of: `先 before, ahead, previous` `生 life, genuine, birth`
 
-Note the component chips show meanings but **not** readings (D-06). Example sentences are ingested but not shown in v1 (D-51) — only 41% of common senses have one, and whether that reads as useful or as a gap is a judgement best made against real screens in Phase 2.
+Note the component chips show meanings but **not** readings (D-06). Each sense also carries an example sentence where the corpus has one, which is 41.4% of common senses — judged against real screens in Phase 2 and kept (D-69).
 
 **7. Kanji screen.** The user taps the 生 chip. The sheet swaps in place, with a back arrow (D-32), to a three-tab kanji screen. The **Examples** tab is where the app's core idea lands:
 

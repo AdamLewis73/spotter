@@ -1,6 +1,6 @@
 # Phase 2 — Android app, text input only
 
-**Status:** in progress
+**Status:** feature-complete
 **Updated:** 2026-08-23
 
 ## Current state
@@ -19,10 +19,11 @@ four senses, then せんしょう · せんじょう · ぜんじょう sharing 
 their meanings are identical (D-68), then シーサン — the whole word on one screen
 with its 先 / 生 boxes visible.
 
-**The kanji screen works**, reached from a component chip: Overview carries
-meanings, on/kun readings and the "As a word" senses (D-49); Examples carries
-D-04 — every common word grouped by the reading the kanji takes there, セイ
-before ショウ because セイ holds 先生 and 学生.
+**The kanji screen works**, reached from a component box. Three tabs: Overview
+carries meanings, on/kun readings and the "As a word" senses (D-49); Examples
+carries D-04 — every common word grouped by the reading the kanji takes there,
+under ON'YOMI and KUN'YOMI headings, with the studied character picked out inside
+each example (先**生**); Stroke order stands empty and says Phase 3 fills it.
 
 **Tokenization works.** `先生と生産` segments into 先生 / と / 生産 as chips; tapping
 one shows its entry. Confirmed on a device — tapping 生産 gives せいさん
@@ -124,15 +125,16 @@ fixed when that code is next touched; see the phase-01 open questions.
       (D-67) — new palette and type, plus 2a and 2b
 - [x] Text-input screen: paste `先生と生産`, get tokens, tap one to read it
 - [x] Word screen — one section per reading, component chips last (D-48, D-06)
-- [x] Kanji screen — Overview / Examples tabs; Stroke Order is Phase 3 (D-05)
+- [x] Kanji screen — Overview / Examples / Stroke order tabs; the third stands
+      empty and names Phase 3 (D-05, D-67)
 - [x] Single kanji routes straight to the kanji screen (D-49)
 - [ ] Checkpoint: UUID keys, `updated_at`, soft delete, schema export on,
       destructive migration off (D-15 – D-18) before any user-data write
 - [ ] Checkpoint: `snapshot_gloss` on `study_item` (D-43), same commit
-### Verification cases — assessed 2026-08-19, and three are unmet
+### Verification cases — all met, 2026-08-23
 
-Folding these in rather than leaving the line item vague, because the honest
-answer is that Phase 2 is **less finished than the rest of this list suggests**.
+Assessed honestly on 2026-08-19, when three were unmet and this section said so.
+Kept as a table rather than a tick because *how* each is met is the useful part.
 
 | Case | State |
 |---|---|

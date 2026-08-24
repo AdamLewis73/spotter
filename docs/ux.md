@@ -67,20 +67,25 @@ The marking, settled in Phase 2 (D-66): the reading drops to the muted colour an
 
 **`gikun` is never marked.** 明日 あした and 大人 おとな carry the tag and are the ordinary reading; it records that the reading attaches to the word as a whole, which is what whole-word furigana needs (D-14), not that anything is wrong.
 
-**Example sentences are not rendered in v1** (D-51). They are ingested and sit in the dictionary, but only 41.4% of common senses have one, and that number is impossible to judge without seeing real screens. The slot in the layout — beneath each sense, above the next reading — is reserved:
+**Example sentences are rendered**, beneath the sense they attest (D-69, resolving D-51):
 
 ```
-  じょうず  skillful; proficient; good (at); adept
-            ← examples would go here, per sense
-            flattery
+  じょうず  1  skillful; proficient; good (at); adept
+               あなたは上手にバスケットボールができますか。
+               Do you play basketball well?
+            2  flattery
 ```
 
-Two things to settle in Phase 2: whether to show them at all, and how to keep meanings and examples visually distinct at a glance. Both are design questions, not data ones — the data is already there.
+Coverage is 41.4% of common senses, and the gaps read as ordinary rather than broken — 先生 carries sentences on two of its four senses and looks like a dictionary. They sit indented to the gloss column and in the muted colour, so a sense scans as one block.
+
+**One sentence per entry, under its best-ranked current reading.** A sentence belongs to a JMdict entry, and one entry expands into a word per reading, so all of them inherit it — 明日's あした sentence would otherwise appear under みょうにち too, claiming a reading the sentence does not contain (V-27).
 
 ### Kanji screen — three tabs
 
-**Two of them are built.** Overview and Examples exist as of Phase 2; Stroke
-Order arrives with Phase 3, which is what the stroke count is waiting for. This
+**All three exist; two of them do anything.** Overview and Examples were built
+in Phase 2, and Stroke order stands empty carrying the stroke count and naming
+Phase 3 — built early so that adding it later would not shift the two beside it.
+Phase 3 replaces its body and nothing above it. This
 section describes the finished screen, not the current one.
 
 | Tab | Content |
