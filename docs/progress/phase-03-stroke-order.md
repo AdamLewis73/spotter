@@ -1,44 +1,75 @@
 # Phase 3 — Stroke order tab
 
-**Status:** in progress — the data is read; the drawing is not written
+**Status:** complete
 **Updated:** 2026-08-24
 
 ## Current state
 
-**The paths are out of the dictionary and on the screen as a number; nothing is
-drawn yet.** `strokes` has a Room entity, `KanjiDetail.strokePaths` carries the
-per-stroke SVG `d` strings, and `StrokeOrderTab` reports the count it would
-animate. Verified on the emulator against 辻 and 㐂, and by two instrumented
-cases in `KanjiDetailTest`.
+**Done.** The Stroke order tab draws KanjiVG's real outlines: a 200dp stage with
+a centre crosshair, the character written stroke by stroke, play/pause, a working
+speed control, and an **Every stroke** grid of cumulative frames that scrubs when
+tapped. Verified on the emulator against 生 (5 strokes), 辻 (the V-09
+disagreement case), 鬱 (29 strokes, six grid rows) and 㐂 (no KanjiVG data), in
+both light and dark.
 
-## Next action
+## The design *does* cover this tab — the earlier note here was wrong
 
-**Draw one static kanji.** Compose has no SVG path parser; `androidx.graphics.path`
-/ `PathParser` turns a `d` string into a `Path` that `Canvas` can draw. Then
-animate the strokes in sequence — the visually rewarding part, and the reason
-`roadmap.md` places this before the camera.
+This file and `CLAUDE.md` both said the Claude Design project (D-67) had no
+stroke-order frame and that the tab would have to be designed in place. It has
+one: **artboard 3b**, "Stroke order tab — frames are placeholders", in
+`Kanji Lens.dc.html`. Read it before changing this screen.
 
-Three measurements taken while plumbing the data, all worth having before
-drawing:
+The artboard's own caption says what it is: *"the stroke frames are placeholders
+— I can't draw accurate kanji strokes, and these should come from real
+stroke-order data (KanjiVG) at build time. Sequence, numbering and layout are the
+design; the glyphs inside are stand-ins."* So the layout was followed exactly and
+the frames filled with real paths.
 
-- **The canvas is 109×109.** Confirmed against the data, not just the KanjiVG
-  docs: the largest absolute coordinate in the whole table is 108.0. Negative
-  numbers appear and are not out-of-range — they are relative deltas in lowercase
-  commands.
-- **Only six path commands occur in the entire table:** `c` (166,031), `M`
-  (78,905), `C` (8,962), `s` (1,095), `m` (135), `S` (91). No arcs, no
-  quadratics, no `Z`. So the geometry is moveto plus cubic Béziers and nothing
-  else, which matters because animating a stroke means walking its length —
-  `PathMeasure` handles all of it, but a hand-rolled parser would only need
-  these.
-- **Paths are small:** ~820 bytes per kanji on average, under 2 KB at worst,
-  5.3 MB for the table. That is why they load with the rest of the kanji screen
-  rather than when the tab is opened — a second loading state would cost more
-  than the bytes.
+**How to read the design project from here:** the MCP tool is `DesignSync`, the
+project id is `f7fc2ff0-e30a-4985-8043-606ceed347c6`, and `list_files` /
+`get_file` are read-only. `Kanji Lens.dc.html` is ~106 KB, which is a large
+fraction of a context window — pull it once, write it to a scratch file, and slice
+out the artboard by `id="3b"` rather than reading the whole thing. `support.js`
+is the generated canvas runtime and contains no design information. The artboard
+ids run 1a–1o, 2a–2f and 3a–3b.
 
-**The design still has no stroke-order frame.** The Claude Design project (D-67)
-does not cover this tab. Either draw one or design it in place; do not assume a
-frame exists.
+## Two deliberate departures from artboard 3b
+
+- **No Trace button** — now **D-71**. The design's tracing surface is artboard
+  **2c**, a *review* screen with a handwriting canvas, a Check button and the four
+  FSRS grades. Tracing is the review interaction, not a viewer feature, so a
+  button here would be the one control on the screen that goes nowhere.
+- **The speed control is real.** The artboard renders `0.5× · 1× · 2×` as static
+  text. Left literal it would be decoration; slowing 鬱 down is the reason the
+  control exists at all.
+
+One addition the artboard could not express, because it used a font glyph as the
+stand-in: **strokes not yet drawn show as a faint ghost.** Without it the stage is
+empty before the animation starts and reads as broken, and the ghost is what makes
+the motion legible as a character filling in rather than a line moving in the dark.
+
+## What the drawing cost
+
+- **Compose already ships an SVG path parser.** `androidx.compose.ui.graphics.vector.PathParser`
+  — the one `ImageVector` uses — turns a `d` string into a Compose `Path`. No new
+  dependency, and no hand-rolled parser. The note here previously pointed at
+  `androidx.graphics.path`, which is a different thing: that artifact *reads* an
+  existing `Path` back out as segments.
+- **Scale the canvas, not the paths.** Lengths stay in KanjiVG's 109 units, so
+  animation progress is a fraction of a fixed number and the 200dp stage and the
+  40dp grid cells render from identical geometry.
+- **`PathMeasure.getSegment` is what draws a partial stroke.** One `PathMeasure`
+  and one destination `Path` are held across frames rather than allocated in the
+  draw pass — 鬱 at 60fps would otherwise churn ~1,700 objects a second.
+- **Stroke width is expressed in KanjiVG units, not dp**, which is what keeps the
+  thumbnails self-similar to the stage instead of spidery.
+- **`onClickLabel` is not a `contentDescription`.** It labels the click *action*.
+  A grid cell whose content is a drawing therefore announced nothing, and the
+  first UI test found zero nodes. Both the cells and the play button now carry
+  real descriptions, decorative glyphs are cleared from the semantics tree with
+  `clearAndSetSemantics {}`, and the selected cell and speed chip expose
+  `selected` — which is also what the tests assert on, rather than the accent
+  colour, per the reasoning in `ReadingHeadingTest`.
 
 ## What the two traps actually did
 
@@ -94,13 +125,15 @@ blank canvas or "0 STROKES".
 - [x] Read per-stroke SVG paths out of the dictionary — `KanjiDetail.strokePaths`
 - [x] **V-09** claimed: the tab shows the path count, not KANJIDIC2's, and says
       so when there is no diagram
-- [ ] Render one kanji statically in Compose
-- [ ] Animate strokes sequentially
+- [x] Render one kanji statically in Compose
+- [x] Animate strokes sequentially
+- [x] Artboard 3b built — stage, transport, cumulative grid (D-71 for what was left out)
+- [x] `StrokeOrderTest` — 5 Compose UI cases over the grid, scrub, speed and both empty states
 
 ## Open questions
 
-None blocking. The one design question is what the tab looks like, since
-D-67 never drew it — see **Next action**.
+None. (The "what should this look like" question was answered by finding
+artboard 3b, which existed all along.)
 
 ## Notes
 
@@ -108,9 +141,8 @@ D-67 never drew it — see **Next action**.
   KANJIDIC2's stroke count for 6,416 kanji, including all 2,501 ranked ones, with
   109 bounded mismatches that are genuine 辶 form differences. So the paths can be
   trusted; what is unproven is only the drawing.
-- **The design has no stroke-order frame.** The Claude Design project (D-67)
-  covers the word screen, kanji Examples, review, saved lists and profile — not
-  this tab. Either draw one or design it in place; do not assume a frame exists.
+- **The design does have a stroke-order frame** — artboard 3b. The earlier claim
+  here that it did not was wrong; see the section above.
 - KanjiVG ships as **one combined XML** (~3.6 MB gzipped), not ~11,000
   individual SVG files — a Phase 1 finding.
 - Self-contained and visually rewarding; `roadmap.md` picks it as the phase to

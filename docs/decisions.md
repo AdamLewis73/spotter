@@ -99,6 +99,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-68 | Readings with identical meanings share one block | UI |
 | D-69 | Example sentences ship, under the entry's primary current reading | UI / Data |
 | D-70 | Alternates are words that **overlap** the token, not just those inside it | UI |
+| D-71 | Stroke order is playback only; tracing belongs to review | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -960,6 +961,19 @@ This subsumes the multi-granularity split `roadmap.md` expected to need Sudachi 
 *Cost:* one strip of chips that is empty for most words. That is the intended behaviour rather than a failure to find anything, and it keeps D-61's bargain — the row appears only when it has something to say.
 
 *Known rough edge:* tapping an alternate leaves no token highlighted on the strip, because the word selected is not one of Kuromoji's tokens. Accurate, and mildly odd to look at. Revisit when the scan overlay makes selection visible on the photograph instead (Phase 5).
+
+
+**D-71 — The stroke order tab plays; it does not accept handwriting. Tracing belongs to the review flow.**
+
+The design project's stroke order artboard (3b) carries a **Trace** button beside the transport controls. It is not built, and the reason is worth recording so it is not read as an oversight and re-added.
+
+The design's actual tracing surface is a different artboard: **2c, "Review — write it"** — a full screen with a handwriting canvas, a *Clear* control, a **Check** button that reveals the answer, and the four FSRS grading buttons. Tracing in this design is not a viewer feature that happens to live on a reference tab; it is *the review interaction*, and it needs the scheduler behind it to mean anything. That is Phase 7.
+
+So a Trace button on the kanji screen today would be the one control on the screen that goes nowhere. D-61 makes that the worse option: a missing feature costs a user nothing, and a dead control costs them a tap and their trust in every other control beside it.
+
+**What this decides, beyond the button:** handwriting input is a *review* capability, not a *reference* one. When Phase 7 builds 2c, the question of whether the kanji screen should also offer free practice can be asked again with the canvas already written — at which point it is a link to something real rather than a new feature. Recorded in the deferred table in `roadmap.md`.
+
+*Not affected:* the tab's own controls. Play/pause, the per-stroke scrub grid, and the speed chips all drive the animation that is already there, and D-04's "show, don't assert" argues for letting a learner take that at their own pace.
 
 ---
 

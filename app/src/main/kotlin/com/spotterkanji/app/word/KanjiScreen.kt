@@ -117,9 +117,7 @@ fun KanjiScreen(
         TabRow(selectedTabIndex = tab) {
             Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Overview") })
             Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Examples") })
-            // Present because the design has it, and because a tab that appears
-            // later moves every tab beside it. Phase 3 fills it in; until then it
-            // says so rather than pretending to be empty (D-05).
+            // Screen 3b of the design project. `StrokeOrder.kt` (D-05).
             Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Stroke order") })
         }
 
@@ -147,46 +145,6 @@ private fun GlyphButton(
             .clickable(onClick = onClick, onClickLabel = contentDescription),
     ) {
         Text(text = glyph, style = MaterialTheme.typography.bodyLarge, color = tint)
-    }
-}
-
-/**
- * Phase 3's tab. The paths are read; the drawing is not written yet.
- *
- * **The count comes from the paths, not from KANJIDIC2** — V-09 requires it.
- * The two disagree for 109 of 6,416 kanji, almost all containing 辻's
- * 辶 (shinnyou), which is genuinely drawn with two or three strokes depending on
- * whether the printed or handwritten form is followed. Labelling 辻 "5 strokes"
- * while the animation visibly draws 6 makes the user watch the contradiction
- * happen, so the animation's own figure is the honest one.
- *
- * Where KanjiVG has nothing, the tab says so and falls back to KANJIDIC2's
- * count, which is still true and still worth showing. That is the
- * usage-completeness principle in `overview.md`: a thin screen should tell the
- * learner what it knows rather than looking broken.
- */
-@Composable
-private fun StrokeOrderTab(detail: KanjiDetail) {
-    val tokens = SpotterTheme.tokens
-    val hasPaths = detail.strokePaths.isNotEmpty()
-    val count = if (hasPaths) detail.strokePaths.size else detail.strokeCount
-    Column(modifier = Modifier.padding(tokens.spaceMd)) {
-        Text(
-            text = if (count == 1) "1 STROKE" else "$count STROKES",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = if (hasPaths) {
-                "Stroke order animation arrives in Phase 3."
-            } else {
-                "No stroke diagram for this character — KanjiVG covers 6,416 kanji, " +
-                    "including every common one."
-            },
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = tokens.spaceSm),
-        )
     }
 }
 
@@ -547,4 +505,18 @@ private val previewDetail = KanjiDetail(
 @Composable
 private fun KanjiScreenPreview() {
     SpotterTheme { Surface { KanjiScreen(previewDetail, onBack = {}, onSave = {}) } }
+}
+
+/**
+ * The stroke tab on its own, because the screen preview above always opens on
+ * Overview and there is no way to drive a tab from a preview.
+ *
+ * Renders 生's real paths, so this is a genuine check that the parse and the
+ * scaling work — not a mock. It shows the first frame rather than the animation;
+ * previews do not run `LaunchedEffect`.
+ */
+@Preview(showBackground = true, name = "Stroke order")
+@Composable
+private fun StrokeOrderPreview() {
+    SpotterTheme { Surface { StrokeOrderTab(previewDetail) } }
 }
