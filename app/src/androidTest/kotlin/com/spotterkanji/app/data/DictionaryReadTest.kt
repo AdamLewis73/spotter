@@ -161,6 +161,54 @@ class DictionaryReadTest {
         assertEquals(ReadingStatus.CURRENT, ashita.readingStatus)
     }
 
+    /**
+     * D-51: a sentence appears under the entry's best CURRENT reading, and
+     * nowhere else.
+     *
+     * JMdict attaches examples to the entry, and V-18 expands one entry into a
+     * word per reading, so all of them inherit it. 明日's sentence uses あした;
+     * without gating it also appears under あす and みょうにち, asserting a
+     * reading the sentence does not contain. 11,622 entries are affected.
+     */
+    @Test
+    fun a_sentence_appears_under_one_reading_only() = runBlocking {
+        val entries = repository.lookup("明日")
+        val withSentences = entries.filter { e -> e.senses.any { it.examples.isNotEmpty() } }
+
+        assertEquals(
+            "expected exactly one reading to carry sentences, got " +
+                withSentences.map { it.reading },
+            1,
+            withSentences.size,
+        )
+        assertEquals("あした", withSentences.single().reading)
+    }
+
+    /**
+     * The regression this cost an hour: "primary" was read off the raw query
+     * order, which sorts by frequency then kana. 上手's three readings tie on
+     * frequency, so じょうしゅ — archaic — came first, took the sentence, and had
+     * it suppressed for being archaic. じょうず simply lost its example, with
+     * nothing on screen to say so.
+     */
+    @Test
+    fun the_sentence_goes_to_the_current_reading_not_the_archaic_one() = runBlocking {
+        val entries = repository.lookup("上手")
+        val jouzu = entries.first { it.reading == "じょうず" }
+        val archaic = entries.filter { it.readingStatus == ReadingStatus.ARCHAIC }
+
+        assertTrue(
+            "じょうず should carry the entry's example sentence",
+            jouzu.senses.any { it.examples.isNotEmpty() },
+        )
+        archaic.forEach { entry ->
+            assertTrue(
+                "${entry.reading} is archaic and must carry no sentence",
+                entry.senses.all { it.examples.isEmpty() },
+            )
+        }
+    }
+
     /** A word that is genuinely absent returns empty rather than throwing. */
     @Test
     fun an_unknown_word_returns_nothing() = runBlocking {

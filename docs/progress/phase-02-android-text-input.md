@@ -1,7 +1,7 @@
 # Phase 2 — Android app, text input only
 
 **Status:** in progress
-**Updated:** 2026-08-19
+**Updated:** 2026-08-23
 
 ## Current state
 
@@ -9,12 +9,15 @@
 modules — `:app`, `:data`, `:domain` — with `:domain` as a plain Kotlin/JVM
 module per D-60. The debug APK is **46 MB**, holding a 99.7 MB `spotter.db` at
 `assets/spotter.db` (the APK's own compression does the rest). `:domain:test`
-runs 3 JUnit tests in milliseconds with no emulator.
+runs 24 JUnit tests in milliseconds with no emulator.
 
-**The word screen works.** Type a word and it renders one card per reading,
-meanings under each, component chips last (D-48, D-06). Confirmed on a device:
-先生 shows せんせい marked *common* with four senses, then せんしょう, せんじょう,
-ぜんじょう and シーサン, with 先 / 生 chips beneath.
+**The word screen works**, and now looks like the design (D-67). A centred
+headword over a `5 READINGS · 2 ARCHAIC` count, readings as a divided list in the
+accent colour, meanings under each with their example sentence (D-69), component
+boxes last (D-48, D-06). Confirmed on a device: 先生 shows せんせい *common* with
+four senses, then せんしょう · せんじょう · ぜんじょう sharing one block because
+their meanings are identical (D-68), then シーサン — the whole word on one screen
+with its 先 / 生 boxes visible.
 
 **The kanji screen works**, reached from a component chip: Overview carries
 meanings, on/kun readings and the "As a word" senses (D-49); Examples carries
@@ -43,10 +46,8 @@ invisible until something checksums the artefact.
 
 In the order they are worth doing, and the reasoning matters more than the list:
 
-1. **Decide D-51**, whether example sentences get rendered — now unblocked. The
-   UI pass is done, so the layout this was waiting to be judged against exists.
-   Build them behind a switch, look at 先生, 上手 and 生 both ways, then decide.
-2. **JMdict longest-match alternates (D-07)** — the missing half of V-06.
+1. **JMdict longest-match alternates (D-07)** — the missing half of V-06, and
+   the last unmet verification case in this phase.
 
 **Compose UI tests now exist**, four of them, covering V-21's marking on the
 word screen — that an archaic reading is labelled, that a current one is
@@ -72,7 +73,7 @@ the rest of the feature set already shipping elsewhere (D-61).
 
 **Everything about the data layer is verified on a device, not assumed.** The
 dictionary ships in the APK, refreshes itself when either its build id or Room's
-schema version changes, and 22 instrumented tests cover it. Where a claim is
+schema version changes, and 32 instrumented tests cover it. Where a claim is
 unproven this file says so.
 
 **The recurring failure mode in this phase has been silence, not crashes.** A
@@ -108,6 +109,8 @@ fixed when that code is next touched; see the phase-01 open questions.
       and dark, plus Noto Sans JP bundled (D-34)
 - [x] Kuromoji tokenization behind the `Tokenizer` interface (D-07, D-08)
 - [ ] JMdict longest-match alternates (D-07)
+- [x] Example sentences rendered, one reading per entry (D-69, D-51, V-27)
+- [x] Readings with identical meanings share a block (D-68)
 - [x] Obsolete, irregular and rare readings marked; search-only readings hidden
       but never to nothing (V-21, D-53, D-66)
 - [x] UI pass on the word and kanji screens, from the Claude Design import
@@ -273,6 +276,39 @@ genuinely part of its public surface.
 - A screenshot taken within ~4 s of launch catches the splash screen, and one
   taken right after `cmd uimode night` catches a blank frame mid-recreation.
   Both look like bugs and are not; force-stop, restart, then wait.
+
+### Example sentences, and two traps in the data — 2026-08-23
+
+D-51 is settled (D-69): sentences ship. What the exercise actually taught:
+
+- **The question the roadmap asked was not the question that mattered.** It
+  worried that 41.4% coverage would read as broken. It does not — 先生 shows
+  sentences on two of four senses and looks like a dictionary. The real fault was
+  a correctness one that only appears on a device.
+- **A sentence belongs to an ENTRY, not to a (text, reading) word.** V-18 expands
+  one entry into a word per reading, so every reading inherits the entry's
+  sentences. 明日's あした sentence rendered identically under あす and
+  みょうにち. **11,622 entries** are affected. Only 777 involve a marked reading,
+  so V-21's status filter fixes ~5% and is not the answer.
+- **Picking the "primary" reading must happen AFTER status ordering.** The query
+  sorts by frequency then kana; 上手's three readings tie on frequency, so the raw
+  order leads with じょうしゅ. Taking that as primary gave the sentence to an
+  archaic reading, which then correctly suppressed it — and じょうず lost its
+  example with nothing on screen to say so. Found by looking, as usual. V-27
+  covers it.
+
+**Room's schema check fired again on the first new table.** Declaring `ExampleRow`
+threw `Pre-packaged database has an invalid schema: example` on launch, naming
+the table and not the field. The cause was the one `word.id` already carries a
+comment about: `example.id` was `INTEGER PRIMARY KEY` without `NOT NULL`, SQLite
+genuinely permits NULL there (it assigns a rowid), so `PRAGMA table_info` reports
+`notnull=0` against a non-null Kotlin field. The other primary keys are `TEXT`,
+where SQLite forbids null, which is why they never tripped it.
+
+**Adding an entity changes the exported schema.** Room silently rewrote
+`3.json` in place rather than complaining. Bumped to 4 so the committed record of
+what version 3 shipped stays true; the bump also forces one re-extract on
+upgrade, which is correct and costs a single slow launch.
 
 ### The UI pass, and what the design did not cover — 2026-08-20
 

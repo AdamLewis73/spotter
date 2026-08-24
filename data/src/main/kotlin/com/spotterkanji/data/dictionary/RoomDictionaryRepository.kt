@@ -2,6 +2,7 @@ package com.spotterkanji.data.dictionary
 
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.DictionaryRepository
+import com.spotterkanji.domain.dictionary.ExampleSentence
 import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiExample
 import com.spotterkanji.domain.dictionary.KanjiReadingGroup
@@ -31,6 +32,31 @@ class RoomDictionaryRepository(
         // query per word — is N+1 round trips for a word like 上手 that has
         // three readings.
         val sensesByWord = dao.sensesFor(words.map { it.id }).groupBy { it.wordId }
+        // Keyed by (word, sense) so a sentence lands under the meaning it
+        // actually attests rather than under the first one (D-51).
+        val examplesBySense = dao.examplesFor(words.map { it.id })
+            .groupBy { it.wordId to it.senseOrder }
+
+        // D-51: a sentence belongs to the ENTRY, and V-18 expands one entry into
+        // a word per reading — so every reading inherits it. 明日's sentence uses
+        // あした and would otherwise appear under みょうにち too, asserting a
+        // reading the sentence does not contain. 11,622 entries are affected.
+        //
+        // The entry's best-ranked CURRENT reading is the one the corpus almost
+        // always used, so sentences show there and nowhere else.
+        //
+        // Sorting by status first is load-bearing, not tidiness. The query orders
+        // by frequency then kana, and 上手's three readings tie on frequency — so
+        // the raw order leads with じょうしゅ, an archaic reading. Picking that as
+        // primary handed it the sentence and then suppressed it for being
+        // archaic, and じょうず simply lost its example with nothing to show for
+        // it. Silent, as ever.
+        val sentenceBearing = words
+            .sortedBy { ReadingStatus.of(it.readingInfo.toStringList()).ordinal }
+            .groupBy { it.entSeq }
+            .values
+            .map { it.first().id }
+            .toSet()
 
         return words.map { word ->
             // `reading_info` is a JSON array of JMdict re_inf codes. The codes
@@ -45,6 +71,13 @@ class RoomDictionaryRepository(
                         glosses = row.glosses.toStringList(),
                         partsOfSpeech = row.partOfSpeech.toStringList(),
                         misc = row.misc.toStringList(),
+                        examples = if (word.id in sentenceBearing) {
+                            examplesBySense[word.id to row.senseOrder]
+                                .orEmpty()
+                                .map { ExampleSentence(it.japanese, it.english) }
+                        } else {
+                            emptyList()
+                        },
                     )
                 },
                 frequencyRank = word.freqRank,

@@ -31,6 +31,21 @@ interface DictionaryDao {
     )
     suspend fun sensesFor(wordIds: List<Long>): List<WordSenseRow>
 
+    /**
+     * Every example sentence for these words (D-51).
+     *
+     * One query for the whole lookup rather than one per sense, for the same
+     * reason [sensesFor] batches: 上手 would otherwise be a dozen round trips.
+     */
+    @Query(
+        """
+        SELECT * FROM example
+        WHERE word_id IN (:wordIds)
+        ORDER BY word_id, sense_order, id
+        """
+    )
+    suspend fun examplesFor(wordIds: List<Long>): List<ExampleRow>
+
     @Query("SELECT * FROM kanji WHERE char IN (:characters)")
     suspend fun kanji(characters: List<String>): List<KanjiRow>
 

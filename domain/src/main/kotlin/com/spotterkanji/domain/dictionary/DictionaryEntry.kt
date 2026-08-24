@@ -11,6 +11,25 @@ data class Sense(
     val glosses: List<String>,
     val partsOfSpeech: List<String> = emptyList(),
     val misc: List<String> = emptyList(),
+    /**
+     * Sentences attesting this sense, ingested in Phase 1 (D-51).
+     *
+     * Attached to the **sense**, not the word: the corpus records which meaning
+     * a sentence demonstrates, and 甘い meaning "lenient" is not illustrated by a
+     * sentence about sweets.
+     */
+    val examples: List<ExampleSentence> = emptyList(),
+)
+
+/**
+ * One attested sentence and its translation.
+ *
+ * From `JMdict_e_examp`, which cites Tatoeba sentence ids — so the sentences are
+ * Tatoeba's and are credited as such (`attribution.md`, D-51).
+ */
+data class ExampleSentence(
+    val japanese: String,
+    val english: String,
 )
 
 /**
@@ -86,6 +105,61 @@ data class DictionaryEntry(
  *    would report a word the dictionary plainly holds as missing, which is the
  *    failure D-40 exists to prevent, reached from a different direction.
  */
+/**
+ * Readings that mean exactly the same thing, shown once (D-68).
+ *
+ * 先生 has five readings and three of them — せんしょう, せんじょう, ぜんじょう —
+ * carry an identical pair of senses. Rendering three blocks that each say
+ * "teacher; instructor; master / previous existence" states the same fact three
+ * times and buries the two readings that differ. The readings are still all
+ * present; only the repetition goes.
+ *
+ * [entries] keeps its display order, so the best-ranked reading leads and takes
+ * the *common* badge — which is why a group may legitimately mix a current
+ * reading with archaic ones. 上手 じょうず, じょうしゅ and じょうて share their
+ * senses exactly; the line reads じょうず COMMON · じょうしゅ ARCHAIC ·
+ * じょうて ARCHAIC, and every reading keeps its own mark (V-21).
+ */
+data class MergedReading(
+    /** At least one, all sharing an identical sense list. Best-ranked first. */
+    val entries: List<DictionaryEntry>,
+) {
+    val primary: DictionaryEntry get() = entries.first()
+
+    /** Identical across [entries] by construction, so the first is definitive. */
+    val senses: List<Sense> get() = primary.senses
+
+    /**
+     * True only when *every* reading here is marked.
+     *
+     * A group led by a current reading is part of the main sequence even when it
+     * carries archaic alternates — it is じょうず's line, and じょうず is what a
+     * learner wants. Dimming it because of its company would hide a current
+     * reading (D-68).
+     */
+    val allMarked: Boolean get() = entries.all { it.readingStatus.isMarked }
+}
+
+/**
+ * Collapse readings whose meanings are identical.
+ *
+ * Grouped on the **glosses**, not the whole [Sense]: two readings recorded with
+ * the same meanings but a differing part-of-speech tag are still saying the same
+ * thing to a reader, and splitting on that would leave the repetition on screen
+ * for a distinction the screen does not show.
+ *
+ * Each group lands at the position of its first member, so the ordering
+ * `forDisplay` established survives.
+ */
+fun List<DictionaryEntry>.mergedByMeaning(): List<MergedReading> {
+    val groups = LinkedHashMap<List<List<String>>, MutableList<DictionaryEntry>>()
+    forEach { entry ->
+        val key = entry.senses.map { it.glosses }
+        groups.getOrPut(key) { mutableListOf() }.add(entry)
+    }
+    return groups.values.map(::MergedReading)
+}
+
 fun List<DictionaryEntry>.forDisplay(): List<DictionaryEntry> {
     val displayable = filter { it.readingStatus != ReadingStatus.SEARCH_ONLY }
     return (if (displayable.isEmpty()) this else displayable)

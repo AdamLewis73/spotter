@@ -245,6 +245,20 @@ Also confirm the reverse: a word with no `ok` readings shows no archaic marking 
 
 **The vocabulary itself is checked by `verify.py`**, not by eye: the app maps four codes and treats an unrecognised one as an ordinary reading, so the case asserts the built dictionary contains exactly `ok`, `ik`, `rk`, `sk` and `gikun`. A sixth code arriving in a source refresh then fails the build rather than silently rendering as normal — which would reintroduce this very bug through the back door.
 
+### V-27 · A sentence appears under one reading only (D-69, D-51)
+
+Paste **明日**. It has three readings — あした, あす, みょうにち — and one example sentence, `あしたは一日中ひまです。`
+
+Expect the sentence under **あした and nowhere else**.
+
+The trap: a sentence attaches to a JMdict *entry*, and V-18 expands one entry into a word per reading, so every reading inherits it. Rendered naively, the app prints `あしたは…` under みょうにち — asserting that a sentence contains a reading it does not. Nothing errors; the screen looks richer than it should. **11,622 entries** carry a sentence shared across more than one reading, so this is not an edge case.
+
+Only 777 of those involve a marked reading, so **filtering by V-21 status does not fix it** — it fixes about 5%. The rule is one sentence per entry, under the best-ranked *current* reading.
+
+Then paste **上手** and confirm the sentence sits under **じょうず**, not under じょうしゅ.
+
+That pair is the specific regression worth re-checking, because it fails in the quietest possible way. じょうしゅ, じょうず and じょうて tie on frequency, so the query's kana tiebreak leads with じょうしゅ. Choosing the primary before applying V-21's status order hands the sentence to the archaic reading, which then correctly suppresses it — and じょうず ends up with no example and no indication that anything was dropped.
+
 ### V-23 · Sense filtering never empties a word (D-54, D-40)
 
 With "show explicit content" **off** — the default — find a word whose senses are *all* tagged `vulg`, `sens`, `derog` or `X`, and open it.

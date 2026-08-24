@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
         // in debug builds is a hook that cannot check a release build.
         val seed = intent?.getStringExtra(EXTRA_QUERY)
 
+
         setContent {
             SpotterTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {

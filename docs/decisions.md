@@ -79,7 +79,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-48 | One word screen per written form; readings are sections within it | UI |
 | D-49 | A single-character token opens the kanji screen directly | UI |
 | D-50 | Kanji screen carries only learner-usable reference; grade and radical dropped | UI |
-| D-51 | Example sentences are ingested in v1 but not rendered; decide in Phase 2 | Data |
+| D-51 | Example sentences are ingested in v1 but not rendered; decide in Phase 2 | Data | *(resolved by D-69)*
 | D-52 | Reading alignment normalizes sound changes; unmatched spans kept as NULL | Data |
 | D-53 | Obsolete readings are ingested and displayed, marked as archaic | UI / Data |
 | D-54 | Two sense filters with opposite defaults; obscurity is ranking, not a setting | UI |
@@ -96,6 +96,8 @@ Scan for the relevant entry rather than reading the whole file.
 | D-65 | `build_id` identifies the artefact: sources **and** builder, normalised | Data |
 | D-66 | Search-only readings are hidden, but never to nothing; `gikun` is not a defect | UI / Data |
 | D-67 | Warm near-black ground, one jade accent, IBM Plex beside Noto Sans JP | UI |
+| D-68 | Readings with identical meanings share one block | UI |
+| D-69 | Example sentences ship, under the entry's primary current reading | UI / Data |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -382,7 +384,7 @@ Secondary benefit: it makes export files self-describing (D-20). Importing onto 
 
 *Why this cannot drift:* unlike a dictionary column, this lives in the **user** database. Adding it later is a real migration, and every word saved before that release would have a permanently empty snapshot — the gloss cannot be recovered for a word the dictionary has since removed. It must be present at the first user-data write; see the checkpoint table in `roadmap.md`.
 
-**D-51 — Example sentences are ingested in v1 but not rendered. Whether to show them is a Phase 2 decision.**
+**D-51 — Example sentences are ingested in v1 but not rendered. Whether to show them is a Phase 2 decision.** *Resolved 2026-08-23 by D-69: they ship.*
 
 The build parses **`JMdict_e_examp`** (which is `JMdict_e` *plus* examples, so it replaces rather than supplements it), populates the `example` table, and ships it. The UI renders nothing from it in v1.
 
@@ -903,6 +905,38 @@ The indigo-and-teal Material scheme was an early placeholder — `Color.kt` said
 - **The trap:** Plex contains no Japanese. Given Japanese it falls back to the *system* CJK font — the exact failure D-34 exists to prevent, arriving quietly as a subtly Chinese-shaped 直 rather than as tofu. Compose's `FontFamily(a, b)` matches one font per weight and does **not** do per-glyph fallback, so listing Noto after Plex would look like a safety net while being none. Families are therefore assigned per role at the call site, and anything that can hold Japanese names `SpotterJapanese` explicitly.
 
 *Cost:* ~810 KB of fonts, against a 9.2 MB Noto and a 100 MB dictionary. And a standing obligation: a new composable rendering Japanese must remember to ask for the Japanese family. That is a real sharp edge, mitigated only by the type scale defaulting the Japanese-bearing styles (`titleLarge`, `headlineMedium`, `displayLarge`) to Noto already.
+
+**D-68 — Readings whose meanings are identical share one block.**
+
+Refines D-48, which put one section per reading. The sections stay; identical ones stop being repeated.
+
+先生 has five readings, and three of them — せんしょう, せんじょう, ぜんじょう — carry a byte-identical pair of senses. Rendering three blocks that each say *teacher; instructor; master / previous existence* states one fact three times, pushes the two readings that genuinely differ off the screen, and makes a word look harder than it is. Merged, 先生 fits on one screen with its component boxes visible.
+
+**Grouped on the glosses, not the whole sense.** Two readings recorded with the same meanings but a differing part-of-speech tag are saying the same thing to a reader; splitting on a tag the screen barely shows would leave the repetition it exists to remove.
+
+**Every reading keeps its own marking.** The line reads じょうず COMMON · じょうしゅ ARCHAIC · じょうて ARCHAIC. Merging must never cost a reading its badge — that would undo V-21 in the name of tidiness.
+
+**A group led by a current reading is not dimmed, even when it holds archaic ones.** It is じょうず's line, and じょうず is what a learner wants; stepping the whole block back because of its company would hide a current reading. Only a group where *every* reading is marked drops out of the main sequence, under the dashed rule at 55% (D-67).
+
+*Consequence for ordering:* a group sits where its best member sat, so an archaic reading can now appear above a current one belonging to a different group. V-21's requirement is unaffected — it asks that an archaic reading never *lead* a word, and じょうず still leads.
+
+*Cost:* one more concept between the repository and the screen (`MergedReading`). Judged worth it because the alternative is the screen repeating itself, which is what the whole pass was called to fix.
+
+**D-69 — Example sentences ship, shown under the entry's primary current reading. Resolves D-51.**
+
+D-51 ingested them and deferred the question, because 41.4% coverage of common senses is not a number anyone can judge on paper. Built behind a switch and looked at, per the roadmap.
+
+**The coverage worry was misplaced.** 先生 shows sentences on senses 1 and 2 and nothing on 3 and 4, and the screen does not read as broken — it reads as a dictionary. 生産 is the case that settles it: one sentence, and the word goes from a gloss to something you can picture.
+
+**The real fault was invisible on paper and obvious on the device.** A sentence attaches to a JMdict **entry**, and V-18 expands one entry into a word per reading — so every reading inherits it. 明日's sentence uses あした and appeared identically under あす and みょうにち; 上手's appeared under じょうしゅ and じょうて, both archaic. The app was asserting that a reading occurs in a sentence that does not contain it. **11,622 entries** are affected, only 777 of them involving a marked reading — so filtering by V-21 status alone would have fixed about 5% and left the rest.
+
+**So a sentence shows under one reading: the entry's best-ranked current one.** That is the reading the corpus almost always used, and it is how every dictionary presents it.
+
+*The trap inside the fix, which cost an hour:* "best-ranked" must be computed **after** status ordering. The query sorts by frequency then kana, and 上手's three readings tie on frequency, so the raw order leads with じょうしゅ. Taking that as primary handed the sentence to an archaic reading and then suppressed it for being archaic — and じょうず silently lost its example, with nothing on screen to say anything was missing. Same failure shape as everything else in this phase.
+
+*Still deferred:* word-level examples where no sense-attached one exists. Nothing in the data made the case for them, and the sense-attached ones already cover the words a scanner meets.
+
+*Cost to reverse:* one flag and a table drop on the next rebuild — the dictionary is disposable (D-38).
 
 ---
 

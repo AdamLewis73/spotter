@@ -43,8 +43,10 @@ import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiSummary
+import com.spotterkanji.domain.dictionary.MergedReading
 import com.spotterkanji.domain.dictionary.ReadingStatus
 import com.spotterkanji.domain.dictionary.Sense
+import com.spotterkanji.domain.dictionary.mergedByMeaning
 import com.spotterkanji.domain.tokenize.Token
 
 /**
@@ -117,8 +119,12 @@ fun WordScreen(
                 // not choose between them — it cannot know which one a
                 // photograph meant, and guessing would be worse than showing the
                 // options (D-44, D-48).
-                items(state.entries.size) { index ->
-                    ReadingBlock(state.entries[index], isFirst = index == 0)
+                // Readings that mean exactly the same thing share a block
+                // (D-68). 先生 goes from five blocks to three without losing a
+                // reading.
+                val merged = state.entries.mergedByMeaning()
+                items(merged.size) { index ->
+                    ReadingBlock(merged[index], isFirst = index == 0)
                 }
                 if (state.kanji.isNotEmpty() && state.entries.isNotEmpty()) {
                     item { ComponentBoxes(state.kanji, onKanjiSelected) }
@@ -290,13 +296,16 @@ private fun TokenStrip(
  * keeps its meanings readable while placing the entire section behind the others.
  */
 @Composable
-private fun ReadingBlock(entry: DictionaryEntry, isFirst: Boolean) {
+private fun ReadingBlock(group: MergedReading, isFirst: Boolean) {
     val tokens = SpotterTheme.tokens
-    val marked = entry.readingStatus.isMarked
-    val rule = when {
-        marked -> MaterialTheme.colorScheme.outline
-        isFirst -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.outline
+    // Only a block where EVERY reading is marked drops out of the main sequence.
+    // じょうず's line carries two archaic alternates and is still じょうず's line
+    // (D-68).
+    val marked = group.allMarked
+    val rule = if (isFirst && !marked) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.outline
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = tokens.spaceMd)) {
@@ -310,27 +319,38 @@ private fun ReadingBlock(entry: DictionaryEntry, isFirst: Boolean) {
                 // someone photographing a temple inscription (D-53).
                 .then(if (marked) Modifier.alpha(0.55f) else Modifier),
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
-                verticalAlignment = Alignment.CenterVertically,
+            // Every reading keeps its own badge. The line reads
+            // じょうず COMMON · じょうしゅ ARCHAIC · じょうて ARCHAIC, so merging
+            // never costs a reading its marking (V-21).
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(tokens.spaceMd),
+                verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
             ) {
-                ReadingHeading(entry)
-                // Gated on showsCommonBadge, not isCommon: the flag is inherited
-                // from the written form, so 上手 じょうしゅ is "common" in the
-                // data while being a reading nobody has used in centuries (V-21).
-                if (entry.showsCommonBadge) {
-                    Text(
-                        text = "COMMON",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                group.entries.forEach { entry ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ReadingHeading(entry)
+                        // Gated on showsCommonBadge, not isCommon: the flag is
+                        // inherited from the written form, so 上手 じょうしゅ is
+                        // "common" in the data while being a reading nobody has
+                        // used in centuries (V-21).
+                        if (entry.showsCommonBadge) {
+                            Text(
+                                text = "COMMON",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
                 }
             }
             Column(
                 modifier = Modifier.padding(top = tokens.spaceSm),
                 verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
             ) {
-                entry.senses.forEachIndexed { index, sense ->
+                group.senses.forEachIndexed { index, sense ->
                     SenseRow(index + 1, sense)
                 }
             }
@@ -383,6 +403,7 @@ private fun ReadingRule(color: androidx.compose.ui.graphics.Color, dashed: Boole
 @Composable
 private fun SenseRow(number: Int, sense: Sense) {
     val tokens = SpotterTheme.tokens
+    Column {
     Row(horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm)) {
         Text(
             text = "$number",
@@ -417,6 +438,29 @@ private fun SenseRow(number: Int, sense: Sense) {
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
+    if (sense.examples.isNotEmpty()) {
+        // Indented to the gloss column so a sentence reads as belonging to the
+        // sense above it rather than to the reading (D-48 reserves this slot).
+        Column(
+            modifier = Modifier.padding(start = 24.dp, top = tokens.spaceXs),
+            verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
+        ) {
+            sense.examples.take(1).forEach { example ->
+                Text(
+                    text = example.japanese,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = SpotterJapanese,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = example.english,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
 }
 
 /**

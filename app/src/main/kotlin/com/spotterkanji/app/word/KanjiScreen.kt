@@ -48,6 +48,7 @@ import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiExample
 import com.spotterkanji.domain.dictionary.KanjiReadingGroup
+import com.spotterkanji.domain.dictionary.mergedByMeaning
 import com.spotterkanji.domain.dictionary.Sense
 
 /**
@@ -202,13 +203,17 @@ private fun OverviewTab(detail: KanjiDetail) {
                     modifier = Modifier.padding(top = tokens.spaceSm),
                 )
             }
-            items(detail.asWord.size) { index ->
-                val entry = detail.asWord[index]
+            val merged = detail.asWord.mergedByMeaning()
+            items(merged.size) { index ->
+                val entry = merged[index].primary
                 Column(verticalArrangement = Arrangement.spacedBy(tokens.spaceXs)) {
                     // The same marking as the word screen (V-21): 生 alone
                     // routes straight here (D-49), so this is the only place
                     // an archaic reading of a lone kanji would ever appear.
-                    ReadingHeading(entry)
+                    // One line per meaning, every reading badged (D-68).
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(tokens.spaceMd)) {
+                        merged[index].entries.forEach { ReadingHeading(it) }
+                    }
                     entry.senses.forEachIndexed { i, sense ->
                         Text(
                             text = if (entry.senses.size > 1) {

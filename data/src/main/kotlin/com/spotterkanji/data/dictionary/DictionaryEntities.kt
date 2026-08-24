@@ -158,3 +158,32 @@ data class WordSenseRow(
     @ColumnInfo(name = "part_of_speech") val partOfSpeech: String?,
     @ColumnInfo(name = "misc") val misc: String?,
 )
+
+/**
+ * Example sentences, keyed to a word AND a sense (D-51).
+ *
+ * `tatoeba_id` is declared even though nothing reads it: Room validates every
+ * column of a table it maps, so omitting it fails the open with an "invalid
+ * schema" error rather than being quietly ignored.
+ */
+@Entity(
+    tableName = "example",
+    foreignKeys = [
+        ForeignKey(
+            entity = WordRow::class,
+            parentColumns = ["id"],
+            childColumns = ["word_id"],
+        ),
+    ],
+    indices = [
+        Index(name = "idx_example_word", value = ["word_id", "sense_order"]),
+    ],
+)
+data class ExampleRow(
+    @PrimaryKey @ColumnInfo(name = "id") val id: Long,
+    @ColumnInfo(name = "word_id") val wordId: Long,
+    @ColumnInfo(name = "sense_order") val senseOrder: Int,
+    @ColumnInfo(name = "japanese") val japanese: String,
+    @ColumnInfo(name = "english") val english: String,
+    @ColumnInfo(name = "tatoeba_id") val tatoebaId: Long?,
+)
