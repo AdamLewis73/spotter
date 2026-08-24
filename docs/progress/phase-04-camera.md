@@ -11,8 +11,10 @@ Not started. No camera code of any kind exists.
 Phase 2 pipeline being built and trusted — the point of the inside-out build
 order is that a bug here reads as a camera bug rather than as anything else.
 Phase 2 is feature-complete and Phase 3 is done, so that condition is met: text
-goes in, tokenizes, looks up, and renders both detail screens, with 42
-instrumented tests over it.
+goes in, tokenizes, looks up, and renders both detail screens, with an
+instrumented suite over it. (Deliberately not quoting a test count here — this
+sentence outlives any particular number, and it was already stale within a day
+of being written.)
 
 ## Next action
 
