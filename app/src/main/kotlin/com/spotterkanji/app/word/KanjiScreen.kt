@@ -2,15 +2,17 @@ package com.spotterkanji.app.word
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,12 +27,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.tooling.preview.Preview
+import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiExample
 import com.spotterkanji.domain.dictionary.KanjiReadingGroup
+import com.spotterkanji.domain.dictionary.mergedByMeaning
 import com.spotterkanji.domain.dictionary.Sense
 
 /**
@@ -49,45 +67,112 @@ import com.spotterkanji.domain.dictionary.Sense
 fun KanjiScreen(
     detail: KanjiDetail,
     onBack: () -> Unit,
+    onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tokens = SpotterTheme.tokens
     var tab by remember(detail.character) { mutableIntStateOf(0) }
 
     Column(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.padding(horizontal = tokens.spaceMd)) {
-            Column {
-                IconButton(onClick = onBack, modifier = Modifier.padding(top = tokens.spaceSm)) {
-                    // The kanji screen replaces the word screen in place rather
-                    // than stacking beside it, so a back affordance is the only
-                    // way out (D-32).
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-                Text(
-                    text = detail.character,
-                    style = MaterialTheme.typography.displayLarge,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                )
-                Text(
-                    text = detail.meanings.joinToString(", "),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(bottom = tokens.spaceSm),
-                )
-            }
+        // A row, not a stacked block: back, the character, its meanings beside
+        // it, and save. The design keeps the whole header to one line so the
+        // examples - the reason the screen exists (D-04) - start above the fold.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(tokens.spaceMd),
+            horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // The kanji screen replaces the word screen in place rather than
+            // stacking beside it, so a back affordance is the only way out
+            // (D-32).
+            GlyphButton(
+                glyph = "‹",
+                contentDescription = "Back",
+                tint = MaterialTheme.colorScheme.onSurface,
+                border = MaterialTheme.colorScheme.outline,
+                onClick = onBack,
+            )
+            Text(
+                text = detail.character,
+                style = MaterialTheme.typography.headlineMedium,
+                fontFamily = SpotterJapanese,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = detail.meanings.joinToString(", "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            // Inert until Phase 6, like the word screen's (D-67).
+            GlyphButton(
+                glyph = "✚",
+                contentDescription = "Save",
+                tint = MaterialTheme.colorScheme.primary,
+                border = MaterialTheme.colorScheme.primary,
+                onClick = onSave,
+            )
         }
 
         TabRow(selectedTabIndex = tab) {
             Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Overview") })
             Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Examples") })
+            // Present because the design has it, and because a tab that appears
+            // later moves every tab beside it. Phase 3 fills it in; until then it
+            // says so rather than pretending to be empty (D-05).
+            Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Stroke order") })
         }
 
         when (tab) {
             0 -> OverviewTab(detail)
-            else -> ExamplesTab(detail)
+            1 -> ExamplesTab(detail)
+            else -> StrokeOrderTab(detail)
         }
+    }
+}
+
+@Composable
+private fun GlyphButton(
+    glyph: String,
+    contentDescription: String,
+    tint: Color,
+    border: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(38.dp)
+            .border(1.dp, border, RoundedCornerShape(11.dp))
+            .clickable(onClick = onClick, onClickLabel = contentDescription),
+    ) {
+        Text(text = glyph, style = MaterialTheme.typography.bodyLarge, color = tint)
+    }
+}
+
+/**
+ * Phase 3's tab, standing empty and saying so.
+ *
+ * The stroke data is already in the dictionary - KanjiVG paths for 6,416
+ * characters, all 2,501 of the ranked ones - so this is a rendering job, not a
+ * data one. Naming the stroke count is the one useful thing the tab can do
+ * today, and it is where D-50 says the count belongs.
+ */
+@Composable
+private fun StrokeOrderTab(detail: KanjiDetail) {
+    val tokens = SpotterTheme.tokens
+    Column(modifier = Modifier.padding(tokens.spaceMd)) {
+        Text(
+            text = "${detail.strokeCount} STROKES",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = "Stroke order animation arrives in Phase 3.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = tokens.spaceSm),
+        )
     }
 }
 
@@ -102,8 +187,8 @@ private fun OverviewTab(detail: KanjiDetail) {
             // On'yomi in katakana, kun'yomi in hiragana — the convention every
             // Japanese dictionary uses, so a learner can tell which is which
             // without a label (D-37).
-            ReadingList("On'yomi", detail.onReadings)
-            ReadingList("Kun'yomi", detail.kunReadings)
+            ReadingList("ON'YOMI", detail.onReadings)
+            ReadingList("KUN'YOMI", detail.kunReadings)
         }
 
         // D-49: a single character scanned on its own arrives here directly
@@ -112,31 +197,33 @@ private fun OverviewTab(detail: KanjiDetail) {
         if (detail.asWord.isNotEmpty()) {
             item {
                 Text(
-                    text = "As a word",
-                    style = MaterialTheme.typography.titleLarge,
+                    text = "AS A WORD",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = tokens.spaceSm),
                 )
             }
-            items(detail.asWord.size) { index ->
-                val entry = detail.asWord[index]
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    ),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(tokens.spaceMd),
-                        verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
-                    ) {
-                        Text(entry.reading, style = MaterialTheme.typography.titleLarge)
-                        entry.senses.forEachIndexed { i, sense ->
-                            Text(
-                                text = "${i + 1}. ${sense.glosses.joinToString("; ")}",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+            val merged = detail.asWord.mergedByMeaning()
+            items(merged.size) { index ->
+                val entry = merged[index].primary
+                Column(verticalArrangement = Arrangement.spacedBy(tokens.spaceXs)) {
+                    // The same marking as the word screen (V-21): 生 alone
+                    // routes straight here (D-49), so this is the only place
+                    // an archaic reading of a lone kanji would ever appear.
+                    // One line per meaning, every reading badged (D-68).
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(tokens.spaceMd)) {
+                        merged[index].entries.forEach { ReadingHeading(it) }
+                    }
+                    entry.senses.forEachIndexed { i, sense ->
+                        Text(
+                            text = if (entry.senses.size > 1) {
+                                "${i + 1}. ${sense.glosses.joinToString("; ")}"
+                            } else {
+                                sense.glosses.joinToString("; ")
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
                     }
                 }
             }
@@ -144,17 +231,37 @@ private fun OverviewTab(detail: KanjiDetail) {
     }
 }
 
+/**
+ * A kanji's readings, wrapped rather than run together.
+ *
+ * Not from the design — it covers the Examples tab and says nothing about this
+ * one — but it is the other half of the complaint that prompted the pass. 生 has
+ * twenty kun'yomi, and joining them with spaces produced three lines of
+ * undifferentiated kana in which no individual reading could be picked out.
+ * Wrapping them as separate items costs nothing and makes the list countable.
+ */
 @Composable
 private fun ReadingList(label: String, readings: List<String>) {
     if (readings.isEmpty()) return
     val tokens = SpotterTheme.tokens
-    Column(modifier = Modifier.padding(bottom = tokens.spaceSm)) {
+    Column(modifier = Modifier.padding(bottom = tokens.spaceMd)) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(text = readings.joinToString("  "), style = MaterialTheme.typography.bodyLarge)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(tokens.spaceMd),
+            modifier = Modifier.padding(top = tokens.spaceXs),
+        ) {
+            readings.forEach {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontFamily = SpotterJapanese,
+                )
+            }
+        }
     }
 }
 
@@ -182,55 +289,200 @@ private fun ExamplesTab(detail: KanjiDetail) {
         return
     }
 
-    LazyColumn(
-        contentPadding = PaddingValues(tokens.spaceMd),
-        verticalArrangement = Arrangement.spacedBy(tokens.spaceMd),
-    ) {
+    // On'yomi and kun'yomi are not two arbitrary buckets — they are the single
+    // most useful generalisation a learner can make about a kanji, and D-67 puts
+    // the rule on screen instead of leaving it to be inferred from the script the
+    // reading happens to be written in (D-37). The repository already orders on
+    // before kun, so this only has to say where the boundary falls.
+    val onYomi = detail.readingGroups.filter { it.type == "on" }
+    val kunYomi = detail.readingGroups.filter { it.type == "kun" }
+    val unresolved = detail.readingGroups.filter { it.type != "on" && it.type != "kun" }
+
+    LazyColumn(contentPadding = PaddingValues(tokens.spaceMd)) {
         if (detail.readingGroups.size == 1) {
             item {
                 Text(
                     text = "${detail.character} has one reading — this one is straightforward.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = tokens.spaceMd),
                 )
             }
         }
-        items(detail.readingGroups.size) { index ->
-            ReadingGroupCard(detail.readingGroups[index])
+        // Readings the alignment could not classify (D-52) come last, and are
+        // shown rather than dropped — the words still demonstrate the pattern,
+        // and silently losing them would be the same class of fault as hiding a
+        // reading.
+        val classes = listOf(
+            Triple("ON'YOMI", "Chinese-derived · in compounds", onYomi),
+            Triple("KUN'YOMI", "Native · standalone or with kana", kunYomi),
+            Triple("OTHER READINGS", null, unresolved),
+        ).filter { it.third.isNotEmpty() }
+
+        classes.forEachIndexed { index, (label, explanation, groups) ->
+            readingClass(
+                label = label,
+                explanation = explanation,
+                groups = groups,
+                character = detail.character,
+                // Between classes only. A rule above the first sits directly
+                // under the tab bar's own underline and reads as a stray line.
+                showDivider = index > 0,
+            )
+        }
+    }
+}
+
+/** One class of reading and every group inside it, or nothing if it is empty. */
+private fun LazyListScope.readingClass(
+    label: String,
+    explanation: String?,
+    groups: List<KanjiReadingGroup>,
+    character: String,
+    showDivider: Boolean,
+) {
+    if (groups.isEmpty()) return
+
+    item { ReadingClassHeader(label, explanation, showDivider) }
+    items(groups.size) { index -> ReadingGroupBlock(groups[index], character) }
+}
+
+@Composable
+private fun ReadingClassHeader(label: String, explanation: String?, showDivider: Boolean) {
+    val tokens = SpotterTheme.tokens
+    Column(
+        modifier = Modifier.padding(
+            top = if (showDivider) tokens.spaceLg else tokens.spaceSm,
+            bottom = tokens.spaceSm,
+        ),
+    ) {
+        if (showDivider) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(tokens.spaceSm),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = if (showDivider) tokens.spaceMd else 0.dp),
+        ) {
+            // On'yomi gets the filled accent pill, kun'yomi an outlined one. Not
+            // decoration: on'yomi is what a kanji takes inside a compound, which
+            // is the case a scanner meets most often, so it leads. The outlined
+            // form keeps kun'yomi legible as a peer rather than a footnote.
+            val filled = label.startsWith("ON")
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (filled) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier
+                    .then(
+                        if (filled) {
+                            Modifier.background(
+                                MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(4.dp),
+                            )
+                        } else {
+                            Modifier.border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline,
+                                RoundedCornerShape(4.dp),
+                            )
+                        },
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            )
+            explanation?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun ReadingGroupCard(group: KanjiReadingGroup) {
+private fun ReadingGroupBlock(group: KanjiReadingGroup, character: String) {
     val tokens = SpotterTheme.tokens
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(bottom = tokens.spaceMd),
+        verticalArrangement = Arrangement.spacedBy(tokens.spaceSm),
     ) {
-        Column(
-            modifier = Modifier.padding(tokens.spaceMd),
-            verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
-        ) {
-            Text(
-                text = group.reading,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            group.examples.forEach { example ->
-                Text(
-                    text = buildString {
-                        append(example.text)
-                        append("  ")
-                        append(example.reading)
-                        example.meaning?.let { append("  —  $it") }
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        Text(
+            text = group.reading,
+            style = MaterialTheme.typography.bodyLarge.copy(letterSpacing = 0.12.em),
+            fontFamily = SpotterJapanese,
+            // Accent for on'yomi, plain for kun - the same distinction the class
+            // pill makes, carried down to the group so it survives scrolling the
+            // header off screen.
+            color = if (group.type == "on") {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+        )
+        group.examples.forEach { ExampleRow(it, character) }
+    }
+}
+
+/**
+ * One example word: its reading above it, the studied kanji picked out inside
+ * it, and its meaning alongside.
+ *
+ * Highlighting the character is the point (D-67). A list of words containing 生
+ * shows *that* they contain it; colouring the 生 inside 先生 and 学生 shows
+ * **where**, which is what makes the shared reading visible as a pattern rather
+ * than as a claim the reader has to check character by character.
+ */
+@Composable
+private fun ExampleRow(example: KanjiExample, character: String) {
+    val tokens = SpotterTheme.tokens
+    val accent = MaterialTheme.colorScheme.primary
+    val plain = MaterialTheme.colorScheme.onSurface
+
+    // Every occurrence, not just the first: 生々しい carries it twice, and
+    // highlighting one of a pair reads as a rendering bug.
+    val word = buildAnnotatedString {
+        example.text.forEach { char ->
+            val style = if (char.toString() == character) {
+                SpanStyle(color = accent, fontWeight = FontWeight.Medium)
+            } else {
+                SpanStyle(color = plain)
             }
+            withStyle(style) { append(char) }
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(tokens.spaceMd),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = example.reading,
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.2.em),
+                fontFamily = SpotterJapanese,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = word,
+                style = MaterialTheme.typography.titleLarge,
+                fontFamily = SpotterJapanese,
+            )
+        }
+        example.meaning?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
@@ -270,5 +522,5 @@ private val previewDetail = KanjiDetail(
 @Preview(showBackground = true, name = "Examples")
 @Composable
 private fun KanjiScreenPreview() {
-    SpotterTheme { Surface { KanjiScreen(previewDetail, onBack = {}) } }
+    SpotterTheme { Surface { KanjiScreen(previewDetail, onBack = {}, onSave = {}) } }
 }

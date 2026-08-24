@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Must match SpotterDarkColors.surface in Color.kt. -->
-    <color name="window_background">#FF1B1B1F</color>
+    <!-- Must match SpotterDarkColors.background in Color.kt (D-67). -->
+    <color name="window_background">#FF14120F</color>
 </resources>

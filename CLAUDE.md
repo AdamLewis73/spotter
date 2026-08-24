@@ -70,12 +70,14 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 ## Status
 
-**Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 99.7 MB `spotter.db` (30.3 MB gzipped) from four pinned sources in ~45 seconds, byte-reproducible from identical sources (D-58, D-64). `verify.py` passes 10 of 10 verification cases.
+**Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 99.7 MB `spotter.db` (30.3 MB gzipped) from four pinned sources in ~45 seconds, byte-reproducible from identical sources (D-58, D-64). `verify.py` passes 11 of 11 verification cases.
 
-**Current phase:** Phase 2 — Android app, text input only. **In progress and usable.** Type Japanese → Kuromoji segments it → tap a word → readings, meanings and component chips → tap a chip → the kanji screen, whose Examples tab is D-04. The dictionary ships in the APK and refreshes itself when it changes.
+**Phase 2 — Android app, text input only: feature-complete.** Type Japanese → Kuromoji segments it → tap a word → readings, meanings, example sentences and component boxes → tap one → the kanji screen, whose Examples tab is D-04. Longest-match offers the words the parse hides (東京都 → 京都). The dictionary ships in the APK and refreshes itself when it changes. Every `V-##` case this phase owns is met; the **user-data checkpoint** (D-15–D-18, D-43) is the one item left on its list and lands with Save in Phase 6 by design.
 
-**Read `docs/progress/phase-02-android-text-input.md` before working on this phase.** It carries the next actions in priority order, an honest assessment of which `V-##` cases are still unmet, and the build gotchas — several of which present as misleading errors.
+**Current phase:** Phase 3 — stroke order. Not started. The KanjiVG paths already ship in `spotter.db`, and the kanji screen already has a **Stroke order tab** standing empty and saying so — this is a Compose drawing job, not a data one.
 
-Run it with **`/launch`**. Build with `./gradlew :app:assembleDebug`, which needs `JAVA_HOME` pointing at Android Studio's JBR — there is no other JDK on this machine. Read that progress file's **Notes** before touching build files; AGP 9 removed the Kotlin Android plugin, so most published advice is now a build error.
+**Read `docs/progress/phase-03-stroke-order.md` first**, then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors.
 
-**Design tokens are done** (D-35, fixed palette plus bundled Noto Sans JP). One checkpoint remains in this phase: the **user-data rules** before the first write (D-15–D-18, D-43) — which nothing does yet, so it lands with Save in Phase 6.
+Run it with **`/launch`** (starts it for you to drive) or **`/inspect`** (drives it against specific words and reports). Build with `./gradlew :app:assembleDebug`, which needs `JAVA_HOME` pointing at Android Studio's JBR — there is no other JDK on this machine. AGP 9 removed the Kotlin Android plugin, so most published advice is now a build error.
+
+**Design is settled** (D-67: warm near-black, one jade accent, IBM Plex beside Noto Sans JP). Every composable reads colour and type through `Color.kt` and `Type.kt` — anything new must do the same, and anything rendering Japanese must ask for `SpotterJapanese` explicitly, because IBM Plex contains no CJK and falls back silently to the system font (the exact failure D-34 exists to prevent).

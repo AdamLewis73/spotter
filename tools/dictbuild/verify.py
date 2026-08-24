@@ -231,6 +231,48 @@ def v09(db, out):
     return bad < 150 and ranked == 2501, "bounded disagreement, full coverage where it matters"
 
 
+@case("V-21", "The re_inf vocabulary is exactly what the UI decodes (D-53, D-66)")
+def v21(db, out):
+    """The data half of V-21. The rendering half needs a screen, not a database.
+
+    `ReadingStatus.of()` maps four of these codes and treats anything else as an
+    ordinary current reading, because a dictionary refresh must not crash the app
+    over a tag it has not met. That leniency is only safe if a NEW tag is loud
+    somewhere, and this is where: JMdict adds re_inf codes occasionally, and one
+    arriving unnoticed means a reading the app should mark rendering as normal —
+    the exact silence V-21 exists to catch, reintroduced through the back door.
+
+    Failing here means deciding what the new code means and adding it to
+    ReadingStatus, not widening this set.
+    """
+    known = {"ok", "ik", "rk", "sk", "gikun"}
+    seen = {}
+    for (info,) in db.execute("SELECT reading_info FROM word WHERE reading_info IS NOT NULL"):
+        for tag in json.loads(info):
+            seen[tag] = seen.get(tag, 0) + 1
+    for tag, n in sorted(seen.items(), key=lambda kv: -kv[1]):
+        out(f"{tag:<8} {n:>6,}" + ("" if tag in known else "   <- UNKNOWN to ReadingStatus"))
+
+    # 上手 is the case verification.md names, and it needs all three shapes
+    # present or the UI has nothing to distinguish: a current reading, an
+    # obsolete one, and the inherited frequency that makes them tie.
+    rows = db.execute("SELECT reading, reading_info, freq_rank FROM word"
+                      " WHERE text='上手' ORDER BY reading").fetchall()
+    tagged = {r[0]: json.loads(r[1]) if r[1] else [] for r in rows}
+    out("上手  " + "  ".join(f"{r}{'(' + ','.join(t) + ')' if t else ''}"
+                             for r, t in tagged.items()))
+    ranks = {r[0]: r[2] for r in rows}
+    out(f"じょうしゅ inherits 上手's rank {ranks.get('じょうしゅ')} from the writing"
+        f" — same as じょうず ({ranks.get('じょうず')}), which is why the query alone"
+        " cannot order them")
+
+    unknown = set(seen) - known
+    return (not unknown
+            and tagged.get("じょうて") == ["ok"]
+            and tagged.get("じょうしゅ") == ["ok"]
+            and tagged.get("じょうず") == []),         "no unrecognised re_inf codes; 上手 carries the ok tags the UI marks"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--db", type=Path, default=HERE / "data" / "build" / "spotter.db")

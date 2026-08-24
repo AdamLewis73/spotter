@@ -198,6 +198,10 @@ Input: `先生と生産`
 
 Both halves matter. Only the Kuromoji parse means longest-match isn't running, and the compound-versus-word interaction — the app's whole pedagogical premise — silently won't work. The user could never ask about 先 on its own.
 
+**Met 2026-08-23.** Also check **東京都**, which is the case that shaped the presentation rule (D-70): Kuromoji parses it as 東京 / 都, so both the full place name and 京都 — which straddles the token boundary — are unreachable from the strip. Both must appear as alternates. The failure mode is silence in the purest form: with `existingWords` returning nothing, longest-match still runs, still returns a list, and the list is simply always empty.
+
+Note the **display** filters single-character alternates (D-70), because each is already a component box below and routes to the same kanji screen (D-06, D-49). The mechanism must still report 先 — assert that against `matchesIn`, not against the screen.
+
 ### V-07 · Conjugated verbs resolve to dictionary form (D-07)
 
 Input: `生きた`
@@ -213,23 +217,51 @@ Two conventions that are easy to conflate, on screen at the same time:
 
 If both render in the same script, one convention has been applied globally.
 
-### V-21 · Obsolete readings are visibly distinguished (D-53, D-48)
+### V-21 · Obsolete readings are visibly distinguished (D-53, D-48, D-66)
 
 Scan or paste **上手**. Under D-48 the word screen lists every reading as a section, so all five appear:
 
 | Reading | Tag | Expected treatment |
 |---|---|---|
-| じょうず | — | normal |
+| じょうず | — | normal, badged *common*, **and first** |
 | うわて | — | normal |
 | かみて | — | normal |
-| じょうて | `ok` | **marked archaic** |
-| じょうしゅ | `ok` | **marked archaic** |
+| じょうて | `ok` | **marked archaic**, muted, no *common* badge |
+| じょうしゅ | `ok` | **marked archaic**, muted, no *common* badge |
 
 The failure this catches: じょうて rendering identically to じょうず. Nothing errors, the screen looks complete, and the app has quietly taught a reading that has not been current for centuries — to a learner with no way to know the difference.
+
+**It is an ordering failure as much as a labelling one.** じょうしゅ and じょうず both carry 上手's frequency rank of 12 — inherited from the *writing* under V-04's rule — so the query's tiebreak falls to alphabetical kana and the obsolete reading wins. Before this case was met the screen **opened on じょうしゅ**, badged *common*. Marking alone would have left the archaic reading at the top of the screen.
 
 Note the app never knows *which* reading was scanned (D-44, D-53), so this cannot be solved by only showing archaic readings when they were the one photographed. Every reading is always shown; the marking is what carries the information.
 
 Also confirm the reverse: a word with no `ok` readings shows no archaic marking anywhere. A marker applied globally is as wrong as one never applied, and looks just as plausible.
+
+#### The rest of the column (D-66)
+
+`reading_info` carries five `re_inf` codes, and V-21 is not met by handling only `ok`. Three further checks, each catching the same class of silence from a different direction:
+
+| Paste | Expect | The failure |
+|---|---|---|
+| **中国** | **ちゅうごく alone** | ちゅうこく is a search-only misreading and used to render *first*, badged common. `sk` lands on far commoner words than `ok` does |
+| **明日** | あした, あす, みょうにち — **all unmarked** | All three are tagged or flanked by `gikun`, which is not a defect marker. A rule of "tagged means suspect" labels the ordinary reading of an everyday word archaic |
+| **あっかんべえ** | resolves, marked *non-standard* | Its only reading is `sk`. An unconditional filter reports a word the dictionary plainly holds as missing — D-40's failure, reached from a different direction. 3,143 written forms are in this position |
+
+**The vocabulary itself is checked by `verify.py`**, not by eye: the app maps four codes and treats an unrecognised one as an ordinary reading, so the case asserts the built dictionary contains exactly `ok`, `ik`, `rk`, `sk` and `gikun`. A sixth code arriving in a source refresh then fails the build rather than silently rendering as normal — which would reintroduce this very bug through the back door.
+
+### V-27 · A sentence appears under one reading only (D-69, D-51)
+
+Paste **明日**. It has three readings — あした, あす, みょうにち — and one example sentence, `あしたは一日中ひまです。`
+
+Expect the sentence under **あした and nowhere else**.
+
+The trap: a sentence attaches to a JMdict *entry*, and V-18 expands one entry into a word per reading, so every reading inherits it. Rendered naively, the app prints `あしたは…` under みょうにち — asserting that a sentence contains a reading it does not. Nothing errors; the screen looks richer than it should. **11,622 entries** carry a sentence shared across more than one reading, so this is not an edge case.
+
+Only 777 of those involve a marked reading, so **filtering by V-21 status does not fix it** — it fixes about 5%. The rule is one sentence per entry, under the best-ranked *current* reading.
+
+Then paste **上手** and confirm the sentence sits under **じょうず**, not under じょうしゅ.
+
+That pair is the specific regression worth re-checking, because it fails in the quietest possible way. じょうしゅ, じょうず and じょうて tie on frequency, so the query's kana tiebreak leads with じょうしゅ. Choosing the primary before applying V-21's status order hands the sentence to the archaic reading, which then correctly suppresses it — and じょうず ends up with no example and no indication that anything was dropped.
 
 ### V-23 · Sense filtering never empties a word (D-54, D-40)
 

@@ -39,4 +39,15 @@ interface DictionaryRepository {
      * render when its data goes missing (D-40).
      */
     suspend fun kanjiDetail(character: String): KanjiDetail?
+
+    /**
+     * Which of [texts] the dictionary actually holds — the one database step
+     * longest-match needs (D-07).
+     *
+     * Takes the whole candidate set at once rather than a string at a time. A
+     * ten-character line produces on the order of a hundred candidates, and a
+     * query each would be a hundred round trips for something the user is
+     * waiting on.
+     */
+    suspend fun existingWords(texts: Set<String>): Set<String>
 }

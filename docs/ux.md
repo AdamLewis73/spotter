@@ -57,22 +57,35 @@ Composed of:  上 above, up    手 hand
 
 Reading → meanings, repeated per reading. **Component chips come last**, below every reading, showing meanings only (D-06).
 
-**Obsolete readings appear too, marked as archaic** (D-53). 上手 has five readings; じょうて and じょうしゅ are historical and shown visually distinguished rather than hidden. Someone photographing a temple inscription or an old shopfront is exactly the person who needs them — and the app never knows which reading was scanned anyway, so hiding them would just leave a gap with no explanation. How strongly to mark them is a Phase 2 design question; V-21 covers the failure of not marking them at all.
+**As built (D-67):** the written form sits centred above the list with a count beneath it — `5 READINGS · 2 ARCHAIC`. Stating the shape of the answer up front is what stops a five-reading word reading as an unbounded scroll, and it turns a one-reading word into information rather than an empty screen. The readings themselves are a divided list, not a stack of cards: a card says "this is a separate thing", and five of them say it five times about five readings of one written form.
 
-**Example sentences are not rendered in v1** (D-51). They are ingested and sit in the dictionary, but only 41.4% of common senses have one, and that number is impossible to judge without seeing real screens. The slot in the layout — beneath each sense, above the next reading — is reserved:
+**Obsolete readings appear too, marked as archaic** (D-53). 上手 has five readings; じょうて and じょうしゅ are historical and shown visually distinguished rather than hidden. Someone photographing a temple inscription or an old shopfront is exactly the person who needs them — and the app never knows which reading was scanned anyway, so hiding them would just leave a gap with no explanation.
+
+The marking, settled in Phase 2 (D-66): the reading drops to the muted colour and is labelled — *archaic* for `ok`, *irregular* for `ik`, *rare* for `rk` — and **marked readings sort after current ones and never carry the *common* badge**. That last pair matters more than the label. 上手's archaic readings inherit the written form's frequency (V-04), so before the sort existed the screen *opened* on じょうしゅ, badged common. A restrained treatment on purpose, so the UI pass has something to refine rather than something to undo.
+
+**Search-only readings are hidden** (D-66), which is the one place the screen shows less than the dictionary holds. JMdict's `sk` forms exist so a search matches — 私 ワタシ, 綺麗 きれーい, and misreadings like 中国 ちゅうこく — and no one has ever read them. They are dropped wherever the word has another reading to show, and shown marked *non-standard* where they are all it has, so a word never resolves to nothing (D-40).
+
+**`gikun` is never marked.** 明日 あした and 大人 おとな carry the tag and are the ordinary reading; it records that the reading attaches to the word as a whole, which is what whole-word furigana needs (D-14), not that anything is wrong.
+
+**Example sentences are rendered**, beneath the sense they attest (D-69, resolving D-51):
 
 ```
-  じょうず  skillful; proficient; good (at); adept
-            ← examples would go here, per sense
-            flattery
+  じょうず  1  skillful; proficient; good (at); adept
+               あなたは上手にバスケットボールができますか。
+               Do you play basketball well?
+            2  flattery
 ```
 
-Two things to settle in Phase 2: whether to show them at all, and how to keep meanings and examples visually distinct at a glance. Both are design questions, not data ones — the data is already there.
+Coverage is 41.4% of common senses, and the gaps read as ordinary rather than broken — 先生 carries sentences on two of its four senses and looks like a dictionary. They sit indented to the gloss column and in the muted colour, so a sense scans as one block.
+
+**One sentence per entry, under its best-ranked current reading.** A sentence belongs to a JMdict entry, and one entry expands into a word per reading, so all of them inherit it — 明日's あした sentence would otherwise appear under みょうにち too, claiming a reading the sentence does not contain (V-27).
 
 ### Kanji screen — three tabs
 
-**Two of them are built.** Overview and Examples exist as of Phase 2; Stroke
-Order arrives with Phase 3, which is what the stroke count is waiting for. This
+**All three exist; two of them do anything.** Overview and Examples were built
+in Phase 2, and Stroke order stands empty carrying the stroke count and naming
+Phase 3 — built early so that adding it later would not shift the two beside it.
+Phase 3 replaces its body and nothing above it. This
 section describes the finished screen, not the current one.
 
 | Tab | Content |

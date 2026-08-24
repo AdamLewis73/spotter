@@ -63,7 +63,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-32 | Kanji screen swaps in place inside the sheet | UI |
 | D-33 | Overlay dims the image; detected text stays bright | UI |
 | D-34 | Bundle Noto Sans JP explicitly | UI |
-| D-35 | Material 3 design tokens from the first UI commit | UI |
+| D-35 | Material 3 design tokens from the first UI commit | UI | *(palette SUPERSEDED by D-67)*
 | D-36 | Three bottom-nav destinations: Scan · Saved · Review | UI |
 | D-37 | Reading labels follow dictionary kana convention | UI / Data |
 | D-38 | Dictionary stays disposable; stable dictionary IDs rejected | Data |
@@ -79,7 +79,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-48 | One word screen per written form; readings are sections within it | UI |
 | D-49 | A single-character token opens the kanji screen directly | UI |
 | D-50 | Kanji screen carries only learner-usable reference; grade and radical dropped | UI |
-| D-51 | Example sentences are ingested in v1 but not rendered; decide in Phase 2 | Data |
+| D-51 | Example sentences are ingested in v1 but not rendered; decide in Phase 2 | Data | *(resolved by D-69)*
 | D-52 | Reading alignment normalizes sound changes; unmatched spans kept as NULL | Data |
 | D-53 | Obsolete readings are ingested and displayed, marked as archaic | UI / Data |
 | D-54 | Two sense filters with opposite defaults; obscurity is ranking, not a setting | UI |
@@ -94,6 +94,11 @@ Scan for the relevant entry rather than reading the whole file.
 | D-63 | The app is **Spotter**; "Kanji Scanner" is the store subtitle, not the name | Product |
 | D-64 | Wall-clock time lives outside the dictionary, in a `build-info.json` sidecar | Data |
 | D-65 | `build_id` identifies the artefact: sources **and** builder, normalised | Data |
+| D-66 | Search-only readings are hidden, but never to nothing; `gikun` is not a defect | UI / Data |
+| D-67 | Warm near-black ground, one jade accent, IBM Plex beside Noto Sans JP | UI |
+| D-68 | Readings with identical meanings share one block | UI |
+| D-69 | Example sentences ship, under the entry's primary current reading | UI / Data |
+| D-70 | Alternates are words that **overlap** the token, not just those inside it | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -380,7 +385,7 @@ Secondary benefit: it makes export files self-describing (D-20). Importing onto 
 
 *Why this cannot drift:* unlike a dictionary column, this lives in the **user** database. Adding it later is a real migration, and every word saved before that release would have a permanently empty snapshot — the gloss cannot be recovered for a word the dictionary has since removed. It must be present at the first user-data write; see the checkpoint table in `roadmap.md`.
 
-**D-51 — Example sentences are ingested in v1 but not rendered. Whether to show them is a Phase 2 decision.**
+**D-51 — Example sentences are ingested in v1 but not rendered. Whether to show them is a Phase 2 decision.** *Resolved 2026-08-23 by D-69: they ship.*
 
 The build parses **`JMdict_e_examp`** (which is `JMdict_e` *plus* examples, so it replaces rather than supplements it), populates the `example` table, and ships it. The UI renders nothing from it in v1.
 
@@ -735,7 +740,7 @@ Unicode unifies Chinese and Japanese characters onto shared codepoints, but the 
 
 In an app whose purpose is teaching people to read and write kanji, displaying the wrong glyph form is a correctness bug, not a polish issue.
 
-**D-35 — Material 3 with a design-token layer from the first UI commit.**
+**D-35 — Material 3 with a design-token layer from the first UI commit.** *Its palette is SUPERSEDED by D-67; the token layer itself stands and is the reason D-67 was cheap.*
 Centralized colors, type scale, and spacing. Roughly ten minutes of setup at the start; a refactor touching every composable if retrofitted later.
 
 **D-36 — Three bottom-navigation destinations: Scan · Saved · Review.**
@@ -848,6 +853,113 @@ Removed from the Overview tab:
 The visual-component question — *what pieces is this kanji built from?* — is the genuinely useful version of "radical", and it is deferred separately in `roadmap.md` (KRADFILE), where the obstacle is component *naming* rather than data.
 
 *Consequence:* Overview would be left holding only meanings and readings, which is thin. D-49 refills it with the "As a word" section for kanji that are also standalone words.
+
+**D-66 — Search-only readings are hidden — but never to nothing. `gikun` is not a defect marker.**
+
+D-53 settled that obsolete kana is shown and marked. Building V-21 turned up the rest of the column it lives in: `word.reading_info` carries **five** JMdict `re_inf` codes, not one, and the app was reading none of them.
+
+| Tag | Meaning | Rows | Treatment |
+|---|---|---|---|
+| `sk` | search-only kana form | 6,647 | **hidden**, unless it is all the word has |
+| `ok` | out-dated kana | 1,301 | shown, marked *archaic* (D-53) |
+| `ik` | irregular kana usage | 512 | shown, marked *irregular* |
+| `gikun` | gikun / jukujikun | 506 | **not marked at all** |
+| `rk` | rarely used kana form | 285 | shown, marked *rare* |
+
+**`sk` is hidden because it is not a reading.** JMdict carries these so a search matches, not so anyone reads them: katakana renderings (私 ワタシ), stretched colloquial spellings (綺麗 きれーい), and outright common misreadings (中国 ちゅうこく, 七 ひち). Displayed as ordinary readings they do more damage than the archaic ones, because they land on far commoner words — 中国 opened on ちゅうこく, badged *common*, above ちゅうごく.
+
+**But hiding them can never empty a word.** 3,143 written forms have no other reading — almost all kana-only variants such as あっかんべえ and ゼイゼイ言う. An unconditional filter would report a word the dictionary plainly holds as missing, which is exactly the failure D-40 exists to prevent, reached from a different direction. So the rule is *drop them where anything else can be shown*, and where nothing else can, show them marked *non-standard*.
+
+*Why hide rather than mark, when D-53 argued so firmly for marking:* D-53's reasoning is that someone photographing a temple inscription genuinely needs じょうしゅ — the archaic reading is real, attested, and the answer to what is in front of them. No one is ever looking at ちゅうこく. It is not a reading of 中国 in any period; it is an index entry.
+
+**`gikun` is not a defect marker, and treating it as one is the trap in the obvious implementation.** 明日 あした, 大人 おとな and 海豚 いるか are all tagged `gikun`, and all three are the ordinary current reading. The tag says the reading attaches to the word as a whole rather than character by character — the jukujikun fact `overview.md` flags as invalidating per-character reading display (D-06), and the thing whole-word furigana will need (D-14). It is orthogonal to currency: 15 readings carry `gikun` *and* `ok` together. So it is modelled as a separate flag, carried and not rendered in v1.
+
+**Two consequences beyond hiding and marking**, both needed before V-21 reads as fixed:
+
+- **A marked reading never leads a word.** Readings sort by status first, frequency second. 上手's じょうしゅ ties じょうず on frequency and beat it on kana order, so the screen *opened* on the obsolete reading.
+- **A marked reading is never badged *common*.** `is_common` and `freq_rank` union the **writing's** priority tags into the reading's (V-04), so じょうしゅ inherits 上手's rank of 12. That is the right rule for ranking words against each other and the wrong thing to print beside a dead reading, so the badge is suppressed in the UI rather than the ingest changed.
+
+*On the unknown-tag case:* the mapping returns "current" for a code it does not recognise, because a dictionary refresh must not break the app over a tag it has not met. That leniency is only safe because it is loud somewhere else — `verify.py`'s V-21 case asserts the built dictionary contains exactly these five codes, so a sixth fails the build instead of quietly rendering as ordinary. Failing there means deciding what the new code means, not widening the set.
+
+*Cost:* the app now hides 6,647 rows of real dictionary data. Cheap to reverse — one filter, in one function — and the tags are still ingested either way, so nothing is lost from the database.
+
+**D-67 — Warm near-black, one jade accent, and IBM Plex beside Noto Sans JP.**
+
+Supersedes **D-35's palette**. D-35's *token layer* stands, and is the entire reason this cost an afternoon rather than a rewrite: every composable already read colour and type through `Color.kt` and `Type.kt`, so the identity changed in two files.
+
+The indigo-and-teal Material scheme was an early placeholder — `Color.kt` said as much at the time: *"a working starting point, not a finished identity"*. The replacement came from a design pass done in Claude Design, imported and implemented directly.
+
+**The ground is warm near-black `#14120F`, not Material's blue-grey.** This matters more for this app than for most: the scan overlay dims a photograph and keeps detected text bright (D-33), so the chrome sits directly against the user's own images. A warm neutral recedes behind a photograph; a blue-grey tints one's sense of what was photographed.
+
+**One accent, jade `#2DC08E`** — `oklch(0.72 0.14 165)`. Measured, not eyeballed: 8.1:1 against the ground, and because the accent carries dark text *on* it, that figure reads both directions. Light mode holds the same hue at `L=0.52` (`#007E57`, 4.8:1 on warm paper); the dark accent would be 2.2:1 there, legible as a fill and not as text, which is the trap a single shared accent sets.
+
+*Why jade and not the amber the design proposed:* amber on near-black is a very well-known brand pairing and not one a language-learning app should evoke. Only the hue moved — lightness and chroma are unchanged, so every contrast relationship the design was drawn against still holds. It also stays clear of the red-and-white every Japan-themed app reaches for, which the original palette note already argued against.
+
+*One rule the accent imposes, to be honoured before Phase 7 makes it awkward:* **green means correct.** The FSRS grading buttons must be neutral outlines with the accent on the primary action only, or the palette starts making a claim about whether the answer was right.
+
+**No second accent hue.** Material wants a secondary; every role it would fill is served by the neutral ramp instead. That is what keeps the accent meaning something when it does appear.
+
+**Type: IBM Plex Sans for Latin, IBM Plex Mono for metadata, Noto Sans JP for Japanese.** D-34 is untouched — Noto is still bundled and still the only thing allowed to render Japanese. Plex is added so English meanings have a different texture from the Japanese they explain: a gloss reads as commentary rather than as more of the same sentence, which on this app's central screen is doing real work.
+
+- Sans is variable, one 537 KB file. Mono has no variable build, so its two weights are two 136 KB statics.
+- Both are **bundled, not fetched**. The design's HTML pulls Plex from Google Fonts, which would breach the offline principle. The OFL requires the notice to travel with the font, so the licence text ships in-app beside Noto's (`attribution.md`).
+- **The trap:** Plex contains no Japanese. Given Japanese it falls back to the *system* CJK font — the exact failure D-34 exists to prevent, arriving quietly as a subtly Chinese-shaped 直 rather than as tofu. Compose's `FontFamily(a, b)` matches one font per weight and does **not** do per-glyph fallback, so listing Noto after Plex would look like a safety net while being none. Families are therefore assigned per role at the call site, and anything that can hold Japanese names `SpotterJapanese` explicitly.
+
+*Cost:* ~810 KB of fonts, against a 9.2 MB Noto and a 100 MB dictionary. And a standing obligation: a new composable rendering Japanese must remember to ask for the Japanese family. That is a real sharp edge, mitigated only by the type scale defaulting the Japanese-bearing styles (`titleLarge`, `headlineMedium`, `displayLarge`) to Noto already.
+
+**D-68 — Readings whose meanings are identical share one block.**
+
+Refines D-48, which put one section per reading. The sections stay; identical ones stop being repeated.
+
+先生 has five readings, and three of them — せんしょう, せんじょう, ぜんじょう — carry a byte-identical pair of senses. Rendering three blocks that each say *teacher; instructor; master / previous existence* states one fact three times, pushes the two readings that genuinely differ off the screen, and makes a word look harder than it is. Merged, 先生 fits on one screen with its component boxes visible.
+
+**Grouped on the glosses, not the whole sense.** Two readings recorded with the same meanings but a differing part-of-speech tag are saying the same thing to a reader; splitting on a tag the screen barely shows would leave the repetition it exists to remove.
+
+**Every reading keeps its own marking.** The line reads じょうず COMMON · じょうしゅ ARCHAIC · じょうて ARCHAIC. Merging must never cost a reading its badge — that would undo V-21 in the name of tidiness.
+
+**A group led by a current reading is not dimmed, even when it holds archaic ones.** It is じょうず's line, and じょうず is what a learner wants; stepping the whole block back because of its company would hide a current reading. Only a group where *every* reading is marked drops out of the main sequence, under the dashed rule at 55% (D-67).
+
+*Consequence for ordering:* a group sits where its best member sat, so an archaic reading can now appear above a current one belonging to a different group. V-21's requirement is unaffected — it asks that an archaic reading never *lead* a word, and じょうず still leads.
+
+*Cost:* one more concept between the repository and the screen (`MergedReading`). Judged worth it because the alternative is the screen repeating itself, which is what the whole pass was called to fix.
+
+**D-69 — Example sentences ship, shown under the entry's primary current reading. Resolves D-51.**
+
+D-51 ingested them and deferred the question, because 41.4% coverage of common senses is not a number anyone can judge on paper. Built behind a switch and looked at, per the roadmap.
+
+**The coverage worry was misplaced.** 先生 shows sentences on senses 1 and 2 and nothing on 3 and 4, and the screen does not read as broken — it reads as a dictionary. 生産 is the case that settles it: one sentence, and the word goes from a gloss to something you can picture.
+
+**The real fault was invisible on paper and obvious on the device.** A sentence attaches to a JMdict **entry**, and V-18 expands one entry into a word per reading — so every reading inherits it. 明日's sentence uses あした and appeared identically under あす and みょうにち; 上手's appeared under じょうしゅ and じょうて, both archaic. The app was asserting that a reading occurs in a sentence that does not contain it. **11,622 entries** are affected, only 777 of them involving a marked reading — so filtering by V-21 status alone would have fixed about 5% and left the rest.
+
+**So a sentence shows under one reading: the entry's best-ranked current one.** That is the reading the corpus almost always used, and it is how every dictionary presents it.
+
+*The trap inside the fix, which cost an hour:* "best-ranked" must be computed **after** status ordering. The query sorts by frequency then kana, and 上手's three readings tie on frequency, so the raw order leads with じょうしゅ. Taking that as primary handed the sentence to an archaic reading and then suppressed it for being archaic — and じょうず silently lost its example, with nothing on screen to say anything was missing. Same failure shape as everything else in this phase.
+
+*Still deferred:* word-level examples where no sense-attached one exists. Nothing in the data made the case for them, and the sense-attached ones already cover the words a scanner meets.
+
+*Cost to reverse:* one flag and a table drop on the next rebuild — the dictionary is disposable (D-38).
+
+**D-70 — An alternate is any dictionary word that *overlaps* the selected token, not merely one contained in it.**
+
+D-07 describes longest-match as finding the longest match at a position and keeping "the shorter ones as alternates". Built that way and run on real text, it surfaces almost nothing useful — and the reason only became visible on a device.
+
+**Kuromoji is better at compounds than D-07 assumed.** It already splits 選挙管理委員会 into 選挙 / 管理 / 委員 / 会, so there is nothing shorter hiding inside any token. What is unreachable is the **compound itself**, which is in the dictionary and which no token names. The problem runs in the opposite direction from the one D-07 anticipated.
+
+| Input | Kuromoji's parse | Unreachable without a second pass |
+|---|---|---|
+| 東京都 | 東京 / 都 | **東京都** (contains the token) and **京都** (crosses the boundary) |
+| 選挙管理委員会 | 選挙 / 管理 / 委員 / 会 | **選挙管理委員会** (the compound itself) |
+| 立入禁止 | 立入禁止 | 立入, 禁止 (inside the token) |
+
+So the rule is **overlap**: any dictionary word sharing a character with the selected token, excluding the token itself and anything already on the strip in its own right (都 is a token; it is not repeated). All three relations — inside, containing, crossing — are the same question from the learner's side: *what other words are here that I cannot tap?*
+
+This subsumes the multi-granularity split `roadmap.md` expected to need Sudachi for, in **both** directions, whichever way Kuromoji happened to cut.
+
+**Single-character alternates are filtered from the display, and the mechanism still finds them.** V-06 requires that longest-match report 先 inside 先生, and it does — `matchesIn` returns it, and a test asserts it. The filter is presentation only: every single-character alternate is already a component box directly below (D-06), and a lone kanji routes to the same kanji screen from either (D-49), so listing them would repeat that row with no new destination. 先生 therefore shows no alternates at all, which is right: no *word* hides inside it, only its two characters.
+
+*Cost:* one strip of chips that is empty for most words. That is the intended behaviour rather than a failure to find anything, and it keeps D-61's bargain — the row appears only when it has something to say.
+
+*Known rough edge:* tapping an alternate leaves no token highlighted on the strip, because the word selected is not one of Kuromoji's tokens. Accurate, and mildly odd to look at. Revisit when the scan overlay makes selection visible on the photograph instead (Phase 5).
 
 ---
 

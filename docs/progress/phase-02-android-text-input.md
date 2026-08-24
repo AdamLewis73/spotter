@@ -1,7 +1,7 @@
 # Phase 2 — Android app, text input only
 
-**Status:** in progress
-**Updated:** 2026-08-11
+**Status:** feature-complete
+**Updated:** 2026-08-23
 
 ## Current state
 
@@ -9,17 +9,21 @@
 modules — `:app`, `:data`, `:domain` — with `:domain` as a plain Kotlin/JVM
 module per D-60. The debug APK is **46 MB**, holding a 99.7 MB `spotter.db` at
 `assets/spotter.db` (the APK's own compression does the rest). `:domain:test`
-runs 3 JUnit tests in milliseconds with no emulator.
+runs 24 JUnit tests in milliseconds with no emulator.
 
-**The word screen works.** Type a word and it renders one card per reading,
-meanings under each, component chips last (D-48, D-06). Confirmed on a device:
-先生 shows せんせい marked *common* with four senses, then せんしょう, せんじょう,
-ぜんじょう and シーサン, with 先 / 生 chips beneath.
+**The word screen works**, and now looks like the design (D-67). A centred
+headword over a `5 READINGS · 2 ARCHAIC` count, readings as a divided list in the
+accent colour, meanings under each with their example sentence (D-69), component
+boxes last (D-48, D-06). Confirmed on a device: 先生 shows せんせい *common* with
+four senses, then せんしょう · せんじょう · ぜんじょう sharing one block because
+their meanings are identical (D-68), then シーサン — the whole word on one screen
+with its 先 / 生 boxes visible.
 
-**The kanji screen works**, reached from a component chip: Overview carries
-meanings, on/kun readings and the "As a word" senses (D-49); Examples carries
-D-04 — every common word grouped by the reading the kanji takes there, セイ
-before ショウ because セイ holds 先生 and 学生.
+**The kanji screen works**, reached from a component box. Three tabs: Overview
+carries meanings, on/kun readings and the "As a word" senses (D-49); Examples
+carries D-04 — every common word grouped by the reading the kanji takes there,
+under ON'YOMI and KUN'YOMI headings, with the studied character picked out inside
+each example (先**生**); Stroke order stands empty and says Phase 3 fills it.
 
 **Tokenization works.** `先生と生産` segments into 先生 / と / 生産 as chips; tapping
 one shows its entry. Confirmed on a device — tapping 生産 gives せいさん
@@ -41,29 +45,29 @@ invisible until something checksums the artefact.
 
 ## Next action
 
-In the order they are worth doing, and the reasoning matters more than the list:
+Nothing. Every verification case this phase owns is met, and what remains on
+the list below is the **user-data checkpoint** (D-15–D-18, D-43), which by design
+lands with Save in Phase 6 rather than here.
 
-1. **V-21 — mark obsolete readings as archaic (D-53).** The only item here that
-   is a *correctness* problem rather than a polish one. 上手 currently shows
-   じょうて alongside じょうず with nothing to separate them, and the `ok` tag is
-   already sitting in `word.reading_info` waiting to be read.
-2. **The UI pass** the project owner asked for on 2026-08-19. The screens work
-   and read as cluttered — the word screen stacks five reading cards for 先生,
-   and the kanji screen's Overview prints every kun'yomi in one long run. Not
-   yet designed; it is a deliberate, separate pass rather than a tidy-up folded
-   into feature work.
-3. **Decide D-51**, whether example sentences get rendered. Sequenced *after*
-   the UI pass on purpose: the roadmap wants this judged against real screens,
-   and judging "do sentences earn their space" against a layout already known to
-   be too busy would answer the wrong question. Build them behind a switch, look
-   at 先生, 上手 and 生 both ways, then decide.
-4. **JMdict longest-match alternates (D-07)** — the missing half of V-06.
+Two small things are open and neither blocks anything:
 
-**Still no Compose UI tests**, though the ViewModel now has six instrumented
-ones covering routing, tokenization and the empty case. What remains untested is
-anything that needs the composition itself: the stale-result guard (each
-keystroke cancels the previous lookup, so a slow answer for 先 cannot overwrite a
-newer one for 先生), and that a chip tap opens the kanji screen.
+- Example meanings on the kanji screen are right-aligned as the design draws
+  them; at 411dp the gap between a short meaning and its word is wide.
+- Part-of-speech tags render as raw JMdict codes (`adj-na`, `n`). A
+  code-to-label table would read better and needs a decision about which codes
+  are worth naming.
+
+**Compose UI tests now exist**, four of them, covering V-21's marking on the
+word screen — that an archaic reading is labelled, that a current one is
+labelled nowhere, that each status says its own word, and that 上手 leads with
+じょうず carrying the only *common* badge. Verified by deliberately breaking the
+label: three of the four fail, and the one asserting *absence* correctly still
+passes.
+
+What remains untested is the rest of the composition: the stale-result guard
+(each keystroke cancels the previous lookup, so a slow answer for 先 cannot
+overwrite a newer one for 先生), and that a chip tap opens the kanji screen. The
+harness is now in place for both.
 
 ## What a fresh session should know
 
@@ -77,7 +81,7 @@ the rest of the feature set already shipping elsewhere (D-61).
 
 **Everything about the data layer is verified on a device, not assumed.** The
 dictionary ships in the APK, refreshes itself when either its build id or Room's
-schema version changes, and 22 instrumented tests cover it. Where a claim is
+schema version changes, and 32 instrumented tests cover it. Where a claim is
 unproven this file says so.
 
 **The recurring failure mode in this phase has been silence, not crashes.** A
@@ -85,7 +89,7 @@ verifier that mutated the database it verified; a `build_id` that did not change
 when the builder did; `BackHandler` doing nothing because of a missing manifest
 attribute; a word screen announcing 生 was not in the dictionary. None threw. The
 habit that caught them was running the thing and looking at it, and it is worth
-keeping — `/launch` exists to make that cheap.
+keeping — `/inspect` exists to make that cheap.
 
 **Two guards in dictbuild will misfire on the next source refresh** and should be
 fixed when that code is next touched; see the phase-01 open questions.
@@ -112,31 +116,53 @@ fixed when that code is next touched; see the phase-01 open questions.
 - [x] Checkpoint: Material 3 + design-token layer (D-35) — fixed palette, light
       and dark, plus Noto Sans JP bundled (D-34)
 - [x] Kuromoji tokenization behind the `Tokenizer` interface (D-07, D-08)
-- [ ] JMdict longest-match alternates (D-07)
+- [x] JMdict longest-match alternates (D-07, D-70, V-06)
+- [x] Example sentences rendered, one reading per entry (D-69, D-51, V-27)
+- [x] Readings with identical meanings share a block (D-68)
+- [x] Obsolete, irregular and rare readings marked; search-only readings hidden
+      but never to nothing (V-21, D-53, D-66)
+- [x] UI pass on the word and kanji screens, from the Claude Design import
+      (D-67) — new palette and type, plus 2a and 2b
 - [x] Text-input screen: paste `先生と生産`, get tokens, tap one to read it
 - [x] Word screen — one section per reading, component chips last (D-48, D-06)
-- [x] Kanji screen — Overview / Examples tabs; Stroke Order is Phase 3 (D-05)
+- [x] Kanji screen — Overview / Examples / Stroke order tabs; the third stands
+      empty and names Phase 3 (D-05, D-67)
 - [x] Single kanji routes straight to the kanji screen (D-49)
 - [ ] Checkpoint: UUID keys, `updated_at`, soft delete, schema export on,
       destructive migration off (D-15 – D-18) before any user-data write
 - [ ] Checkpoint: `snapshot_gloss` on `study_item` (D-43), same commit
-### Verification cases — assessed 2026-08-19, and three are unmet
+### Verification cases — all met, 2026-08-23
 
-Folding these in rather than leaving the line item vague, because the honest
-answer is that Phase 2 is **less finished than the rest of this list suggests**.
+Assessed honestly on 2026-08-19, when three were unmet and this section said so.
+Kept as a table rather than a tick because *how* each is met is the useful part.
 
 | Case | State |
 |---|---|
 | **V-07** conjugated verbs resolve to the dictionary form (D-07) | **Met.** `生きた` → `生きる` via `Token.baseForm`, with the lookup falling back to it. Tokenizer half unit-tested; the lookup fallback is exercised only by hand |
-| **V-06** segmentation **plus alternates** (D-07) | **Half met.** Kuromoji gives 先生 / と / 生産. The JMdict longest-match half is not built, so 先 inside 先生 cannot be asked about — and V-06 says plainly that both halves matter because that interaction is the pedagogical premise |
+| **V-06** segmentation **plus alternates** (D-07) | **Met**, 2026-08-23. Longest-match runs as a second pass over the same line, one batched query for every candidate substring. 先生 / 先 at position 0, and — the case that mattered more — 東京都 and 京都 from a parse that gives only 東京 / 都 (D-70) |
 | **V-08** reading labels vs. furigana use different scripts (D-14, D-37) | **Half met.** Reading labels follow the convention and are tested. There is no furigana rendering at all yet, so the half about ruby is untested |
-| **V-21** obsolete readings are visibly distinguished (D-53, D-48) | **Not met, and user-visible.** 上手 renders all five readings with no marking, so an archaic reading looks as ordinary as じょうず. `word.reading_info` carries the `ok` tag already — the data is there and the UI ignores it |
+| **V-21** obsolete readings are visibly distinguished (D-53, D-48, D-66) | **Met**, 2026-08-19. 上手 opens on じょうず; じょうしゅ and じょうて are muted, labelled *archaic* and sorted last, with the inherited *common* badge suppressed. Confirmed on a device for 上手, 中国 and 明日 |
 | **V-23** sense filtering never empties a word (D-54, D-40) | **Not applicable yet.** No sense filtering exists to test |
 
-**V-21 is the one worth fixing before anything cosmetic.** Showing a learner an
-outdated reading as though it were current is the app teaching something false,
-which is a different class of problem from the screen being busy.
-- [x] `/launch` skill at `.claude/skills/launch/SKILL.md` (roadmap housekeeping)
+**V-21 was fixed first, and it was larger than the line above suggested.** The
+column it depends on was read by nothing: `reading_info` carries five `re_inf`
+codes, not one, and the worst offender was not `ok` at all. `sk` — search-only
+kana, 6,647 rows — was rendering as ordinary readings on words far commoner than
+上手: **中国 opened on ちゅうこく**, a misreading JMdict stores purely so search
+matches, badged *common* above ちゅうごく. D-66 records the resulting policy for
+all five codes.
+
+Two things that were not obvious going in, both now in D-66:
+
+- **It was an ordering bug as much as a labelling one.** 上手's archaic readings
+  inherit the writing's frequency rank (V-04), tie with じょうず, and win the
+  alphabetical tiebreak — so the screen *opened* on じょうしゅ. Marking alone
+  would have left it at the top.
+- **`gikun` is not a defect marker**, and the obvious implementation treats it as
+  one. 明日 あした, 大人 おとな and 海豚 いるか all carry the tag and are all the
+  ordinary current reading.
+- [x] `/launch` skill at `.claude/skills/launch/SKILL.md`, and `/inspect` at
+      `.claude/skills/inspect/SKILL.md` (roadmap housekeeping)
 
 ## Open questions
 
@@ -147,12 +173,9 @@ which is a different class of problem from the screen being busy.
   while it runs. Test on a real device, not only the emulator.
 
 
-- **Do example sentences get rendered? (D-51)** Already in the dictionary,
-  shown nowhere. 41.4% coverage of common senses, ceiling ~43%. Deliberately
-  not being judged on paper — build the word screen without them, look at 先生,
-  上手 and 生 on a device, then turn them on and look again.
-- If they stay: sense-attached only, or word-level examples too where no
-  sense-attached one exists?
+- ~~**Do example sentences get rendered? (D-51)**~~ — **answered: yes (D-69).**
+  Word-level examples where no sense-attached one exists stay deferred; nothing
+  in the data made the case for them.
 - Hilt now or after the app works? `architecture.md` says after.
 
 ## Notes
@@ -259,6 +282,163 @@ genuinely part of its public surface.
 - A screenshot taken within ~4 s of launch catches the splash screen, and one
   taken right after `cmd uimode night` catches a blank frame mid-recreation.
   Both look like bugs and are not; force-stop, restart, then wait.
+
+### Longest-match: the problem ran the other way — 2026-08-23
+
+D-07 describes longest-match as finding the longest word at a position and
+keeping the shorter ones as alternates. Built exactly that way, it surfaced
+almost nothing, and the reason was only visible on a device.
+
+**Kuromoji is better at compounds than D-07 assumed.** It already splits
+選挙管理委員会 into 選挙 / 管理 / 委員 / 会 — so nothing shorter hides inside any
+token, and what is actually unreachable is the **compound itself**. Same for
+東京都, which parses as 東京 / 都: the full place name and 京都, which straddles
+the boundary, are both invisible from the strip.
+
+So an alternate is any word that **overlaps** the token, not one contained in it
+(D-70). That covers inside, containing and crossing — which are one question from
+the learner's side.
+
+Two things worth knowing if this is revisited:
+
+- **Single-character alternates are filtered from the display, not the
+  mechanism.** V-06 requires 先 inside 先生 be found, and it is; it just is not
+  listed, because it is already a component box below and routes to the same
+  kanji screen (D-06, D-49). 先生 shows no alternates at all, correctly.
+- **The whole thing is one query.** `LongestMatch.candidates` builds every
+  substring up to 12 characters and `existingWords` asks about all of them at
+  once. A query per substring would be a hundred round trips on a line the user
+  is waiting for. The `UNIQUE (text, reading)` index serves it on its leftmost
+  column, which is what `schema.sql` means about FTS5 buying nothing.
+
+### Example sentences, and two traps in the data — 2026-08-23
+
+D-51 is settled (D-69): sentences ship. What the exercise actually taught:
+
+- **The question the roadmap asked was not the question that mattered.** It
+  worried that 41.4% coverage would read as broken. It does not — 先生 shows
+  sentences on two of four senses and looks like a dictionary. The real fault was
+  a correctness one that only appears on a device.
+- **A sentence belongs to an ENTRY, not to a (text, reading) word.** V-18 expands
+  one entry into a word per reading, so every reading inherits the entry's
+  sentences. 明日's あした sentence rendered identically under あす and
+  みょうにち. **11,622 entries** are affected. Only 777 involve a marked reading,
+  so V-21's status filter fixes ~5% and is not the answer.
+- **Picking the "primary" reading must happen AFTER status ordering.** The query
+  sorts by frequency then kana; 上手's three readings tie on frequency, so the raw
+  order leads with じょうしゅ. Taking that as primary gave the sentence to an
+  archaic reading, which then correctly suppressed it — and じょうず lost its
+  example with nothing on screen to say so. Found by looking, as usual. V-27
+  covers it.
+
+**Room's schema check fired again on the first new table.** Declaring `ExampleRow`
+threw `Pre-packaged database has an invalid schema: example` on launch, naming
+the table and not the field. The cause was the one `word.id` already carries a
+comment about: `example.id` was `INTEGER PRIMARY KEY` without `NOT NULL`, SQLite
+genuinely permits NULL there (it assigns a rowid), so `PRAGMA table_info` reports
+`notnull=0` against a non-null Kotlin field. The other primary keys are `TEXT`,
+where SQLite forbids null, which is why they never tripped it.
+
+**Adding an entity changes the exported schema.** Room silently rewrote
+`3.json` in place rather than complaining. Bumped to 4 so the committed record of
+what version 3 shipped stays true; the bump also forces one re-extract on
+upgrade, which is correct and costs a single slow launch.
+
+### The UI pass, and what the design did not cover — 2026-08-20
+
+Implemented from a Claude Design project ("Kanji app mobile design"), imported
+with the `DesignSync` tool. Two notes for anyone importing another one:
+
+- **`list_projects` returns nothing useful.** It is filtered to *design-system*
+  projects that the user can write to, and an ordinary design project is
+  `PROJECT_TYPE_PROJECT`. Go straight to `get_project` / `list_files` /
+  `get_file` with the project id out of the share URL.
+- **The design canvas is one ~90 KB HTML file** of inline-styled frames. Do not
+  read it whole. Split on the frame ids (`id="2a"`), strip tags, and read the
+  text — the rationale paragraphs and frame captions carry most of the intent.
+
+**The design covers six screens; four of them are Phases 6–7** (Saved, list
+detail, Review, Profile) and are left unbuilt. They all write user data, which
+is the D-15–D-18 + D-43 checkpoint. Two things in them are also not in the
+roadmap at all and need deciding before they are built: the review card is a
+**handwriting** exercise rather than the recall card D-26/D-29 assumed, and
+Profile is a fourth destination the design itself flags against D-36.
+
+**What was changed from the design, and why.** A first pass got this wrong in a
+way worth recording: each omission below was individually defensible and the sum
+of them was not the design. The screens ended up being the *old* layout wearing
+the new palette — no back or save buttons, no accent rule, no stroke-order tab,
+readings in the body colour rather than the accent. **A mockup is a spec for
+intent, not a set of claims to fact-check.** Correcting its placeholder
+`4 READINGS` to 5 was the tell.
+
+What genuinely differs now:
+
+- **The accent is jade, not amber.** Amber on near-black is a very well-known
+  brand pairing. Hue only — lightness and chroma are the design's (D-67).
+- **The text field has no counterpart in the design.** 2a is drawn as the sheet
+  a scan opens, and until Phase 4 the field is the only way to put a word on the
+  screen.
+- **Save is inert** until Phase 6 and the user-data checkpoint; **back** clears
+  the result, which is the nearest true equivalent to dismissing a sheet to the
+  photograph behind it; the **drag handle** becomes real in Phase 5. All three
+  are built, because a control that appears later moves everything around it.
+- **Stroke order is a real tab** carrying the stroke count and saying Phase 3
+  fills it in. The alternative — adding a third tab later — shifts the two that
+  already exist.
+- **The Overview tab's reading run was fixed anyway.** Not in the design, but it
+  was half the original complaint — 生's twenty kun'yomi were three lines of
+  undifferentiated kana.
+
+### Compose UI tests, and the Espresso that blocked them — 2026-08-19
+
+The first Compose test in the project failed before reaching an assertion:
+
+```
+NoSuchMethodException: android.hardware.input.InputManager.getInstance
+```
+
+**Espresso was resolving to 3.5.0** — from 2022. Nothing here calls Espresso;
+it arrives transitively behind Compose's test rule, which routes idle-
+synchronisation through it, and a transitive dependency takes whatever version
+the graph settles on while every *direct* dependency in this project is pinned
+current. Espresso reflects into that hidden platform method, which no longer
+exists on an API 37 image, so all four tests died identically.
+
+Pinned to 3.7.0 — verified against Google Maven rather than remembered — purely
+to force the version up. `espresso-core` is listed in `app/build.gradle.kts`
+despite no code importing it, which looks redundant and is not.
+
+Two smaller traps:
+
+- **`ui-test-manifest` is a `debugImplementation`, not an androidTest one.** It
+  contributes the empty activity `createComposeRule()` launches into, which has
+  to merge into the manifest of the app under test.
+- **`setContent` may be called only once per test.** Looping it over three
+  statuses fails with "Cannot call setContent twice per test" — a message about
+  the harness, not about the thing under test. Render the cases together in a
+  `Column` instead.
+
+`createComposeRule()` is deprecated in favour of a `v2` package that swaps the
+coroutine dispatcher. Not migrated: the change alters when effects run, and the
+note to make it is worth more than doing it blind alongside a correctness fix.
+
+### Driving the screen from a script — 2026-08-19
+
+`MainActivity` reads an optional `query` string extra and seeds the text field
+with it:
+
+```
+adb shell am start -n com.spotterkanji.app/.MainActivity --es query 上手
+```
+
+Added because there was **no way to type Japanese into the app from a script**.
+`adb shell input text` is ASCII-only, and this emulator image answers
+`cmd clipboard` with "No shell command implementation" — so verifying a claim
+about a particular word meant typing it by hand on the emulator, which is
+exactly the friction `/inspect` exists to remove. The extra is read in all build
+types on purpose: it pre-fills a search box and grants nothing, and a hook that
+only works in debug cannot check a release build.
 
 ### Versions
 

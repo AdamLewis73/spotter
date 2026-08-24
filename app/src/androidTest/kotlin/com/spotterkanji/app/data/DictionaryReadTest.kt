@@ -2,8 +2,11 @@ package com.spotterkanji.app.data
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.spotterkanji.domain.dictionary.ReadingStatus
+import com.spotterkanji.domain.tokenize.LongestMatch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -53,10 +56,17 @@ class DictionaryReadTest {
      * Unranked entries sort first in SQLite because NULL sorts first, and ~74%
      * of the dictionary is unranked. Getting this wrong buries the common words
      * the app exists to explain, without erroring (V-04).
+     *
+     * Scoped to the current readings, which is a real narrowing of what this
+     * test used to assert. V-21 sorts by status first, so 上手's ranked-but-
+     * obsolete じょうしゅ (rank 12, inherited from the writing) now follows the
+     * unranked-but-current うわて. Frequency still orders readings a learner
+     * might use; it no longer promotes one they should not.
      */
     @Test
     fun common_readings_come_before_unranked_ones() = runBlocking {
         val entries = repository.lookup("上手")
+            .filter { it.readingStatus == ReadingStatus.CURRENT }
         val firstUnranked = entries.indexOfFirst { it.frequencyRank == null }
         val lastRanked = entries.indexOfLast { it.frequencyRank != null }
 
@@ -66,6 +76,180 @@ class DictionaryReadTest {
                 lastRanked < firstUnranked,
             )
         }
+    }
+
+    /**
+     * V-21 end to end, on the real dictionary rather than on hand-built rows.
+     *
+     * 上手 is the case `verification.md` names: じょうて and じょうしゅ are real
+     * historical readings that today render exactly like じょうず. The unit tests
+     * prove the mapping; this proves the tags actually arrive from the database
+     * and survive the repository.
+     */
+    @Test
+    fun jouzu_marks_its_obsolete_readings_and_leads_with_a_current_one() = runBlocking {
+        val entries = repository.lookup("上手")
+        val byReading = entries.associateBy { it.reading }
+
+        assertEquals(ReadingStatus.CURRENT, byReading.getValue("じょうず").readingStatus)
+        assertEquals(ReadingStatus.ARCHAIC, byReading.getValue("じょうて").readingStatus)
+        assertEquals(ReadingStatus.ARCHAIC, byReading.getValue("じょうしゅ").readingStatus)
+
+        // The ordering half. Before this change the screen opened on じょうしゅ,
+        // because it ties じょうず on frequency and wins on kana order.
+        assertEquals("じょうず", entries.first().reading)
+        assertTrue(
+            "no archaic reading may precede a current one — got ${entries.map { it.reading }}",
+            entries.indexOfLast { it.readingStatus == ReadingStatus.CURRENT } <
+                entries.indexOfFirst { it.readingStatus == ReadingStatus.ARCHAIC },
+        )
+
+        // Inherited from the written form, so the data calls it common (V-04).
+        assertTrue(byReading.getValue("じょうしゅ").isCommon)
+        assertFalse(
+            "an obsolete reading must not be badged common",
+            byReading.getValue("じょうしゅ").showsCommonBadge,
+        )
+    }
+
+    /**
+     * D-66's hide half, on one of the commonest words in the language: JMdict
+     * carries ちゅうこく for 中国 as a search-only misreading, and it used to
+     * render first — above ちゅうごく, badged common.
+     */
+    @Test
+    fun search_only_misreadings_do_not_reach_the_screen() = runBlocking {
+        val readings = repository.lookup("中国").map { it.reading }
+
+        assertEquals(listOf("ちゅうごく"), readings)
+    }
+
+    /**
+     * D-66's never-to-nothing half. 3,143 written forms have no reading but a
+     * search-only one; hiding those unconditionally would report a word the
+     * dictionary plainly holds as missing, which is D-40's failure arriving
+     * from a different direction.
+     */
+    @Test
+    fun a_word_with_only_search_only_readings_still_resolves() = runBlocking {
+        val entries = repository.lookup("あっかんべえ")
+
+        assertTrue("あっかんべえ must still resolve", entries.isNotEmpty())
+        assertEquals(ReadingStatus.SEARCH_ONLY, entries.first().readingStatus)
+    }
+
+    /**
+     * V-21's reverse check, and the one most likely to be skipped: a marker
+     * applied globally is as wrong as one never applied, and looks just as
+     * plausible. 明日 is the sharpest test of it — all three readings carry a
+     * `gikun` tag or sit beside one, and none of them is obsolete.
+     */
+    @Test
+    fun words_without_obsolete_readings_are_marked_nowhere() = runBlocking {
+        listOf("先生", "明日", "生産").forEach { word ->
+            val entries = repository.lookup(word)
+            assertTrue(
+                "$word should carry no marked reading — got " +
+                    entries.map { "${it.reading}:${it.readingStatus}" },
+                entries.none { it.readingStatus.isMarked },
+            )
+        }
+
+        // 明日 あした is gikun and current. Conflating the two would mark the
+        // ordinary reading of an everyday word as archaic.
+        val ashita = repository.lookup("明日").first { it.reading == "あした" }
+        assertTrue("あした should be flagged gikun", ashita.isGikun)
+        assertEquals(ReadingStatus.CURRENT, ashita.readingStatus)
+    }
+
+    /**
+     * D-51: a sentence appears under the entry's best CURRENT reading, and
+     * nowhere else.
+     *
+     * JMdict attaches examples to the entry, and V-18 expands one entry into a
+     * word per reading, so all of them inherit it. 明日's sentence uses あした;
+     * without gating it also appears under あす and みょうにち, asserting a
+     * reading the sentence does not contain. 11,622 entries are affected.
+     */
+    @Test
+    fun a_sentence_appears_under_one_reading_only() = runBlocking {
+        val entries = repository.lookup("明日")
+        val withSentences = entries.filter { e -> e.senses.any { it.examples.isNotEmpty() } }
+
+        assertEquals(
+            "expected exactly one reading to carry sentences, got " +
+                withSentences.map { it.reading },
+            1,
+            withSentences.size,
+        )
+        assertEquals("あした", withSentences.single().reading)
+    }
+
+    /**
+     * The regression this cost an hour: "primary" was read off the raw query
+     * order, which sorts by frequency then kana. 上手's three readings tie on
+     * frequency, so じょうしゅ — archaic — came first, took the sentence, and had
+     * it suppressed for being archaic. じょうず simply lost its example, with
+     * nothing on screen to say so.
+     */
+    @Test
+    fun the_sentence_goes_to_the_current_reading_not_the_archaic_one() = runBlocking {
+        val entries = repository.lookup("上手")
+        val jouzu = entries.first { it.reading == "じょうず" }
+        val archaic = entries.filter { it.readingStatus == ReadingStatus.ARCHAIC }
+
+        assertTrue(
+            "じょうず should carry the entry's example sentence",
+            jouzu.senses.any { it.examples.isNotEmpty() },
+        )
+        archaic.forEach { entry ->
+            assertTrue(
+                "${entry.reading} is archaic and must carry no sentence",
+                entry.senses.all { it.examples.isEmpty() },
+            )
+        }
+    }
+
+    /**
+     * V-06's second half, against the real dictionary (D-07).
+     *
+     * The unit tests use a hand-built word set, which proves the algorithm and
+     * not that the dictionary answers. This is the half that would catch
+     * `existingWords` returning nothing — at which point longest-match still
+     * runs, still returns a list, and the list is always empty. No error, no
+     * visible fault, and the app quietly loses the ability to ask about a word
+     * inside a word.
+     */
+    @Test
+    fun longest_match_finds_the_compound_and_the_word_inside_it() = runBlocking {
+        val text = "先生と生産"
+        val known = repository.existingWords(LongestMatch.candidates(text))
+        val atZero = LongestMatch.matchesIn(text, known).filter { it.start == 0 }
+
+        assertEquals(listOf("先生", "先"), atZero.map { it.text })
+    }
+
+    /**
+     * The case that shaped the presentation rule: Kuromoji reads 東京都 as
+     * 東京 / 都, so neither the full place name nor 京都 — which straddles the
+     * boundary — is reachable from the strip without a second pass.
+     */
+    @Test
+    fun words_kuromojis_parse_hides_are_still_found() = runBlocking {
+        val text = "東京都"
+        val known = repository.existingWords(LongestMatch.candidates(text))
+        val found = LongestMatch.matchesIn(text, known).map { it.text }
+
+        assertTrue("expected the full place name, got $found", "東京都" in found)
+        assertTrue("expected 京都 across the boundary, got $found", "京都" in found)
+    }
+
+    /** The batched query is the only database step; it must not invent words. */
+    @Test
+    fun existing_words_returns_only_real_entries() = runBlocking {
+        val out = repository.existingWords(setOf("先生", "架空語", "東京"))
+
+        assertEquals(setOf("先生", "東京"), out)
     }
 
     /** A word that is genuinely absent returns empty rather than throwing. */

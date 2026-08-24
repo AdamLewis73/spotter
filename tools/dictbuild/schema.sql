@@ -59,8 +59,10 @@ CREATE TABLE word (
     reading       TEXT    NOT NULL,     -- せんせい
     ent_seq       INTEGER NOT NULL,     -- JMdict entry id. A HINT, not identity (D-11).
     reading_info  TEXT,                 -- JSON array of re_inf tags: ["ok"], ["gikun"], ...
-                                        --   "ok" = out-dated kana (上手 じょうて). Display
-                                        --   policy still open — ingested either way.
+                                        --   Five codes occur. Display policy is D-66:
+                                        --   ok/ik/rk shown and marked, sk hidden unless it
+                                        --   is all a word has, gikun never marked. All are
+                                        --   ingested regardless — the policy is UI-side.
     freq_rank     INTEGER,              -- derived from ke_pri/re_pri; NULL = unranked.
                                         --   NULL must sort LAST, not first (V-04): only
                                         --   ~26% of entries carry any priority tag.
@@ -102,7 +104,12 @@ CREATE TABLE word_sense (
 
 -- Ingested but NOT rendered in v1 (D-51). 41.4% of common senses have one.
 CREATE TABLE example (
-    id          INTEGER PRIMARY KEY,
+    -- NOT NULL is redundant to SQLite and required by Room, for the reason
+    -- spelled out on word.id: SQLite genuinely permits NULL here (it assigns a
+    -- rowid), so PRAGMA table_info reports notnull=0 and Room rejects the whole
+    -- database against a non-null Kotlin field. The trap fired again the moment
+    -- this table was first mapped, in Phase 2 (D-51).
+    id          INTEGER PRIMARY KEY NOT NULL,
     word_id     INTEGER NOT NULL REFERENCES word(id),
     sense_order INTEGER NOT NULL,       -- attaches to a SENSE, not just a word
     japanese    TEXT    NOT NULL,

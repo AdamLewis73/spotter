@@ -299,6 +299,7 @@ dependencies {
     implementation(libs.compose.material.icons.core)
 
     debugImplementation(libs.compose.ui.tooling)
+    debugImplementation(libs.compose.ui.test.manifest)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.junit)
@@ -308,4 +309,6 @@ dependencies {
     // missing dependency.
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.espresso.core)
 }
