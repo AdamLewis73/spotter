@@ -74,7 +74,7 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **Phase 2 — Android app, text input only: feature-complete.** Type Japanese → Kuromoji segments it → tap a word → readings, meanings, example sentences and component boxes → tap one → the kanji screen, whose Examples tab is D-04. Longest-match offers the words the parse hides (東京都 → 京都). The dictionary ships in the APK and refreshes itself when it changes. Every `V-##` case this phase owns is met; the **user-data checkpoint** (D-15–D-18, D-43) is the one item left on its list and lands with Save in Phase 6 by design.
 
-**Phase 3 — Stroke order: complete.** The kanji screen's third tab draws KanjiVG's real outlines — stage with a centre crosshair, stroke-by-stroke animation, play/pause, speed control, and a tappable per-stroke grid — following design artboard **3b**. Tracing is deliberately not here (D-71); it is a review interaction and lands in Phase 7.
+**Phase 3 — Stroke order: complete.** The kanji screen's third tab draws KanjiVG's real outlines — stage with a centre crosshair, stroke-by-stroke animation, play/pause, speed control, and a tappable per-stroke grid — following design artboard **3b**. Its **Trace** mode makes the same stage writable so the learner draws the character over the ghost — no scoring, no scheduler, independent of review (D-72, which superseded D-71).
 
 **Current phase:** Phase 4 — CameraX + ML Kit. Not started. **This is where the product starts existing** (D-61), and Phases 4–5 are what v1 lives or dies on.
 

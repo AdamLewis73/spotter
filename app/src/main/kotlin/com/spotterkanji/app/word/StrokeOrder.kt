@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,16 +39,19 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.domain.dictionary.KanjiDetail
@@ -54,6 +59,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * KanjiVG's own coordinate space. Every path in `strokes.svg_paths` is drawn on
@@ -85,6 +91,21 @@ private const val STROKE_UNITS = 5f
 private const val MS_PER_STROKE = 450
 
 /**
+ * How far a traced stroke may start or end from the real one and still count,
+ * in KanjiVG units — so about a fifth of the character's width.
+ *
+ * Deliberately forgiving. The check is only ever made against **the stroke
+ * currently expected**, never against all of them, so a loose tolerance cannot
+ * match the wrong stroke; it can only decide whether this attempt was that
+ * stroke. Being strict would turn a practice aid into a dexterity test on a
+ * phone screen, which teaches nothing about kanji (D-72).
+ */
+private const val TRACE_TOLERANCE = 24f
+
+/** What the stage is doing. */
+private enum class StageMode { WATCH, TRACE }
+
+/**
  * Screen **3b** from the Claude Design project (D-67), filled in with real data.
  *
  * The design drew this tab with a font glyph standing in for the animation and
@@ -94,23 +115,20 @@ private const val MS_PER_STROKE = 450
  * therefore followed exactly; what is inside the frames is drawn from
  * `strokes.svg_paths`.
  *
- * **Two deliberate departures from the artboard**, both recorded in
- * `progress/phase-03-stroke-order.md`:
+ * **The tab has two modes, and the artboard's Trace button switches between
+ * them** (D-72). Watching plays the character being written; tracing makes the
+ * same stage writable and has the learner draw it themselves over the ghost.
+ * There is no scoring and no scheduler involved — the ghost *is* the answer, and
+ * assessment belongs to the review flow, which is a different screen in a
+ * different phase (artboard 2c).
  *
- * - **No Trace button.** The design's tracing surface is artboard **2c**, a
- *   *review* screen with a handwriting canvas and FSRS grading buttons. That is
- *   Phase 7. A button here would be the only control on the screen that goes
- *   nowhere, and D-61 makes a dead control worse than a missing feature.
- * - **The speed control is real.** The artboard renders `0.5× · 1× · 2×` as
- *   static text. Left literal it would be decoration; the three are tappable,
- *   because slowing a 29-stroke character down is the reason a learner would
- *   want the control at all.
+ * **The speed control is real**, not the artboard's static text: slowing a
+ * 29-stroke character down is the reason a learner would want it at all.
  *
- * One addition the artboard could not express with a font glyph: the strokes not
- * yet drawn show as a **faint ghost**. Without it the stage is empty before the
- * animation starts and the box reads as broken — and the ghost is what makes the
- * animation legible as *filling in a character* rather than as a line moving
- * around in the dark.
+ * The ghost is the one addition the artboard could not express, because it used
+ * a font glyph as the stand-in. It earns its place twice over — in watch mode it
+ * stops the stage being empty before the animation starts and makes the motion
+ * read as a character filling in, and in trace mode it is the thing being traced.
  */
 @Composable
 internal fun StrokeOrderTab(detail: KanjiDetail) {
@@ -137,19 +155,35 @@ internal fun StrokeOrderTab(detail: KanjiDetail) {
     }
 
     val count = paths.size
+
+    // Where each stroke begins and ends, in KanjiVG units. Computed once per
+    // character because trace mode compares against them on every gesture.
+    val endpoints: List<Pair<Offset, Offset>> = remember(paths) {
+        val m = PathMeasure()
+        paths.map { path ->
+            m.setPath(path, false)
+            m.getPosition(0f) to m.getPosition(m.length)
+        }
+    }
+
+    var mode by remember(detail.character) { mutableStateOf(StageMode.WATCH) }
     val progress = remember(detail.character) { Animatable(0f) }
     // Autoplays on arrival. The payoff for opening the tab is watching the
     // character get written, so making that wait for a tap is a worse trade than
     // the motion costs.
     var playing by remember(detail.character) { mutableStateOf(true) }
     var speed by remember { mutableFloatStateOf(1f) }
+    // Trace mode's own progress, kept separate from the animation's so that
+    // switching back to Watch does not throw away what was traced.
+    var traced by remember(detail.character) { mutableIntStateOf(0) }
+    var attempt by remember(detail.character) { mutableStateOf<List<Offset>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
     // Restarting on `speed` is what lets a mid-animation speed change continue
     // from where it is rather than jumping back to the first stroke: the
     // remaining duration is computed from the *current* value each time.
-    LaunchedEffect(detail.character, playing, speed) {
-        if (!playing) return@LaunchedEffect
+    LaunchedEffect(detail.character, playing, speed, mode) {
+        if (mode != StageMode.WATCH || !playing) return@LaunchedEffect
         if (progress.value >= count) progress.snapTo(0f)
         val remaining = count - progress.value
         progress.animateTo(
@@ -168,7 +202,11 @@ internal fun StrokeOrderTab(detail: KanjiDetail) {
     val measure = remember { PathMeasure() }
     val segment = remember { Path() }
 
+    val tracing = mode == StageMode.TRACE
     val strokesStarted = ceil(progress.value).toInt().coerceIn(0, count)
+    // The one number both modes agree on: which stroke the screen is currently
+    // about. Watch counts the one being drawn; trace counts the one expected.
+    val current = if (tracing) min(traced + 1, count) else max(1, strokesStarted)
 
     Column(
         modifier = Modifier
@@ -178,20 +216,51 @@ internal fun StrokeOrderTab(detail: KanjiDetail) {
     ) {
         StrokeStage(
             paths = paths,
-            progress = progress.value,
+            progress = if (tracing) traced.toFloat() else progress.value,
+            tracing = tracing,
+            traceTarget = if (tracing && traced < count) traced else null,
+            attempt = attempt,
             measure = measure,
             segment = segment,
-            label = "STROKE ${max(1, strokesStarted)} OF $count",
+            label = when {
+                tracing && traced >= count -> "TRACED ALL $count"
+                tracing -> "TRACE STROKE $current OF $count"
+                else -> "STROKE $current OF $count"
+            },
+            onTraceStart = { attempt = listOf(it) },
+            onTraceMove = { attempt = attempt + it },
+            onTraceEnd = {
+                if (traced < count && accepts(attempt, endpoints[traced])) traced++
+                attempt = emptyList()
+            },
+            onTraceCancel = { attempt = emptyList() },
         )
 
         Transport(
             count = count,
-            strokesStarted = strokesStarted,
+            filled = if (tracing) traced else strokesStarted,
+            tracing = tracing,
             playing = playing,
-            complete = progress.value >= count,
+            complete = if (tracing) traced >= count else progress.value >= count,
             speed = speed,
-            onPlayPause = { playing = !playing },
+            onPlayPause = {
+                if (tracing) {
+                    // The same button meaning the same thing in both modes:
+                    // start this over.
+                    traced = 0
+                    attempt = emptyList()
+                } else {
+                    playing = !playing
+                }
+            },
             onSpeed = { speed = it },
+            onToggleMode = {
+                mode = if (tracing) StageMode.WATCH else StageMode.TRACE
+                // Watching and writing at once would fight for the stage, so
+                // entering trace stops the animation.
+                playing = false
+                attempt = emptyList()
+            },
             modifier = Modifier.padding(top = tokens.spaceSm + 3.dp),
         )
 
@@ -204,13 +273,21 @@ internal fun StrokeOrderTab(detail: KanjiDetail) {
 
         StrokeGrid(
             paths = paths,
-            selected = strokesStarted,
+            selected = current,
             onSelect = { index ->
-                // `playing = false` stops the LaunchedEffect restarting the
-                // animation; the snapTo cancels the one in flight, because
-                // Animatable serialises its own mutations.
-                playing = false
-                scope.launch { progress.snapTo((index + 1).toFloat()) }
+                if (tracing) {
+                    // Same meaning as in watch mode — "go to this stroke" — so a
+                    // learner can practise stroke 12 of 鬱 without redrawing the
+                    // eleven before it.
+                    traced = index
+                    attempt = emptyList()
+                } else {
+                    // `playing = false` stops the LaunchedEffect restarting the
+                    // animation; the snapTo cancels the one in flight, because
+                    // Animatable serialises its own mutations.
+                    playing = false
+                    scope.launch { progress.snapTo((index + 1).toFloat()) }
+                }
             },
             modifier = Modifier.padding(top = tokens.spaceSm + 1.dp),
         )
@@ -220,25 +297,55 @@ internal fun StrokeOrderTab(detail: KanjiDetail) {
 }
 
 /**
- * The 200dp stage: recessed well, faint centre crosshair, the character being
- * drawn, and the stroke counter tucked into the top-left corner.
+ * Does this gesture count as the expected stroke?
+ *
+ * Start and end points only, against a generous tolerance — not handwriting
+ * recognition, and deliberately not shape matching. A learner who begins and
+ * ends a stroke in the right places has done the thing this screen teaches:
+ * where the stroke goes and which direction it runs.
+ *
+ * **Direction falls out for free, and it matters.** Drawing a stroke backwards
+ * puts the start near the target's end, so the check rejects it — and writing
+ * strokes in the wrong direction is a genuine and common beginner error, not a
+ * technicality.
+ */
+private fun accepts(attempt: List<Offset>, target: Pair<Offset, Offset>): Boolean {
+    if (attempt.size < 2) return false
+    val (start, end) = target
+    return (attempt.first() - start).getDistance() <= TRACE_TOLERANCE &&
+        (attempt.last() - end).getDistance() <= TRACE_TOLERANCE
+}
+
+/**
+ * The 200dp stage: recessed well, faint centre crosshair, the character, and the
+ * stroke counter tucked into the top-left corner.
  *
  * The crosshair is in the design and is not decoration — kanji are written
  * inside an imaginary square and beginners place strokes badly without a centre
- * reference. It is the same guide the review screen's writing box (2c) uses.
+ * reference. It matters more in trace mode, where it is the only guide the
+ * learner has for their own hand. It is the same guide the review screen's
+ * writing box (2c) uses.
  */
 @Composable
 private fun StrokeStage(
     paths: List<Path>,
     progress: Float,
+    tracing: Boolean,
+    traceTarget: Int?,
+    attempt: List<Offset>,
     measure: PathMeasure,
     segment: Path,
     label: String,
+    onTraceStart: (Offset) -> Unit,
+    onTraceMove: (Offset) -> Unit,
+    onTraceEnd: () -> Unit,
+    onTraceCancel: () -> Unit,
 ) {
     val tokens = SpotterTheme.tokens
     val guide = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)
     val ghost = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     val ink = MaterialTheme.colorScheme.onSurface
+    val accent = MaterialTheme.colorScheme.primary
 
     Box(
         modifier = Modifier
@@ -246,16 +353,35 @@ private fun StrokeStage(
             .height(200.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.background)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp)),
+            .border(
+                1.dp,
+                if (tracing) accent else MaterialTheme.colorScheme.outline,
+                RoundedCornerShape(14.dp),
+            ),
     ) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
                 .padding(tokens.spaceMd - 2.dp)
+                // Padding first, so gesture coordinates and the DrawScope size
+                // are the same space — otherwise every traced stroke lands
+                // offset by the padding.
+                .pointerInput(tracing, traceTarget) {
+                    if (!tracing) return@pointerInput
+                    detectDragGestures(
+                        onDragStart = { onTraceStart(it.toKanjiSpace(size)) },
+                        onDrag = { change, _ -> onTraceMove(change.position.toKanjiSpace(size)) },
+                        onDragEnd = { onTraceEnd() },
+                        onDragCancel = { onTraceCancel() },
+                    )
+                }
                 // A drawing announces nothing on its own. The counter beside it
                 // is real text and is read too, so this names only the subject.
-                .semantics { contentDescription = "Stroke order diagram" },
+                .semantics {
+                    contentDescription =
+                        if (tracing) "Trace the character here" else "Stroke order diagram"
+                },
         ) {
             drawLine(guide, Offset(size.width / 2f, 0f), Offset(size.width / 2f, size.height))
             drawLine(guide, Offset(0f, size.height / 2f), Offset(size.width, size.height / 2f))
@@ -266,6 +392,12 @@ private fun StrokeStage(
                 // before it is written.
                 paths.forEach { drawPath(it, ghost, style = stroke) }
 
+                // The stroke expected next, lifted out of the ghost. This
+                // replaces error feedback: rather than telling a learner they
+                // got it wrong after the fact, the screen says which one it is
+                // waiting for, the whole time.
+                traceTarget?.let { drawPath(paths[it], accent.copy(alpha = 0.35f), style = stroke) }
+
                 val done = floor(progress).toInt()
                 paths.take(done).forEach { drawPath(it, ink, style = stroke) }
 
@@ -275,6 +407,18 @@ private fun StrokeStage(
                     segment.reset()
                     measure.getSegment(0f, measure.length * fraction, segment, true)
                     drawPath(segment, ink, style = stroke)
+                }
+
+                // The learner's own ink, shown while the finger is down and then
+                // either replaced by the real stroke or dropped.
+                if (attempt.size > 1) {
+                    drawPoints(
+                        points = attempt,
+                        pointMode = PointMode.Polygon,
+                        color = accent,
+                        strokeWidth = STROKE_UNITS,
+                        cap = StrokeCap.Round,
+                    )
                 }
             }
         }
@@ -291,24 +435,36 @@ private fun StrokeStage(
  * Play control, one progress segment per stroke, state label, and the speed
  * chips.
  *
- * A segment lights when its stroke *starts*, which is what makes the bar agree
- * with the counter above it — the artboard shows three of five filled beside
- * "STROKE 3 OF 5".
+ * In watch mode a segment lights when its stroke *starts*, which is what makes
+ * the bar agree with the counter above it — the artboard shows three of five
+ * filled beside "STROKE 3 OF 5". In trace mode a segment lights when its stroke
+ * has been *drawn*, because there is no partial state to represent.
+ *
+ * The speed chips are hidden while tracing rather than disabled: they control
+ * playback, and playback is not happening. A row of dead controls is the thing
+ * D-61 objects to.
  */
 @Composable
 private fun Transport(
     count: Int,
-    strokesStarted: Int,
+    filled: Int,
+    tracing: Boolean,
     playing: Boolean,
     complete: Boolean,
     speed: Float,
     onPlayPause: () -> Unit,
     onSpeed: (Float) -> Unit,
+    onToggleMode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tokens = SpotterTheme.tokens
     val accent = MaterialTheme.colorScheme.primary
     val idle = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)
+    val primaryLabel = when {
+        tracing -> "Start tracing over"
+        playing -> "Pause"
+        else -> "Play stroke order"
+    }
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -321,19 +477,14 @@ private fun Transport(
                 .size(46.dp)
                 .clip(RoundedCornerShape(percent = 50))
                 .background(accent)
-                .clickable(
-                    onClick = onPlayPause,
-                    onClickLabel = if (playing) "Pause" else "Play stroke order",
-                )
-                .semantics {
-                    contentDescription = if (playing) "Pause" else "Play stroke order"
-                },
+                .clickable(onClick = onPlayPause, onClickLabel = primaryLabel)
+                .semantics { contentDescription = primaryLabel },
         ) {
             Text(
                 // ‖ rather than an icon: the header's ‹ and ✚ are typographic
                 // too, and Material's icon set is not bundled for glyphs this
                 // simple.
-                text = if (playing) "‖" else if (complete) "↻" else "▶",
+                text = if (tracing || complete) "↻" else if (playing) "‖" else "▶",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onPrimary,
                 // The glyph is the icon. Announcing "‖" over the button's own
@@ -353,7 +504,7 @@ private fun Transport(
                             .weight(1f)
                             .height(5.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(if (index < strokesStarted) accent else idle),
+                            .background(if (index < filled) accent else idle),
                     )
                 }
             }
@@ -363,44 +514,79 @@ private fun Transport(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = if (complete) "REPLAY" else if (playing) "PLAYING" else "PAUSED",
+                    text = when {
+                        tracing && complete -> "YOUR TURN · DONE"
+                        tracing -> "YOUR TURN"
+                        complete -> "REPLAY"
+                        playing -> "PLAYING"
+                        else -> "PAUSED"
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    listOf(0.5f to "0.5×", 1f to "1×", 2f to "2×").forEachIndexed { index, (value, text) ->
-                        if (index > 0) {
+                if (!tracing) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        listOf(0.5f to "0.5×", 1f to "1×", 2f to "2×").forEachIndexed { index, (value, text) ->
+                            if (index > 0) {
+                                Text(
+                                    text = "·",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .padding(horizontal = 5.dp)
+                                        .clearAndSetSemantics {},
+                                )
+                            }
                             Text(
-                                text = "·",
+                                text = text,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (speed == value) {
+                                    accent
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                                 modifier = Modifier
-                                    .padding(horizontal = 5.dp)
-                                    .clearAndSetSemantics {},
+                                    .clickable(
+                                        onClick = { onSpeed(value) },
+                                        onClickLabel = "Play at $text speed",
+                                    )
+                                    // Which speed is active is otherwise carried by
+                                    // the accent alone, which a screen reader cannot
+                                    // see and a test should not assert on.
+                                    .semantics { selected = speed == value },
                             )
                         }
-                        Text(
-                            text = text,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (speed == value) {
-                                accent
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            modifier = Modifier
-                                .clickable(
-                                    onClick = { onSpeed(value) },
-                                    onClickLabel = "Play at $text speed",
-                                )
-                                // Which speed is active is otherwise carried by
-                                // the accent alone, which a screen reader cannot
-                                // see and a test should not assert on.
-                                .semantics { selected = speed == value },
-                        )
                     }
                 }
             }
         }
+
+        // The artboard's Trace button, wired to the stage rather than to a
+        // screen that does not exist (D-72).
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .height(46.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .border(
+                    1.dp,
+                    if (tracing) accent else MaterialTheme.colorScheme.outline,
+                    RoundedCornerShape(11.dp),
+                )
+                .clickable(
+                    onClick = onToggleMode,
+                    onClickLabel = if (tracing) "Watch the animation" else "Trace it yourself",
+                )
+                .semantics { selected = tracing }
+                .padding(horizontal = 13.dp),
+        ) {
+            Text(
+                text = if (tracing) "Watch" else "Trace",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (tracing) accent else MaterialTheme.colorScheme.onSurface,
+            )
+        }
+
     }
 }
 
@@ -548,6 +734,22 @@ private inline fun DrawScope.onKanjiCanvas(block: DrawScope.() -> Unit) {
     }) {
         block()
     }
+}
+
+/**
+ * The inverse of [onKanjiCanvas], for turning a touch into a point on the
+ * character.
+ *
+ * Trace mode compares gestures against path endpoints, and those are in KanjiVG
+ * units — so the comparison has to happen in that space rather than in pixels,
+ * or the tolerance would mean something different on every screen size.
+ */
+private fun Offset.toKanjiSpace(size: IntSize): Offset {
+    val factor = min(size.width, size.height) / KANJIVG_CANVAS
+    return Offset(
+        (x - (size.width - KANJIVG_CANVAS * factor) / 2f) / factor,
+        (y - (size.height - KANJIVG_CANVAS * factor) / 2f) / factor,
+    )
 }
 
 /**

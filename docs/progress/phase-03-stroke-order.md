@@ -33,15 +33,38 @@ out the artboard by `id="3b"` rather than reading the whole thing. `support.js`
 is the generated canvas runtime and contains no design information. The artboard
 ids run 1a–1o, 2a–2f and 3a–3b.
 
-## Two deliberate departures from artboard 3b
+## The artboard's Trace button is built — D-72, replacing D-71
 
-- **No Trace button** — now **D-71**. The design's tracing surface is artboard
-  **2c**, a *review* screen with a handwriting canvas, a Check button and the four
-  FSRS grades. Tracing is the review interaction, not a viewer feature, so a
-  button here would be the one control on the screen that goes nowhere.
-- **The speed control is real.** The artboard renders `0.5× · 1× · 2×` as static
-  text. Left literal it would be decoration; slowing 鬱 down is the reason the
-  control exists at all.
+**D-71 got this wrong and has been superseded.** It read the Trace button as a
+link to the design's writing surface (artboard 2c) and deferred it to Phase 7,
+reasoning that handwriting is the review interaction. The mistake was treating
+*practice* and *assessment* as one feature because the design draws them on the
+same kind of canvas.
+
+They are not. Practice is a **reference** capability — you just looked up a kanji
+and want to write it; being told to come back after building a review queue is
+absurd. Assessment needs a scheduler, a due date and a grade. D-72 separates
+them, and the Trace button now switches the stage between two modes:
+
+- **Watch** plays the character being written.
+- **Trace** makes the same stage writable. The ghost stays up, the expected
+  stroke is lifted out of it in the accent colour, and the learner draws over it.
+
+**No scoring, and that is what keeps it independent of FSRS** — the ghost *is*
+the answer, so there is nothing to grade. Nothing here writes user data or needs
+Phase 6 or 7. Artboard 2c's blind write-then-check with the four grades is still
+a separate Phase 7 screen.
+
+A stroke counts if it **starts and ends** near the right places, against a
+generous tolerance, compared only against the stroke currently expected. Not
+handwriting recognition and deliberately not shape matching. The one real
+correctness claim: **a stroke drawn backwards is rejected**, because a reversed
+stroke puts the start near the target's end — and stroke direction is a common
+beginner error rather than a technicality.
+
+**The speed control is also real**, not the artboard's static text: slowing 鬱
+down is the reason a learner would want it. It is hidden in trace mode rather
+than disabled, since playback is not happening.
 
 One addition the artboard could not express, because it used a font glyph as the
 stand-in: **strokes not yet drawn show as a faint ghost.** Without it the stage is
@@ -127,8 +150,11 @@ blank canvas or "0 STROKES".
       so when there is no diagram
 - [x] Render one kanji statically in Compose
 - [x] Animate strokes sequentially
-- [x] Artboard 3b built — stage, transport, cumulative grid (D-71 for what was left out)
-- [x] `StrokeOrderTest` — 5 Compose UI cases over the grid, scrub, speed and both empty states
+- [x] Artboard 3b built in full — stage, transport, cumulative grid, and the
+      Trace button as a two-mode switch (D-72, superseding D-71)
+- [x] `StrokeOrderTest` — 10 Compose UI cases: grid, scrub, speed, both empty
+      states, and trace mode driven through real gestures including the
+      backwards-stroke rejection
 
 ## Open questions
 

@@ -64,7 +64,7 @@ Self-contained, visually rewarding, and good Compose practice. Renders KanjiVG's
 
 **Done.** Built to design artboard **3b**: a stage with a centre crosshair, the character drawn stroke by stroke, play/pause, a speed control, and an **Every stroke** grid of cumulative frames that scrubs the animation when tapped. V-09's display rule is met — the counter reports the number of paths being animated, never KANJIDIC2's figure.
 
-The artboard's **Trace** button was deliberately not built (D-71): the design's tracing surface is artboard 2c, a *review* screen, so handwriting is a Phase 7 interaction rather than a viewer feature.
+The artboard's **Trace** button switches the stage into a writable trace mode (D-72): the ghost stays up, the expected stroke is lifted out of it, and the learner draws over it. No scoring and no scheduler, which is what keeps practice independent of review — artboard 2c's blind write-then-grade remains a separate Phase 7 screen.
 
 ### Phase 4 — Camera
 
@@ -124,7 +124,6 @@ Pinned deliberately, each with the reason and the cost of adding it later. **Non
 | **Curated kanji explanations** | Authored prose explaining why a kanji means what it does in a compound | Writing these for 2,000+ kanji is a content project, not a code project. D-04 delivers most of the value automatically and free | **Low** — purely additive content layer |
 | **Word crops instead of full frames** | Save just the tapped word's region rather than the whole photo | Crop geometry is fiddly and shouldn't block v1 (D-21) | **Near zero** — D-22 stores the bounding box now, so no image reprocessing is ever needed |
 | **KRADFILE radical components** | Show which visual pieces a kanji is built from | The component *data* is free, but standard English *names* for components are not, and inventing them risks looking derivative of WaniKani, whose names are their own authored content. ~214 names is a bounded task if ever wanted | **Low** — additive |
-| **Kanji tracing practice** | Draw the character yourself on the stroke order tab and have it checked | The design's tracing surface is artboard **2c**, which is a *review* screen — canvas, Check, and the four FSRS grades. Handwriting is the review interaction, not a viewer feature, and it needs the scheduler behind it (D-71) | **Low** — Phase 7 builds the canvas; the kanji screen would only link to it |
 | **Word-level stroke order** | Play 先 then 生 in sequence on the word screen | Redundant and visually busy for long words; D-05 places stroke order on the kanji screen | **Low** — composes existing per-kanji data |
 | **Accounts + server sync** | User profiles with cross-device sync | Authentication brings privacy obligations, a Play Store data-safety declaration, and hosting cost. None of it helps v1 | **Low — but only because** D-15, D-16, and D-19 are being followed from the start |
 | **Ads** | ~~Post-quiz placement, Duolingo-style~~ | **Ruled out, not deferred (D-62).** Free with no ads is now a positioning commitment, and intrusive ads are among the loudest complaints against the free competitors | n/a |

@@ -9,6 +9,9 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.geometry.Offset
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.domain.dictionary.KanjiDetail
@@ -94,6 +97,91 @@ class StrokeOrderTest {
 
         compose.onNodeWithText("0.5×").performClick()
         compose.onNodeWithText("0.5×").assertIsSelected()
+    }
+
+    /**
+     * Trace mode (D-72), driven through the real gesture path.
+     *
+     * The coordinates are computed the same way the composable does it — fit
+     * KanjiVG's 109×109 square into the node, centred — because the whole point
+     * of hit-testing in KanjiVG units rather than pixels is that the arithmetic
+     * has to survive being run on a different screen size. If the two ever
+     * disagree, tracing silently stops accepting anything.
+     */
+    private fun androidx.compose.ui.test.TouchInjectionScope.kanji(x: Float, y: Float): Offset {
+        val factor = minOf(width, height) / 109f
+        return Offset(
+            (width - 109f * factor) / 2f + x * factor,
+            (height - 109f * factor) / 2f + y * factor,
+        )
+    }
+
+    // 生's first stroke, read off the path in `sei`: M31.3,25.9 ... ending at
+    // (16.2, 53.9) once the two relative curves are summed.
+    private val stroke1Start = 31.3f to 25.9f
+    private val stroke1End = 16.2f to 53.9f
+
+    private fun enterTraceMode() {
+        compose.setContent { SpotterTheme { Surface { StrokeOrderTab(sei) } } }
+        compose.onNodeWithText("Trace").performClick()
+    }
+
+    @Test
+    fun trace_mode_asks_for_the_first_stroke() {
+        enterTraceMode()
+
+        compose.onNodeWithText("TRACE STROKE 1 OF 5").assertIsDisplayed()
+        compose.onNodeWithText("YOUR TURN").assertIsDisplayed()
+    }
+
+    /**
+     * Playback controls have nothing to control while the learner is writing, so
+     * they are gone rather than dead — a row of inert controls is what D-61
+     * objects to.
+     */
+    @Test
+    fun trace_mode_hides_the_speed_controls() {
+        enterTraceMode()
+
+        compose.onNodeWithText("0.5×").assertDoesNotExist()
+        compose.onNodeWithText("1×").assertDoesNotExist()
+    }
+
+    @Test
+    fun a_stroke_drawn_the_right_way_advances() {
+        enterTraceMode()
+
+        compose.onNodeWithContentDescription("Trace the character here").performTouchInput {
+            swipe(kanji(stroke1Start.first, stroke1Start.second), kanji(stroke1End.first, stroke1End.second))
+        }
+
+        compose.onNodeWithText("TRACE STROKE 2 OF 5").assertIsDisplayed()
+    }
+
+    /**
+     * The one real correctness claim trace mode makes. Writing strokes in the
+     * wrong direction is a common beginner error, not a technicality, and the
+     * start/end check catches it for free — a reversed stroke puts the start
+     * near the target's end.
+     */
+    @Test
+    fun a_stroke_drawn_backwards_is_rejected() {
+        enterTraceMode()
+
+        compose.onNodeWithContentDescription("Trace the character here").performTouchInput {
+            swipe(kanji(stroke1End.first, stroke1End.second), kanji(stroke1Start.first, stroke1Start.second))
+        }
+
+        compose.onNodeWithText("TRACE STROKE 1 OF 5").assertIsDisplayed()
+    }
+
+    /** The stage only accepts input while tracing; watching must stay inert. */
+    @Test
+    fun watch_mode_ignores_drawing() {
+        compose.setContent { SpotterTheme { Surface { StrokeOrderTab(sei) } } }
+
+        compose.onNodeWithContentDescription("Stroke order diagram").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Trace the character here").assertDoesNotExist()
     }
 
     /**

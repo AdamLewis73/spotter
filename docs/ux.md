@@ -88,8 +88,10 @@ two beside it, and Phase 3 replaced its body without touching anything above it.
 
 Stroke order follows artboard **3b** of the design project: a 200dp stage with a
 centre crosshair, transport controls, and an **Every stroke** grid holding one
-cumulative frame per stroke. The tab plays; it does not accept handwriting
-(D-71).
+cumulative frame per stroke. The stage has two modes — **Watch** plays the
+character being written, **Trace** makes the same stage writable so the learner
+draws it over the ghost. Trace practice carries no scoring and no scheduler,
+which is what keeps it independent of review (D-72).
 
 | Tab | Content |
 |---|---|
