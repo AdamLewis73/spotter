@@ -84,11 +84,12 @@ What is *not* here is the overlay: the recognized text is a strip under the froz
 
 The coordinate-mapping work described in `architecture.md` — connecting ML Kit's pixel rectangles to the tokenizers' character offsets so a tap resolves to a word. Highest risk of subtle bugs in the project, **and the core of v1**.
 
-Stage 4 does three geometric jobs at once, and they must be designed together rather than retrofitted onto each other:
+Stage 4 does four geometric jobs at once, and they must be designed together rather than retrofitted onto each other:
 
 1. **Vertical text (縦書き)** — interpolate on y, columns right-to-left (V-10). In test images from day one.
 2. **Character interpolation** — the tap-to-word resolution itself (V-11).
 3. **Furigana separation** — ruby is smaller and offset, and must be kept out of the token stream (V-26). This is one of the few OCR failures competitors visibly have, which makes it demonstrable in a store listing rather than merely correct.
+4. **Line-break policy** — whether two lines are one flow or two separate things (V-28). Japanese does not hyphenate, so a word can split across a line with no marker at all; Phase 4 ships a conservative newline join that hides such words rather than inventing them. It cannot even be posed before job 1, because "the line above" is undefined until the writing direction is known.
 
 ### Phases 6–8 — The study loop
 

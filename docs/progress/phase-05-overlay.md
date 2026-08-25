@@ -31,17 +31,39 @@ will be wrong at exactly those positions.
 
 ## Next action
 
-**Stage 4, the offset↔pixel bridge** (`architecture.md`). Build the lookup table
-by walking `RecognizedText.elements` — they are already in reading order with
-offsets recorded — and interpolate within each element to get per-character
-rectangles.
+**First, and it is not the coordinate work: find out what ML Kit does with
+vertical text.** Stage 2 takes ML Kit's block-then-line order as given and
+concatenates it — so if the recognizer walks 縦書き columns left-to-right, or
+interleaves them, **the string is already scrambled before stage 4 ever sees a
+pixel**. That would make vertical text a stage 2 bug wearing a stage 4 costume,
+and it would change how the bridge is designed.
 
-**Collect real test images first**, including vertical text and furigana'd text,
-per V-10 and V-26. `architecture.md` is explicit that discovering vertical text
-after building a horizontal-only implementation means redoing this stage, which
-is the most error-prone work in the project. The one fixture committed so far
-(`app/src/androidTest/assets/sign-horizontal.png`) is generated, horizontal, and
-deliberately easy — it proves wiring, not accuracy.
+It is a ten-minute experiment and it gates the design: generate or photograph a
+vertical fixture, run `JapaneseTextRecognizer` over it in an instrumented test
+like the horizontal one, and read the string that comes back. Do this **before**
+building any lookup table.
+
+Then, in order:
+
+1. **Collect real test images** — vertical (V-10) and furigana'd (V-26), per
+   `architecture.md`: discovering vertical text after building a horizontal-only
+   implementation means redoing this stage, which is the most error-prone work in
+   the project. The one committed fixture
+   (`app/src/androidTest/assets/sign-horizontal.png`) is generated, horizontal
+   and deliberately easy — it proves wiring, not accuracy.
+2. **Stage 4, the offset↔pixel bridge.** Walk `RecognizedText.elements`, which
+   are already in reading order with offsets recorded, and interpolate within
+   each element for per-character rectangles.
+3. **Settle the line-break policy (V-28)** in the same pass, because it is the
+   same geometric question — see below.
+
+**The three geometry problems are one problem.** V-10 (are these columns, and do
+they run right-to-left?), V-26 (is this small kana annotation or body text?) and
+V-28 (is this line a continuation of the one above, or a separate thing?) all ask
+*what does this geometry mean?*, none can be answered from the text alone, and
+V-28 cannot even be posed until V-10 is, because "the line above" is undefined
+until the writing direction is known. Design them together; retrofitting any one
+onto the others is the redo `architecture.md` warns about.
 
 **The design is drawn**: artboard **1a**, "Dim frame, bright text, solid
 selection", plus 1b for ambiguity chips and 1c for the loupe. See
@@ -56,6 +78,11 @@ context window on a 106 KB file.
       columns right-to-left
 - [ ] **Furigana excluded from the token stream** (V-26) — ruby is separated
       geometrically, by glyph size and baseline offset, in this same stage
+- [ ] **Line-break policy decided geometrically** (V-28) — Japanese does not
+      hyphenate, so a word may split across lines with no marker; Phase 4 ships a
+      conservative newline join that hides such words rather than inventing them
+- [ ] Confirm ML Kit's reading order for vertical text — a stage 2 question that
+      gates the stage 4 design (see Next action)
 - [ ] Tap resolves: pixel → element → character index → global offset → token
 - [ ] Overlay dims the image, detected text stays bright (D-33)
 - [ ] Peek sheet, and the expand-to-word-screen gesture (D-30, D-31)

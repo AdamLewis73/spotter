@@ -136,11 +136,18 @@ of zeros and came out 5 KB from the bundled figure. The conclusion "bundling is
 free" was one screenshot away from reaching the docs. Clean-build every variant.
 
 **Line separators became empty chips in the token strip.** Joining OCR lines with
-a newline is right — it stops the tokenizer inventing a word across a line break
-— but Kuromoji returns whitespace as a token, and the strip rendered each one as
-a blank tappable box. Fixed in `WordLookupViewModel` by dropping blank tokens,
-not at the scan boundary, because the separators have to stay in the string.
-Typing `先生 と` by hand always did this; the scan just made it visible.
+a newline stops the tokenizer inventing a word across a line break — but Kuromoji
+returns whitespace as a token, and the strip rendered each one as a blank
+tappable box. Fixed in `WordLookupViewModel` by dropping blank tokens, not at the
+scan boundary, because the separators have to stay in the string. Typing
+`先生 と` by hand always did this; the scan just made it visible.
+
+**The separator itself is only half right, and that is now V-28.** Japanese does
+not hyphenate — 禁則処理 constrains only which characters may begin or end a line,
+so a word may split *across* a break with no marker at all, and the separator
+hides those exactly as reliably as it prevents invented ones. Both directions
+fail silently. The default is deliberate (missing a word beats inventing one),
+but the real answer is geometric and belongs with V-10 and V-26 in Phase 5.
 
 ## Open questions
 

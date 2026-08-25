@@ -90,6 +90,13 @@ A tree, roughly: `Text` → `TextBlock` → `Line` → `Element`. Every node car
 
 Important caveat: for Japanese, `Element` boundaries do **not** correspond to word boundaries. ML Kit does not know where Japanese words begin and end — that's what stage 3 is for. Elements are useful for their *positions*, not their segmentation.
 
+**Flattening that tree defines the character offsets stage 3 and stage 4 both speak in**, so it is done exactly once, in `scan/RecognizedText.kt`, which records each element's box *and* its start offset. A second walk in stage 4 could disagree with the first and shift every tap by a character, silently.
+
+Two consequences of the flattening are load-bearing:
+
+- **Lines are joined with a newline, not butted together** — otherwise 先生 above 産業 concatenates to `先生産業` and the tokenizer finds 生産, a word nobody wrote. This is a conservative default rather than a solution: Japanese does not hyphenate, so a word may also split across a line break with no marker, and the separator hides those. **V-28**, and settled properly in stage 4 where the geometry is available.
+- **A separator occupies an offset owned by no element**, so it maps to no rectangle. A tap can never land there; a lookup table assuming every offset has a box is wrong exactly there.
+
 ### Stage 3 — what the tokenizers return
 
 Kuromoji takes the concatenated text and returns tokens described as **character offsets** — "a word starts at character 3 and is 2 characters long." JMdict longest-match likewise returns candidates as offset ranges.
@@ -123,6 +130,8 @@ A tap then resolves as: pixel `(x, y)` → containing element → character inde
 Japanese signage, menus, and book spines are frequently written **縦書き** (*tategaki*) — top to bottom, right to left. When they are, stage 4 interpolates on the **y** axis instead of x, and reading order between columns runs right-to-left.
 
 This must be handled in the coordinate layer from the start. Discovering it after building a horizontal-only implementation means redoing stage 4 — the most error-prone part of the pipeline. Include vertical text in test images from the first day of Phase 5.
+
+**Check stage 2 first, though.** Stage 2 takes ML Kit's own block-then-line order as given, so if the recognizer walks columns left-to-right the *string* is scrambled before stage 4 receives anything — a stage 2 fault that presents as a coordinate fault. Confirm the recognizer's reading order on a vertical fixture before designing the bridge.
 
 ### Why this is stage 5, not stage 1
 

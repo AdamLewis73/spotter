@@ -85,12 +85,18 @@ class JapaneseTextRecognizerTest {
     }
 
     /**
-     * Lines must not be butted together, because that invents words.
+     * Lines must not be butted together, because that invents words (V-28).
      *
      * The fixture has 先生と生産 above 東京都の学生. Concatenated with no
      * separator the boundary reads 生産東京都, and the tokenizer would be free to
      * find something spanning it. The separator is the fix, and it is only
      * checked here because nothing about the output *looks* wrong without it.
+     *
+     * This pins the **current** behaviour, which V-28 records as a conservative
+     * default rather than a settled answer — the separator also hides words that
+     * legitimately split across a line, since Japanese does not hyphenate. When
+     * Phase 5 decides this geometrically, expect to rewrite this test rather
+     * than to keep it passing.
      */
     @Test
     fun lines_are_separated_so_no_word_spans_the_break() {

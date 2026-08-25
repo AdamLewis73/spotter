@@ -42,6 +42,19 @@ internal data class RecognizedText(
          * that nobody wrote. Kuromoji treats a newline as a boundary, so the
          * separator prevents the invented compound.
          *
+         * **This is a conservative default, not the answer — V-28.** Japanese
+         * does not hyphenate: 禁則処理 constrains only which characters may begin
+         * or end a line, so a word may equally split *across* a break with no
+         * marker at all, and this separator hides those. Both directions fail
+         * silently and no fixed separator escapes both. The choice between them
+         * is deliberate: **inventing a word is worse than missing one**, because
+         * a missed word means the learner taps 生 and gets 生, while an invented
+         * one means a confident, plausible, wrong answer in an app whose whole
+         * claim is meaning in context (D-44).
+         *
+         * Deciding it properly is geometric and needs stage 4 — the same signal
+         * V-10 uses to find columns and V-26 uses to separate ruby. Phase 5.
+         *
          * It costs one character offset that belongs to no element. That is
          * deliberate and stage 4 must expect it: a tap can never land on a
          * separator, because no rectangle maps to one.
