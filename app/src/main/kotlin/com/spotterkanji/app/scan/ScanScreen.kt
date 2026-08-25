@@ -57,10 +57,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.spotterkanji.app.R
+import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.ensureActive
@@ -88,6 +90,7 @@ internal fun ScanScreen(
     onCameraUnavailable: () -> Unit,
     onCameraBound: () -> Unit,
     onRetake: () -> Unit,
+    onLookUp: (String) -> Unit,
     onOpenLookup: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -110,6 +113,7 @@ internal fun ScanScreen(
                 onCameraUnavailable = onCameraUnavailable,
                 onCameraBound = onCameraBound,
                 onRetake = onRetake,
+                onLookUp = onLookUp,
             )
 
             CameraPermissionState.Askable -> PermissionPanel(
@@ -156,6 +160,7 @@ private fun CameraStage(
     onCameraUnavailable: () -> Unit,
     onCameraBound: () -> Unit,
     onRetake: () -> Unit,
+    onLookUp: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -273,14 +278,15 @@ private fun CameraStage(
 
         // The camera stays bound while a frame is frozen rather than being
         // unbound and rebound around it. Rebinding costs a few hundred
-        // milliseconds, and right now a frozen frame has nothing on it to read,
-        // so every freeze is followed almost immediately by a retake and that
-        // latency is the thing a user would notice. Worth revisiting in Phase 5,
-        // when the peek sheet gives people a reason to sit on a frozen frame for
-        // minutes and the battery cost becomes the larger of the two.
+        // milliseconds, which is the delay a user would feel on every Retake.
+        // Worth revisiting in Phase 5: the peek sheet gives people a reason to
+        // sit on a frozen frame for minutes, and at that point the battery cost
+        // of a streaming preview nobody can see becomes the larger of the two.
 
         ScanControls(
             frozen = frame != null,
+            recognition = state.recognition,
+            onLookUp = onLookUp,
             capturing = state.capturing,
             onShutter = {
                 onShutterPressed()
@@ -328,6 +334,8 @@ private fun CameraStage(
 @Composable
 private fun ScanControls(
     frozen: Boolean,
+    recognition: RecognitionState,
+    onLookUp: (String) -> Unit,
     capturing: Boolean,
     onShutter: () -> Unit,
     onRetake: () -> Unit,
@@ -341,19 +349,125 @@ private fun ScanControls(
         contentAlignment = Alignment.Center,
     ) {
         if (frozen) {
-            // Not a shutter. Retaking is a step backwards, and giving it the same
-            // big round target would make the two states look identical at a
-            // glance while doing opposite things.
-            OutlinedButton(onClick = onRetake) {
-                Icon(Icons.Filled.Refresh, contentDescription = null)
-                Text(
-                    text = stringResource(R.string.scan_retake),
-                    modifier = Modifier.padding(start = SpotterTheme.tokens.spaceSm),
-                )
-            }
+            FrozenFrameControls(
+                recognition = recognition,
+                onLookUp = onLookUp,
+                onRetake = onRetake,
+            )
         } else {
             ShutterButton(enabled = !capturing, onClick = onShutter)
         }
+    }
+}
+
+/**
+ * What sits under a frozen frame: what was read, and the two things to do next.
+ *
+ * **This is not the overlay.** Artboard 1a puts the recognized words on the
+ * photograph itself with a peek sheet under the tap, and that needs stage 4's
+ * offset-to-pixel bridge — Phase 5, and the hardest work in the project. Until
+ * it exists the recognized text is shown as a strip and handed whole to the
+ * Phase 2 lookup screen, which already tokenizes it and makes every word
+ * tappable. The pipeline runs end to end; only the tap target is interim.
+ */
+@Composable
+private fun FrozenFrameControls(
+    recognition: RecognitionState,
+    onLookUp: (String) -> Unit,
+    onRetake: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = SpotterTheme.tokens.spaceMd),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        when (recognition) {
+            RecognitionState.Idle, RecognitionState.Running ->
+                ReadingStrip(stringResource(R.string.scan_reading))
+
+            RecognitionState.Failed ->
+                ReadingStrip(stringResource(R.string.scan_recognize_failed))
+
+            is RecognitionState.Done -> if (recognition.result.isEmpty) {
+                ReadingStrip(stringResource(R.string.scan_no_text))
+            } else {
+                RecognizedStrip(
+                    result = recognition.result,
+                    onLookUp = { onLookUp(recognition.result.text) },
+                )
+            }
+        }
+
+        // Not a shutter. Retaking is a step backwards, and giving it the same big
+        // round target would make the two states look identical at a glance while
+        // doing opposite things.
+        OutlinedButton(
+            onClick = onRetake,
+            modifier = Modifier.padding(top = SpotterTheme.tokens.spaceMd),
+        ) {
+            Icon(Icons.Filled.Refresh, contentDescription = null)
+            Text(
+                text = stringResource(R.string.scan_retake),
+                modifier = Modifier.padding(start = SpotterTheme.tokens.spaceSm),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReadingStrip(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = Color.White.copy(alpha = 0.85f),
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.medium)
+            .background(Color.Black.copy(alpha = 0.6f))
+            .padding(
+                horizontal = SpotterTheme.tokens.spaceMd,
+                vertical = SpotterTheme.tokens.spaceSm,
+            ),
+    )
+}
+
+@Composable
+private fun RecognizedStrip(
+    result: RecognizedText,
+    onLookUp: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(Color.Black.copy(alpha = 0.72f))
+            .clickable(onClick = onLookUp)
+            .padding(SpotterTheme.tokens.spaceMd),
+    ) {
+        Text(
+            // Line breaks become spaces for display only. The separator earns its
+            // place in the string itself — it stops a word being invented across
+            // a line break — but rendering it here would turn a two-line sign
+            // into a two-line strip for no gain.
+            text = result.text.replace(RecognizedText.LINE_SEPARATOR, " "),
+            // `SpotterJapanese` explicitly, per D-34. IBM Plex carries no CJK and
+            // falls back to the system font silently, which on some devices means
+            // Chinese glyph forms for 直, 骨, 令 and 化 (V-12). In an app that
+            // teaches people to read kanji that is a correctness bug, and it is
+            // invisible on any device whose fallback happens to be Japanese.
+            fontFamily = SpotterJapanese,
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = stringResource(R.string.scan_tap_to_look_up),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = SpotterTheme.tokens.spaceXs),
+        )
     }
 }
 

@@ -21,6 +21,14 @@
     <string name="scan_permission_denied_body">Camera access is turned off. You can turn it back on in Settings, under Permissions.</string>
     <string name="scan_permission_settings">Open settings</string>
 
+    <!-- Stage 2, the frozen frame. "Reading" rather than "Scanning" or
+         "Processing": the app is reading the sign, which is the thing the user
+         came to have done, and it is what they would say themselves. -->
+    <string name="scan_reading">Reading…</string>
+    <string name="scan_no_text">No Japanese text found here</string>
+    <string name="scan_recognize_failed">That photo could not be read. Try again.</string>
+    <string name="scan_tap_to_look_up">Tap to look these words up</string>
+
     <string name="scan_no_camera">This device has no camera Spotter can use.</string>
     <string name="scan_camera_failed">The camera could not be started.</string>
     <string name="scan_capture_failed">That photo could not be taken. Try again.</string>

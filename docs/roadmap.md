@@ -20,7 +20,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
 | 2 | Android app, text input only | **Feature-complete** — every `V-##` case this phase owns is met; the user-data checkpoint lands with Save in Phase 6 | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
-| 4 | CameraX + ML Kit | **In progress** — preview, shutter and freeze-frame done; ML Kit next | Raw recognized text into the Phase 2 pipeline |
+| 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit; overlay is Phase 5 | Raw recognized text into the Phase 2 pipeline |
 | 5 | Tappable overlay | Not started | The real scan experience |
 | 6 | Saved lists | Not started | Multiple lists, many-to-many |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
@@ -76,17 +76,20 @@ CameraX plus ML Kit's Japanese model, feeding recognized text into a pipeline th
 
 The live camera screen is **not** in the design project. Artboards 1a–1c are overlay treatments and all draw the *frozen* frame; none draw viewfinder chrome. It was designed in place knowingly, against `ux.md` rather than against an artboard.
 
-ML Kit is next, and bundled-vs-unbundled is a measurement rather than a preference — see `progress/phase-04-camera.md`.
+**ML Kit landed 2026-08-24 and the phase is done.** Photograph Japanese text and the words come back segmented and tappable, through the same tokenize-and-look-up path Phase 2 built. The model is **bundled** (D-74) at a measured ~14.8 MB per device — a quarter of what a universal APK reports, because the cost is per-ABI native libraries that a Play app bundle splits away.
+
+What is *not* here is the overlay: the recognized text is a strip under the frozen frame, not words on the photograph. That is Phase 5, and it is the stage-4 coordinate work — the highest-risk part of the project.
 
 ### Phase 5 — Overlay
 
 The coordinate-mapping work described in `architecture.md` — connecting ML Kit's pixel rectangles to the tokenizers' character offsets so a tap resolves to a word. Highest risk of subtle bugs in the project, **and the core of v1**.
 
-Stage 4 does three geometric jobs at once, and they must be designed together rather than retrofitted onto each other:
+Stage 4 does four geometric jobs at once, and they must be designed together rather than retrofitted onto each other:
 
 1. **Vertical text (縦書き)** — interpolate on y, columns right-to-left (V-10). In test images from day one.
 2. **Character interpolation** — the tap-to-word resolution itself (V-11).
 3. **Furigana separation** — ruby is smaller and offset, and must be kept out of the token stream (V-26). This is one of the few OCR failures competitors visibly have, which makes it demonstrable in a store listing rather than merely correct.
+4. **Line-break policy** — whether two lines are one flow or two separate things (V-28). Japanese does not hyphenate, so a word can split across a line with no marker at all; Phase 4 ships a conservative newline join that hides such words rather than inventing them. It cannot even be posed before job 1, because "the line above" is undefined until the writing direction is known.
 
 ### Phases 6–8 — The study loop
 

@@ -333,6 +333,27 @@ The signal to separate them is geometric, not linguistic: ruby glyphs are marked
 
 *Why this is worth a case rather than a backlog item:* it is one of the few OCR failures competitors visibly have, and "works on furigana'd text" is demonstrable in a store listing (D-61). It is also cheapest to handle while stage 4 is being designed, for exactly the reason V-10 gives — retrofitting the coordinate layer is the most error-prone work in the project.
 
+### V-28 · A line break must neither invent a word nor hide one (`architecture.md` stage 2 and 4)
+
+**Japanese has no hyphenation.** English breaking `pro-` / `duction` leaves a hyphen saying "rejoin these". Japanese leaves nothing: 禁則処理 (*kinsoku shori*) constrains only *which characters may not begin or end a line* — 、。） cannot start one, （ cannot end one — and beyond that a line may break **between any two characters, mid-word, with no marker at all**.
+
+So flattening ML Kit's lines into the single string the tokenizer wants (stage 2) fails silently in *both* directions, and no choice of separator escapes both:
+
+| Input | Joining lines | Separating lines |
+|---|---|---|
+| A sign: 先生 above 産業 | invents 生産 — a word nobody wrote | correct |
+| A paragraph: 生 ending a line, 産 starting the next | correct — finds 生産 | hides 生産; 生 and 産 resolve alone |
+
+Nothing errors either way. The recognizer succeeds, the tokenizer segments happily, and the words are simply wrong — which reads downstream as "the OCR is a bit flaky", exactly like V-11 and V-26.
+
+**As built in Phase 4: lines are joined with a newline** (`scan/RecognizedText.kt`), so the app currently sits in the right-hand column — it hides words rather than inventing them.
+
+*That is a deliberate default, not the answer.* **Inventing is worse than missing.** A missed word means the learner taps 生 and gets 生 — degraded, but true. An invented word means they tap and get a confident, plausible, wrong answer, which in an app whose entire claim is teaching meaning in context is the failure that actively does harm (D-44, D-04).
+
+**Expected, once stage 4 exists: the decision is geometric, not fixed.** Whether two lines are one flow or two separate things is answerable from the boxes — block membership, line spacing, alignment of the leading edge — which is the same *kind* of signal V-26 uses to separate ruby from body text and V-10 uses to find columns. All three are one question wearing three hats: *what does this geometry mean?* None of them can be settled from the text alone, and the third cannot even be posed before the first, because "the line above" is undefined until the writing direction is known.
+
+*One consequence stage 4 must expect either way:* wherever a separator sits in the string, that character offset belongs to **no element** and maps to no rectangle. A tap can never land there, but a lookup table assuming every offset has a box is wrong at exactly those positions.
+
 ---
 
 ## Phase 6–7 — Study loop
