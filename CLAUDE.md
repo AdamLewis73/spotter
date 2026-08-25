@@ -76,9 +76,11 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **Phase 3 — Stroke order: complete.** The kanji screen's third tab draws KanjiVG's real outlines — stage with a centre crosshair, stroke-by-stroke animation, play/pause, speed control, and a tappable per-stroke grid — following design artboard **3b**. Its **Trace** mode makes the same stage writable so the learner draws the character over the ghost — no scoring, no scheduler, independent of review (D-72, which superseded D-71).
 
-**Current phase:** Phase 4 — CameraX + ML Kit. Not started. **This is where the product starts existing** (D-61), and Phases 4–5 are what v1 lives or dies on.
+**Current phase:** Phase 4 — CameraX + ML Kit. **In progress.** **This is where the product starts existing** (D-61), and Phases 4–5 are what v1 lives or dies on.
 
-**Read `docs/progress/phase-04-camera.md` first**, then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors. `phase-03-stroke-order.md` carries how to read the Claude Design project without burning a context window on a 106 KB file.
+Step one is done: the app **opens on a live viewfinder**, the shutter freezes a still (D-02), and Retake returns to the preview. The camera is now the launcher destination and the Phase 2 text box is a **debug path**, not a second front door — reached by the `query` intent extra in any build type, and by a debug-only affordance on the scan screen (D-73). `/inspect` is unaffected. **ML Kit is next**, and bundled-vs-unbundled wants a measured APK delta rather than a preference.
+
+**Read `docs/progress/phase-04-camera.md` first**, then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors. Both `phase-03-stroke-order.md` and `phase-04-camera.md` carry how to read the Claude Design project without burning a context window on a 106 KB file.
 
 Run it with **`/launch`** (starts it for you to drive) or **`/inspect`** (drives it against specific words and reports). Build with `./gradlew :app:assembleDebug`, which needs `JAVA_HOME` pointing at Android Studio's JBR — there is no other JDK on this machine. AGP 9 removed the Kotlin Android plugin, so most published advice is now a build error.
 

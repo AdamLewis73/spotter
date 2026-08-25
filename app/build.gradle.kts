@@ -235,6 +235,11 @@ android {
 
     buildFeatures {
         compose = true
+        // Off by default since AGP 8, and needed here for `BuildConfig.DEBUG`.
+        // That flag is what keeps the Phase 2 text-input screen reachable in
+        // debug builds and absent from release ones (D-61) — the camera is the
+        // only front door a user ever sees.
+        buildConfig = true
     }
 
 
@@ -290,6 +295,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
+
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.compose)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

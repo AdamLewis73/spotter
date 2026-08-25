@@ -101,6 +101,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-70 | Alternates are words that **overlap** the token, not just those inside it | UI |
 | D-71 | ~~Stroke order is playback only; tracing belongs to review~~ — SUPERSEDED by D-72 | UI |
 | D-72 | Trace practice lives on the stroke order tab, independent of review | UI |
+| D-73 | The camera is the launcher destination; text input survives as a debug path | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -996,6 +997,23 @@ So the tab is a two-mode stage, and the artboard's Trace button is the switch:
 *Why on the stage rather than behind a button:* a separate practice screen would need its own header, its own way back, and its own copy of the grid — and it would put the thing you want to trace one navigation step away from the thing you just watched. One stage in two modes keeps D-61's bargain, because the tab still does one thing: it is about how this character is written.
 
 *Cost to reverse:* low. The modes are a single enum on one composable, and no data model or schema depends on any of it.
+
+**D-73 — The camera is the launcher destination. The text-input screen survives as a debug path, reached by intent extra and by a debug-only affordance.**
+
+D-61 says the app opens on the camera with nothing in front of it. Phase 4 makes that literal: `MainActivity` starts on the scan screen, and there is no home screen, dashboard, or shortcut grid.
+
+That creates a conflict, because the Phase 2 text-input screen is not decoration — it is the project's entire test harness. Every `V-##` case so far has been driven through it, and `/inspect` exists to do exactly that. Deleting it to satisfy D-61 would trade a working verification path for a cleaner launcher.
+
+**Both facts are kept true by two separate mechanisms, and the distinction between them matters:**
+
+- **The `query` intent extra opens the lookup screen directly**, bypassing the camera. This works **in every build type**, debug and release alike, and needs no tap. It is the mechanism `/inspect` depends on, and it is deliberately not behind a debug flag — a hook that only works in debug builds is a hook that cannot check a release build, which is the same reasoning the extra already carried in Phase 2.
+- **A small search affordance in the scan screen's top corner**, present only when `BuildConfig.DEBUG`. This is for driving the app by hand. It sits in a top corner on purpose: `ux.md` keeps important controls out of the corners because the phone is held up one-handed, which makes a corner the right home for a control that is not important.
+
+*Why not simply leave the text box on as a real feature:* because "manual lookup" and "debug entry point" are the same screen today and should not be the same decision. A user-facing search is wanted — the project owner asked for one explicitly on 2026-08-24 — but what the second screen of a scanner-first app should be is a product question about D-61's bargain, and it is not answered by leaving a debug button switched on. It is deferred to a point where the camera path works and the question can be asked against a real app. See `roadmap.md`'s deferred table.
+
+*The bug this shape produced, recorded because it recurs:* the camera binding lives in a `LaunchedEffect` that ends with `awaitCancellation()`. Navigating to the lookup screen cancels that coroutine, `awaitCancellation` throws `CancellationException` — and a `catch (Exception)` wrapped around it swallowed the one signal meaning "shutting down normally", reporting a camera failure instead. Because the failure was stored in the ViewModel and nothing retracted it, coming back showed **"This device has no camera"** printed over a working live preview. Cancellation in Kotlin is an exception; any broad catch around a suspending camera call has to rethrow it, and any error a rebind disproves has to be cleared when the rebind succeeds.
+
+*Cost to reverse:* near zero. The start destination is one branch in `MainActivity`, and the eventual bottom nav (D-36) will replace that branch entirely.
 
 ---
 

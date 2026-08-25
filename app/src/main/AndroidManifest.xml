@@ -1,6 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- The app opens on the camera (D-61), so this is not an optional extra.
+         It is still a runtime permission: declaring it here only makes it
+         possible to ask, and the ask itself happens on the scan screen. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- `required="false"` deliberately. Play uses declared hardware features to
+         decide which devices may install the app, and `required="true"` would
+         hide it from anything without a camera. Scanning is the product, but a
+         saved-word list and a review deck are still usable on a device with no
+         camera at all, so the install is worth allowing and the scan screen
+         handles the absence itself. -->
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
+
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
@@ -8,8 +26,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Spotter">
 
-        <!-- Scan is the start destination once the camera exists (D-61); for now
-             this is the only screen there is. -->
+        <!-- Scan is the start destination (D-61). The Phase 2 lookup screen is
+             still reachable from here via the `query` extra, which is how
+             `/inspect` drives the app — see MainActivity. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
