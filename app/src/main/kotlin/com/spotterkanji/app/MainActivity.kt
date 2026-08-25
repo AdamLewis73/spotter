@@ -8,23 +8,45 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.spotterkanji.app.scan.ScanScreen
+import com.spotterkanji.app.scan.ScanViewModel
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.app.word.KanjiScreen
 import com.spotterkanji.app.word.WordLookupViewModel
 import com.spotterkanji.app.word.WordScreen
 
 /**
- * Phase 2's screen: type a word, see what it means.
+ * The single activity.
  *
- * Not the app's real entry point. From Phase 4 the app opens directly on the
- * camera (D-61) and this becomes a path *into* the word screen rather than the
- * whole of it. It exists now because the value of the app can be proven with a
- * text field and no camera at all, which is the point of building inside-out.
+ * **The camera is the start destination (D-61)** — no home screen, no dashboard,
+ * no shortcut grid in front of it. That is the whole positioning against the
+ * incumbents, and it is a Phase 4 change because it shapes navigation rather
+ * than being a coat of paint applied later.
+ *
+ * Phase 2's text-input screen survives as a *debug* path rather than being
+ * deleted. It is how every `V-##` case so far has been driven, so removing it
+ * would cost the project its test harness — but it is also a second front door,
+ * which is exactly what D-61 rules out. Two mechanisms keep both facts true:
+ *
+ *  - The `query` **intent extra opens the lookup screen directly**, bypassing
+ *    the camera entirely. `/inspect` therefore works unchanged, in any build
+ *    type, without a single tap.
+ *  - A small **search affordance on the camera screen**, present only in debug
+ *    builds, reaches the same screen by hand.
+ *
+ * A real user-facing search is wanted eventually and is a deliberate open
+ * question — see `progress/phase-04-camera.md`. It is not this: promoting the
+ * debug path to a feature is a product decision about what the second screen of
+ * a scanner-first app should be, and it is not made by leaving a button on.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,9 +57,10 @@ class MainActivity : ComponentActivity() {
         // It is not opt-in behaviour that can be declined at targetSdk 37.
         //
         // The surface deliberately fills the whole window — the background
-        // should reach the screen edges — while `safeDrawingPadding` keeps the
-        // content clear of the system bars. This matters more than usual for a
-        // camera app whose overlay will want the full frame (D-33).
+        // should reach the screen edges — while `safeDrawingPadding` keeps
+        // content clear of the system bars. The scan screen is the exception
+        // that motivated it: the viewfinder wants the full frame, and insets
+        // are applied to its controls rather than to the image (D-33).
         enableEdgeToEdge()
 
         // A word to open on, supplied by the launch intent:
@@ -48,55 +71,35 @@ class MainActivity : ComponentActivity() {
         // emulator has no clipboard command, so there was no way to get Japanese
         // into the text field from a script — which made "run it and look"
         // impossible for any *particular* word, on a screen whose failures are
-        // silent rather than loud. Every bug this phase has produced was found
-        // by looking at a specific word.
+        // silent rather than loud. Every bug Phase 2 produced was found by
+        // looking at a specific word.
         //
         // Read unconditionally rather than behind a debug flag: it pre-fills a
         // dictionary search box and grants nothing, and a hook that only works
         // in debug builds is a hook that cannot check a release build.
-        val seed = intent?.getStringExtra(EXTRA_QUERY)
-
+        val seed = intent?.getStringExtra(EXTRA_QUERY)?.takeIf { it.isNotBlank() }
 
         setContent {
             SpotterTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    val viewModel: WordLookupViewModel = viewModel()
-                    // Once per composition, not once per recomposition — without
-                    // the key the seed would fight every keystroke the user makes.
-                    LaunchedEffect(seed) {
-                        seed?.takeIf { it.isNotBlank() }?.let(viewModel::onQueryChanged)
-                    }
-                    val state by viewModel.state.collectAsStateWithLifecycle()
-                    val openKanji = state.openKanji
+                    // Not a navigation library. There are two destinations, one
+                    // of which is debug-only, and a back stack of depth one is
+                    // served better by a boolean than by a dependency. The real
+                    // navigation decision is Phase 5's bottom nav (D-36), and it
+                    // should be made against three real destinations rather than
+                    // pre-empted here.
+                    var showLookup by rememberSaveable { mutableStateOf(seed != null) }
 
-                    // The kanji screen replaces the word screen rather than
-                    // stacking beside it (D-32). System back closes it before
-                    // leaving the app, which is the behaviour the eventual
-                    // bottom sheet will need to reproduce by hand — a
-                    // ModalBottomSheet has no back stack of its own.
-                    BackHandler(enabled = openKanji != null, onBack = viewModel::onKanjiClosed)
-
-                    if (openKanji != null) {
-                        KanjiScreen(
-                            detail = openKanji,
-                            onBack = viewModel::onKanjiClosed,
-                            onSave = {},
-                            modifier = Modifier.safeDrawingPadding(),
-                        )
+                    if (showLookup) {
+                        BackHandler(enabled = seed == null) { showLookup = false }
+                        LookupRoute(seed = seed)
                     } else {
-                        WordScreen(
-                            state = state,
-                            onQueryChanged = viewModel::onQueryChanged,
-                            onTokenSelected = viewModel::onTokenSelected,
-                            onKanjiSelected = viewModel::onKanjiSelected,
-                            onAlternateSelected = viewModel::onAlternateSelected,
-                            // Saving arrives in Phase 6 with the user-data
-                            // checkpoint (D-15–D-18, D-43). The control is built
-                            // now because it is part of the screen's structure,
-                            // not because it works.
-                            onSave = {},
-                            onDismiss = viewModel::onResultDismissed,
-                            modifier = Modifier.safeDrawingPadding(),
+                        ScanRoute(
+                            onOpenLookup = if (BuildConfig.DEBUG) {
+                                { showLookup = true }
+                            } else {
+                                null
+                            },
                         )
                     }
                 }
@@ -106,5 +109,69 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val EXTRA_QUERY = "query"
+    }
+}
+
+@Composable
+private fun ScanRoute(onOpenLookup: (() -> Unit)?) {
+    val viewModel: ScanViewModel = viewModel()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    // Back on a frozen frame returns to the viewfinder rather than leaving the
+    // app. The freeze is a state of the scan screen, not a destination (D-02),
+    // but the system back button has no way to know that.
+    BackHandler(enabled = state.frame != null, onBack = viewModel::onRetake)
+
+    ScanScreen(
+        state = state,
+        onShutterPressed = viewModel::onShutterPressed,
+        onFrameCaptured = viewModel::onFrameCaptured,
+        onCaptureFailed = viewModel::onCaptureFailed,
+        onCameraUnavailable = viewModel::onCameraUnavailable,
+        onCameraBound = viewModel::onCameraBound,
+        onRetake = viewModel::onRetake,
+        onOpenLookup = onOpenLookup,
+    )
+}
+
+/** Phase 2's screen, unchanged: type a word, see what it means. */
+@Composable
+private fun LookupRoute(seed: String?) {
+    val viewModel: WordLookupViewModel = viewModel()
+    // Once per composition, not once per recomposition — without the key the
+    // seed would fight every keystroke the user makes.
+    LaunchedEffect(seed) {
+        seed?.let(viewModel::onQueryChanged)
+    }
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val openKanji = state.openKanji
+
+    // The kanji screen replaces the word screen rather than stacking beside it
+    // (D-32). System back closes it before leaving the app, which is the
+    // behaviour the eventual bottom sheet will need to reproduce by hand — a
+    // ModalBottomSheet has no back stack of its own.
+    BackHandler(enabled = openKanji != null, onBack = viewModel::onKanjiClosed)
+
+    if (openKanji != null) {
+        KanjiScreen(
+            detail = openKanji,
+            onBack = viewModel::onKanjiClosed,
+            onSave = {},
+            modifier = Modifier.safeDrawingPadding(),
+        )
+    } else {
+        WordScreen(
+            state = state,
+            onQueryChanged = viewModel::onQueryChanged,
+            onTokenSelected = viewModel::onTokenSelected,
+            onKanjiSelected = viewModel::onKanjiSelected,
+            onAlternateSelected = viewModel::onAlternateSelected,
+            // Saving arrives in Phase 6 with the user-data checkpoint
+            // (D-15–D-18, D-43). The control is built now because it is part of
+            // the screen's structure, not because it works.
+            onSave = {},
+            onDismiss = viewModel::onResultDismissed,
+            modifier = Modifier.safeDrawingPadding(),
+        )
     }
 }

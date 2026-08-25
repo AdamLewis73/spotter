@@ -25,6 +25,12 @@ room = "2.8.4"
 # embedded IPADIC dictionary.
 kuromoji = "0.9.0"
 
+# CameraX. All five artifacts version in lockstep and camera-compose's POM
+# pins camera-core to an exact `[1.6.1]`, so mixing versions is a resolution
+# failure rather than a subtle bug. Verified against Google Maven on 2026-08-24:
+# 1.6.1 is the newest stable; 1.7.0 is alpha only.
+camerax = "1.6.1"
+
 androidx-core = "1.19.0"
 androidx-activity = "1.13.0"
 androidx-lifecycle = "2.11.0"
@@ -63,6 +69,22 @@ compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4
 compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 
 kuromoji-ipadic = { group = "com.atilika.kuromoji", name = "kuromoji-ipadic", version.ref = "kuromoji" }
+
+# CameraX. `camera-compose` supplies `CameraXViewfinder`, which is the Compose
+# viewfinder proper — not `camera-view`'s `PreviewView` wrapped in an
+# `AndroidView`. Worth stating because almost every tutorial shows the wrapper:
+# it works, but it puts a View-system surface inside the composition, and the
+# overlay Phase 5 draws on top of the frozen frame is easier to reason about
+# when nothing in the tree is a View.
+#
+# `camera-compose` pulls in `camera-viewfinder-compose` and `camera-core`
+# transitively, so those are not declared here. `camera-camera2` is the actual
+# implementation and is NOT transitive — without it CameraX finds no camera
+# backend at runtime and fails at bind time, not at compile time.
+camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camerax-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "camerax" }
 
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

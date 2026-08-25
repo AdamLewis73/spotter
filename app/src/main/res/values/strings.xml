@@ -4,4 +4,24 @@
          but the launcher shows the brand alone — the subtitle is a store
          listing device, not part of the name. -->
     <string name="app_name">Spotter</string>
+
+    <!-- Scan screen -->
+    <string name="scan_shutter">Take photo</string>
+    <string name="scan_retake">Retake</string>
+    <string name="scan_frozen_photo">Captured photo</string>
+    <string name="scan_open_lookup">Look up a word by typing</string>
+
+    <!-- Camera permission. `ux.md` wants the premise explained before the ask,
+         because a viewfinder alone reads as a translator. That onboarding is a
+         later job; this rationale is the short version of it, and it says what
+         the camera is FOR rather than that the app needs it. -->
+    <string name="scan_permission_title">Point at Japanese text</string>
+    <string name="scan_permission_body">Spotter reads the words in a photo and shows you what they mean, so it needs the camera.\n\nPhotos stay on your device.</string>
+    <string name="scan_permission_grant">Allow camera</string>
+    <string name="scan_permission_denied_body">Camera access is turned off. You can turn it back on in Settings, under Permissions.</string>
+    <string name="scan_permission_settings">Open settings</string>
+
+    <string name="scan_no_camera">This device has no camera Spotter can use.</string>
+    <string name="scan_camera_failed">The camera could not be started.</string>
+    <string name="scan_capture_failed">That photo could not be taken. Try again.</string>
 </resources>
