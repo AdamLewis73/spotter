@@ -102,6 +102,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-71 | ~~Stroke order is playback only; tracing belongs to review~~ — SUPERSEDED by D-72 | UI |
 | D-72 | Trace practice lives on the stroke order tab, independent of review | UI |
 | D-73 | The camera is the launcher destination; text input survives as a debug path | UI |
+| D-74 | ML Kit's model is **bundled** into the APK, measured at ~14.8 MB per device | Data / Product |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1014,6 +1015,27 @@ That creates a conflict, because the Phase 2 text-input screen is not decoration
 *The bug this shape produced, recorded because it recurs:* the camera binding lives in a `LaunchedEffect` that ends with `awaitCancellation()`. Navigating to the lookup screen cancels that coroutine, `awaitCancellation` throws `CancellationException` — and a `catch (Exception)` wrapped around it swallowed the one signal meaning "shutting down normally", reporting a camera failure instead. Because the failure was stored in the ViewModel and nothing retracted it, coming back showed **"This device has no camera"** printed over a working live preview. Cancellation in Kotlin is an exception; any broad catch around a suspending camera call has to rethrow it, and any error a rebind disproves has to be cleared when the rebind succeeds.
 
 *Cost to reverse:* near zero. The start destination is one branch in `MainActivity`, and the eventual bottom nav (D-36) will replace that branch entirely.
+
+**D-74 — ML Kit's Japanese model is bundled into the APK, not fetched through Play Services. The cost is ~14.8 MB per device, not the 43 MB a universal APK reports.**
+
+`architecture.md` has always preferred bundled and asked for the size to be confirmed when Phase 4 started. It was, by building all three variants clean and comparing:
+
+| Variant | Universal APK | What an arm64-v8a device gets |
+|---|---|---|
+| No ML Kit | 66.40 MB | 66.25 MB |
+| Unbundled (Play Services) | 68.03 MB | 67.88 MB (+1.63 MB) |
+| **Bundled** | 109.80 MB | **81.07 MB (+14.82 MB)** |
+
+**The two columns differ because the model ships as per-ABI native libraries** — arm64-v8a 10.6 MB, armeabi-v7a 6.5 MB, x86 11.1 MB, x86_64 11.2 MB. A Play app bundle delivers one ABI per device, so three quarters of the apparent cost never reaches anybody. Quoting the 43 MB figure would have been quoting a number no user experiences, and it is the number a naive `assembleDebug` comparison produces.
+
+*Two measurement traps worth recording, because both produce confident wrong answers:*
+
+- **Incremental builds lie about APK size.** AGP's packager (`zipflinger`) leaves freed space as zero-filled dead bytes rather than compacting the archive. The first comparison here made bundled and unbundled look identical to within 5 KB, because the unbundled APK was repackaged inside the bundled one's layout and inherited 39 MB of zeros. **Clean-build every variant** or the numbers are fiction.
+- **A universal APK is not what ships.** See above.
+
+*Why bundled, given unbundled is ten times cheaper:* the scanner is the product (D-61), and the unbundled model downloads through Play Services on first use. That puts a network dependency on the **first scan** — the exact moment the app has to work, often the moment someone is standing in a shop with bad signal. It also requires Google Play Services at all, which some devices and regions do not have. D-46 permits a one-time download and so does not forbid unbundled; this is a judgement that 14.8 MB is a fair price for "the first scan always works", in an app whose baseline is already 66 MB of dictionary.
+
+*Cost to reverse:* one line in `libs.versions.toml`. The two artifacts expose the same API at the same version — the bundled one simply depends on the unbundled one and adds the model — so nothing but the dependency coordinate changes.
 
 ---
 

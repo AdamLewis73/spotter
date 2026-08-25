@@ -23,7 +23,7 @@ Read `overview.md` first if you're new to this project — it explains what the 
 - `com.google.android.gms:play-services-mlkit-text-recognition-japanese` (Phase 4)
 - `com.atilika.kuromoji:kuromoji-ipadic` (Phase 2)
 
-ML Kit offers *bundled* and *unbundled* variants. Bundled ships the model inside the APK (larger download, works immediately); unbundled downloads it via Google Play Services on first use (smaller APK, but the first scan can fail offline). **Bundled is the choice** — confirm the size cost when Phase 4 starts.
+ML Kit offers *bundled* and *unbundled* variants. Bundled ships the model inside the APK (larger download, works immediately); unbundled downloads it via Google Play Services on first use (smaller APK, but the first scan can fail offline). **Bundled is the choice, and the size cost was measured in Phase 4 (D-74): ~14.8 MB per device, not the 43 MB a universal APK suggests.** The gap is entirely per-ABI native libraries, which a Play app bundle splits away.
 
 *Note the reasoning changed.* This previously followed from D-03's "fully offline" rule. D-46 supersedes that: one-time downloads are now permitted, so unbundled is no longer forbidden. Bundled remains correct as a **product preference** — where a bundled option exists, eliminating the download beats handling it well. Don't read superseded D-03 and conclude unbundled is banned; it isn't, it's just not preferred.
 

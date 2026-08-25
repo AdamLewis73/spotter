@@ -97,6 +97,15 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
             // is pure CPU work; neither belongs on the main thread.
             val trimmed = query.trim()
             val tokens = withContext(Dispatchers.Default) { tokenizer.tokenize(trimmed) }
+                // Whitespace is a token to Kuromoji, and an empty chip in the
+                // strip to everyone else. It became visible when scanned text
+                // arrived — a multi-line sign carries a separator per line
+                // break (see `scan/RecognizedText.kt`) — but typing "先生 と"
+                // by hand always did the same thing. Dropped here rather than
+                // at the scan boundary, because the separators are load-bearing
+                // in the string itself: they stop the tokenizer inventing a word
+                // that spans two lines.
+                .filter { it.text.isNotBlank() }
 
             // The second pass D-07 requires, over the same text. One query for
             // every candidate substring in the line — a hundred or so for a

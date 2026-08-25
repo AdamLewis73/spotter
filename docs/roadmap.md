@@ -20,7 +20,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
 | 2 | Android app, text input only | **Feature-complete** — every `V-##` case this phase owns is met; the user-data checkpoint lands with Save in Phase 6 | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
-| 4 | CameraX + ML Kit | **In progress** — preview, shutter and freeze-frame done; ML Kit next | Raw recognized text into the Phase 2 pipeline |
+| 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit; overlay is Phase 5 | Raw recognized text into the Phase 2 pipeline |
 | 5 | Tappable overlay | Not started | The real scan experience |
 | 6 | Saved lists | Not started | Multiple lists, many-to-many |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
@@ -76,7 +76,9 @@ CameraX plus ML Kit's Japanese model, feeding recognized text into a pipeline th
 
 The live camera screen is **not** in the design project. Artboards 1a–1c are overlay treatments and all draw the *frozen* frame; none draw viewfinder chrome. It was designed in place knowingly, against `ux.md` rather than against an artboard.
 
-ML Kit is next, and bundled-vs-unbundled is a measurement rather than a preference — see `progress/phase-04-camera.md`.
+**ML Kit landed 2026-08-24 and the phase is done.** Photograph Japanese text and the words come back segmented and tappable, through the same tokenize-and-look-up path Phase 2 built. The model is **bundled** (D-74) at a measured ~14.8 MB per device — a quarter of what a universal APK reports, because the cost is per-ABI native libraries that a Play app bundle splits away.
+
+What is *not* here is the overlay: the recognized text is a strip under the frozen frame, not words on the photograph. That is Phase 5, and it is the stage-4 coordinate work — the highest-risk part of the project.
 
 ### Phase 5 — Overlay
 

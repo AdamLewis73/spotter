@@ -31,6 +31,13 @@ kuromoji = "0.9.0"
 # 1.6.1 is the newest stable; 1.7.0 is alpha only.
 camerax = "1.6.1"
 
+# ML Kit Japanese text recognition. Two artifacts carry the SAME recognizer at
+# the same version, differing only in where the model lives: `com.google.mlkit`
+# packs it into the APK, `com.google.android.gms:play-services-mlkit-*` fetches
+# it through Play Services on first use. Verified against Google Maven on
+# 2026-08-24: 16.0.1 is current for both.
+mlkit-text-japanese = "16.0.1"
+
 androidx-core = "1.19.0"
 androidx-activity = "1.13.0"
 androidx-lifecycle = "2.11.0"
@@ -85,6 +92,11 @@ camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = 
 camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
 camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
 camerax-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "camerax" }
+
+# Bundled, per D-74. The unbundled twin is
+# com.google.android.gms:play-services-mlkit-text-recognition-japanese at the
+# same version — see D-74 for the measurement that chose between them.
+mlkit-text-japanese = { group = "com.google.mlkit", name = "text-recognition-japanese", version.ref = "mlkit-text-japanese" }
 
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

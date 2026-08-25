@@ -82,21 +82,31 @@ class MainActivity : ComponentActivity() {
         setContent {
             SpotterTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    // Not a navigation library. There are two destinations, one
-                    // of which is debug-only, and a back stack of depth one is
-                    // served better by a boolean than by a dependency. The real
-                    // navigation decision is Phase 5's bottom nav (D-36), and it
-                    // should be made against three real destinations rather than
-                    // pre-empted here.
-                    var showLookup by rememberSaveable { mutableStateOf(seed != null) }
+                    // Not a navigation library. There are two destinations and
+                    // a back stack of depth one, which is served better by a
+                    // nullable String than by a dependency. The real navigation
+                    // decision is Phase 5's bottom nav (D-36), and it should be
+                    // made against three real destinations rather than pre-empted
+                    // here.
+                    //
+                    // null means the camera. Non-null means the lookup screen,
+                    // seeded with that string — which is empty when the debug
+                    // affordance opened it by hand, and is the recognized text
+                    // when a scan did.
+                    var lookup by rememberSaveable { mutableStateOf(seed) }
 
-                    if (showLookup) {
-                        BackHandler(enabled = seed == null) { showLookup = false }
-                        LookupRoute(seed = seed)
+                    val current = lookup
+                    if (current != null) {
+                        // A launch seeded by intent has nowhere to go back TO, so
+                        // back leaves the app as it always did. A scan does, and
+                        // back returns to the frozen frame it came from.
+                        BackHandler(enabled = seed == null) { lookup = null }
+                        LookupRoute(seed = current.takeIf { it.isNotBlank() })
                     } else {
                         ScanRoute(
+                            onLookUp = { recognized -> lookup = recognized },
                             onOpenLookup = if (BuildConfig.DEBUG) {
-                                { showLookup = true }
+                                { lookup = "" }
                             } else {
                                 null
                             },
@@ -113,7 +123,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun ScanRoute(onOpenLookup: (() -> Unit)?) {
+private fun ScanRoute(
+    onLookUp: (String) -> Unit,
+    onOpenLookup: (() -> Unit)?,
+) {
     val viewModel: ScanViewModel = viewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -130,6 +143,7 @@ private fun ScanRoute(onOpenLookup: (() -> Unit)?) {
         onCameraUnavailable = viewModel::onCameraUnavailable,
         onCameraBound = viewModel::onCameraBound,
         onRetake = viewModel::onRetake,
+        onLookUp = onLookUp,
         onOpenLookup = onOpenLookup,
     )
 }

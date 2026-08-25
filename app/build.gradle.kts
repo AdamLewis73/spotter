@@ -300,6 +300,7 @@ dependencies {
     implementation(libs.camerax.camera2)
     implementation(libs.camerax.lifecycle)
     implementation(libs.camerax.compose)
+    implementation(libs.mlkit.text.japanese)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
