@@ -133,6 +133,15 @@ This must be handled in the coordinate layer from the start. Discovering it afte
 
 **Check stage 2 first, though.** Stage 2 takes ML Kit's own block-then-line order as given, so if the recognizer walks columns left-to-right the *string* is scrambled before stage 4 receives anything — a stage 2 fault that presents as a coordinate fault. Confirm the recognizer's reading order on a vertical fixture before designing the bridge.
 
+**Checked 2026-08-26, and it is exactly that fault (D-75).** ML Kit emits columns **left-to-right**, and staggering the columns in y does not change it, so it is an unconditional horizontal-text assumption rather than a position sort. Stage 2 therefore sorts columns itself before concatenating, and ML Kit's order is never trusted for reading order.
+
+Two constraints on stage 4 fell out of the same measurement:
+
+- **Elements split mid-column**, so no code may assume one element per line. Interpolation runs per element and reading order is reconstructed across them.
+- ML Kit's *grouping* is sound — columns hold together and read top-to-bottom correctly — so this is a sort, not a reconstruction from bare boxes.
+
+The geometry that does all of this lives in `:domain` on a portable box type rather than in `:app` on `android.graphics.Rect` (D-76), which keeps it JVM-testable and is the largest portable piece Phase 5 produces.
+
 ### Why this is stage 5, not stage 1
 
 The pipeline is built in reverse (see `roadmap.md`). Phases 1–3 construct and prove stages 3 and 6 with typed text and no camera at all. Only then do stages 1–2 get added, and the coordinate bridge last. A bug anywhere in a camera-first build looks like a camera bug.

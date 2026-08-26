@@ -64,6 +64,13 @@ character offset per element, which is the raw material stage 4 needs; nothing
 interpolates *within* an element yet, and nothing handles vertical text or
 furigana (V-10, V-11, V-26).
 
+**One thing Phase 4 shipped that Phase 5 has since found wrong:** stage 2 takes
+ML Kit's block-then-line order as given, and that order is backwards for 縦書き —
+columns come out left-to-right (D-75, measured 2026-08-26). It does not break
+taps, because each element's box and offset agree; it makes the *flow* backwards,
+which matters as soon as V-28 lets two lines join. The fix is a sort in
+`RecognizedText`, not in stage 4.
+
 Still open inside Phase 4, and small:
 
 - **The "Japanese text detected" indicator on the live preview** (D-02). It needs
