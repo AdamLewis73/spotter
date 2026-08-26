@@ -21,7 +21,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 2 | Android app, text input only | **Feature-complete** — every `V-##` case this phase owns is met; the user-data checkpoint lands with Save in Phase 6 | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit; overlay is Phase 5 | Raw recognized text into the Phase 2 pipeline |
-| 5 | Tappable overlay | Not started | The real scan experience |
+| 5 | Tappable overlay | **In progress** — vertical-text order measured and answered (D-75); coordinate work not started | The real scan experience |
 | 6 | Saved lists | Not started | Multiple lists, many-to-many |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |
@@ -86,7 +86,7 @@ The coordinate-mapping work described in `architecture.md` — connecting ML Kit
 
 Stage 4 does four geometric jobs at once, and they must be designed together rather than retrofitted onto each other:
 
-1. **Vertical text (縦書き)** — interpolate on y, columns right-to-left (V-10). In test images from day one.
+1. **Vertical text (縦書き)** — interpolate on y, columns right-to-left (V-10). In test images from day one. **Measured first, and it found a fault:** ML Kit emits columns left-to-right, so the reorder belongs in stage 2 before concatenation, not in stage 4 (D-75). Within a column it is correct, so this is a sort rather than a reconstruction.
 2. **Character interpolation** — the tap-to-word resolution itself (V-11).
 3. **Furigana separation** — ruby is smaller and offset, and must be kept out of the token stream (V-26). This is one of the few OCR failures competitors visibly have, which makes it demonstrable in a store listing rather than merely correct.
 4. **Line-break policy** — whether two lines are one flow or two separate things (V-28). Japanese does not hyphenate, so a word can split across a line with no marker at all; Phase 4 ships a conservative newline join that hides such words rather than inventing them. It cannot even be posed before job 1, because "the line above" is undefined until the writing direction is known.

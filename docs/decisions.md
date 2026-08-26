@@ -103,6 +103,8 @@ Scan for the relevant entry rather than reading the whole file.
 | D-72 | Trace practice lives on the stroke order tab, independent of review | UI |
 | D-73 | The camera is the launcher destination; text input survives as a debug path | UI |
 | D-74 | ML Kit's model is **bundled** into the APK, measured at ~14.8 MB per device | Data / Product |
+| D-75 | ML Kit orders 縦書き columns backwards; stage 2 imposes its own reading order | Tokenization |
+| D-76 | Scan geometry lives in `:domain` behind a portable box type | Architecture |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -280,6 +282,47 @@ Two complementary mechanisms, both required:
 
 **D-08 — Tokenization sits behind a `Tokenizer` interface in the domain layer.**
 Keeps D-07 reversible, and keeps the JVM-only Kuromoji dependency out of portable code. Kuromoji cannot run on iOS; see the portability table in `architecture.md`.
+
+**D-75 — ML Kit emits 縦書き columns left-to-right, which is backwards. Stage 2 sorts the columns itself before concatenating; ML Kit's own order is never trusted for reading order.**
+
+Measured 2026-08-26 on generated fixtures whose correct answer is known exactly, because they write the same two lines as the horizontal fixture — one per column, so a correct recognition is the *same string*. `app/src/androidTest/.../VerticalTextOrderTest.kt` pins all of it.
+
+| Behaviour | Result |
+|---|---|
+| Within a column, top-to-bottom | **Correct** |
+| Each column grouped as one line | **Correct** — the separator lands between columns |
+| Column order | **Backwards** — left-to-right |
+| Column order with columns staggered in y | Still left-to-right |
+| Elements per column | **Unstable** — one column can arrive as several |
+
+*The stagger result is the one that decides this.* On a fixture whose right-hand column starts 284 px above its left-hand one, anything ordering by vertical position emits the right column first. ML Kit still emitted the left column first — so this is not a position sort that vertical text happens to confuse, it is a horizontal-text reading order applied unconditionally. It will not come right on its own, on any image, ever.
+
+**Therefore the reorder belongs in stage 2, before concatenation**, in `scan/RecognizedText.kt` — because the concatenation is what defines the character offsets stages 3 and 4 both speak in. Sorting downstream would mean two walks that can disagree, which is the exact failure that file exists to prevent.
+
+*Two things this is not:*
+
+- **Not a reconstruction.** ML Kit's *grouping* is right — columns hold together, and each is read top-to-bottom correctly. Only the sequence of the groups is wrong, so the fix is a sort, not a rebuild. Had grouping been wrong too, stage 4 would have had to reconstruct reading order from bare boxes.
+- **Not currently breaking taps.** Each element carries its own box and its own offset, and the two agree, so a tap on a vertical column already resolves to the right word. What is wrong is the **flow**, not the mapping. The flow becomes load-bearing the moment V-28 lets two lines join: join a book page's columns in ML Kit's order and every word spanning a column break is built from the wrong pair of characters.
+
+*Also measured, and not an architecture problem:* vertical recognition is less accurate. 都 was misread on both vertical fixtures, differently each time (者, then 郡), while reading correctly on the horizontal one. The glyph renders correctly — this is the model. Recorded so it is not rediscovered as a coordinate bug, and it argues for real photographs early rather than more generated fixtures.
+
+*Cost to reverse:* near zero, and self-announcing. The characterization tests fail if ML Kit ever starts ordering columns correctly, and say so in their failure message rather than merely going red.
+
+**D-76 — The scan geometry — reading order, writing direction, ruby separation, character interpolation — lives in `:domain`, on a portable box type, not in `:app` on `android.graphics.Rect`.**
+
+ML Kit hands back `android.graphics.Rect`, and `RecognizedText` stores it as-is in `:app`. But the stage 4 work is arithmetic over rectangles: which boxes form a column, which way it reads, which are ruby, where each character sits. Nothing in it is Android-specific — it is only *typed* that way, by accident of where the rectangles came from.
+
+So `:domain` gets a four-integer box type, `:app` converts once at the ML Kit boundary, and the geometry moves across the line D-60 draws.
+
+*The reason is test speed, and it is not a small effect.* Tests of `:app` code touching Android types need an emulator: boot a phone, stage a 100 MB dictionary, build an APK, install, run — minutes per attempt. `:domain` tests are ordinary JUnit; the whole suite runs in 19 seconds cold, most of it Gradle startup.
+
+That ratio decides *how many cases actually get written*, which is the entire defence against this phase's failure mode. Stage 4's bugs do not crash — a tap lands one character off, a column reads backwards, ruby leaks into the token stream. They are found by many small cases with known answers, and a case that costs an emulator round trip does not get written. In `:domain`, "here are four boxes in two staggered columns" is four lines and no image.
+
+*Second benefit, per D-60:* this is the largest genuinely portable piece Phase 5 produces. Nothing about interpolating within a bounding box is Android's.
+
+*Cost, accepted:* one conversion function, and `Rect`'s conveniences (`contains`, `intersect`) get rewritten as a few lines each.
+
+*Cost to reverse:* low but not zero, and it is front-loaded. Moving one file between modules later is easy; the tedious part is that geometry written against `Rect` acquires a *shape* that assumes `Rect`, and untangling that afterwards is the real work. Which is why it was settled before the code existed rather than after.
 
 ---
 
