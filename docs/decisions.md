@@ -1112,6 +1112,8 @@ That second point is the decisive one and it is a *correctness* argument rather 
 - Contiguous characters are repainted as **one patch**, not one per glyph, or the seams show. A run breaks where offsets stop being consecutive **and** where the next character stops sharing a line — the second test matters because V-28 joins columns into one flow, and unioning across a column break would repaint a rectangle covering everything between.
 - Selection cannot recolour the photograph's glyphs, so artboard 1a's solid block becomes a **jade band framing** the revealed patch. It reads the same and stays honest.
 
+*Endorsed by the project owner on 2026-08-26, in the terms that matter for later:* how readable the overlay is depends partly on the photograph, and a bad photograph is the user's to retake. **Do not spend effort compensating for input quality at the cost of honesty** — no sharpening or denoising pass, no "redraw when the photo is poor" fallback, no automatic retake. Those all reintroduce D-77's failure by a side door, because every one of them ends in showing the user something the sign does not say. Retaking a photo is cheap and obvious; being confidently told the wrong word is neither.
+
 *Cost to reverse:* low, and confined to one composable. `ScanLayout` supplies the same rectangles either way.
 
 ---
