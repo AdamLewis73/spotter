@@ -3,6 +3,7 @@ package com.spotterkanji.app.scan
 import android.graphics.BitmapFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.spotterkanji.domain.scan.ScanLayout
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -32,7 +33,7 @@ class JapaneseTextRecognizerTest {
     private fun fixture(name: String) =
         context.assets.open(name).use { BitmapFactory.decodeStream(it) }
 
-    private fun recognize(name: String): RecognizedText {
+    private fun recognize(name: String): ScanLayout {
         val recognizer = JapaneseTextRecognizer()
         return try {
             runBlocking { recognizer.recognize(fixture(name)) }
@@ -61,25 +62,25 @@ class JapaneseTextRecognizerTest {
     }
 
     /**
-     * The invariant stage 4 will depend on (Phase 5): every element's recorded
-     * offset must actually address its own text inside the concatenated string.
+     * The bookkeeping invariant everything downstream rests on: a placement's
+     * offset must address its own character in the laid-out string.
      *
      * This is the failure that would be invisible without a test. An off-by-one
      * here does not throw and does not look wrong — it silently shifts every tap
      * by one character, which reads as "the OCR is a bit flaky" rather than as a
-     * bug in our own bookkeeping (V-11 is the Phase 5 case for the same class of
-     * error, one layer further on).
+     * bug in our own bookkeeping (V-11 is the case for the same class of error,
+     * one layer further on).
      */
     @Test
-    fun every_element_offset_addresses_its_own_text() {
+    fun every_placement_addresses_its_own_character() {
         val result = recognize("sign-horizontal.png")
 
-        assertTrue("no elements were recorded", result.elements.isNotEmpty())
-        for (element in result.elements) {
+        assertTrue("no placements were recorded", result.placements.isNotEmpty())
+        for (placement in result.placements) {
             assertEquals(
-                "element ${element.text} does not sit at offset ${element.startOffset}",
-                element.text,
-                result.text.substring(element.startOffset, element.endOffset),
+                "offset ${placement.offset} should hold '${placement.char}'",
+                placement.char,
+                result.text[placement.offset],
             )
         }
     }
@@ -92,11 +93,10 @@ class JapaneseTextRecognizerTest {
      * find something spanning it. The separator is the fix, and it is only
      * checked here because nothing about the output *looks* wrong without it.
      *
-     * This pins the **current** behaviour, which V-28 records as a conservative
-     * default rather than a settled answer — the separator also hides words that
-     * legitimately split across a line, since Japanese does not hyphenate. When
-     * Phase 5 decides this geometrically, expect to rewrite this test rather
-     * than to keep it passing.
+     * Phase 5 now decides this geometrically rather than by a fixed separator
+     * (V-28, `ScanLayout`). These two lines are a stacked sign rather than a
+     * flowing paragraph — the first stops well short of the measure — so they
+     * stay apart, and 生産 is still not invented across the join.
      */
     @Test
     fun lines_are_separated_so_no_word_spans_the_break() {
@@ -104,11 +104,11 @@ class JapaneseTextRecognizerTest {
 
         assertTrue(
             "expected a line separator between the two lines, got: ${result.text}",
-            result.text.contains(RecognizedText.LINE_SEPARATOR),
+            result.text.contains(ScanLayout.SEPARATOR),
         )
         assertNotEquals(
             "the string must not start with a separator",
-            RecognizedText.LINE_SEPARATOR,
+            ScanLayout.SEPARATOR,
             result.text.take(1),
         )
     }
@@ -134,6 +134,6 @@ class JapaneseTextRecognizerTest {
         }
 
         assertTrue("a blank image should recognize to nothing, got: ${result.text}", result.isEmpty)
-        assertTrue(result.elements.isEmpty())
+        assertTrue(result.placements.isEmpty())
     }
 }

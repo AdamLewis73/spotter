@@ -142,6 +142,10 @@ Two constraints on stage 4 fell out of the same measurement:
 
 The geometry that does all of this lives in `:domain` on a portable box type rather than in `:app` on `android.graphics.Rect` (D-76), which keeps it JVM-testable and is the largest portable piece Phase 5 produces.
 
+**Built 2026-08-26 as `domain/scan/ScanLayout`.** It takes what the recognizer *grouped* — trusted — and imposes reading order, ruby separation and the line-break policy, which are not. `:app` converts ML Kit's tree to `ScanLine`s and decides nothing. The result answers the bridge in both directions: `boxAt(offset)` to draw a highlight and `offsetAt(x, y)` to resolve a tap.
+
+Still in `:app`, and the remaining hard part: **image pixels are not screen pixels.** The frozen frame is drawn with `ContentScale.Crop`, so the transform is not a plain scale and must come from the measured layout size. Test it separately from the interpolation — on screen the two failures look identical.
+
 ### Why this is stage 5, not stage 1
 
 The pipeline is built in reverse (see `roadmap.md`). Phases 1–3 construct and prove stages 3 and 6 with typed text and no camera at all. Only then do stages 1–2 get added, and the coordinate bridge last. A bug anywhere in a camera-first build looks like a camera bug.

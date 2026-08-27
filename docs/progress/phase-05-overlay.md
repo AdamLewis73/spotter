@@ -1,7 +1,7 @@
 # Phase 5 — Tappable overlay
 
-**Status:** in progress — the vertical-text question is measured and answered;
-the coordinate work has not started
+**Status:** in progress — the geometry module is built, tested and wired into
+stage 2. The overlay UI has not started.
 **Updated:** 2026-08-26
 
 ## Current state
@@ -115,52 +115,31 @@ will be wrong at exactly those positions.
 
 ## Next action
 
-**Build the geometry module in `:domain` (D-76), starting with the column sort
-that D-75 requires.** The pieces below are one design and one module; splitting
-them is the documented failure mode.
+**The overlay UI.** Everything below the UI now exists: `domain/scan/ScanLayout`
+lays the scan out and answers both directions of the bridge — `boxAt(offset)` to
+draw a highlight, `offsetAt(x, y)` to resolve a tap — and stage 2 produces one
+instead of a raw string.
 
-1. **Classification** — writing direction per group. For a run of *n*
-   characters, compare `width/height` and `height/width` against *n* and take
-   whichever is nearer.
+What is left is drawing it, to artboard **1a**:
 
-   **State it as a comparison, never as a threshold.** An earlier draft of this
-   file quoted a band of 1.05–1.22 for the correct axis, measured off the
-   generated fixtures. That band is wrong — generated text is too uniform.
-   Against real typesetting the correct axis spans **0.69–1.01**, and 【重要】
-   sits at the bottom of it, so anything thresholding near 1.0 misclassifies a
-   perfectly ordinary heading. The comparison has no such problem.
+1. **The image-to-screen transform**, and it is the next real trap. Everything in
+   `ScanLayout` is in *image pixel* coordinates; the frozen frame is drawn with
+   `ContentScale.Crop`, so part of the bitmap is off-screen and the mapping is
+   not a plain scale. Derive it from the **measured** layout size, never an
+   assumed one, and test it independently of the interpolation — a wrong
+   transform and a wrong interpolation are indistinguishable on screen, and both
+   present as "taps are slightly off".
+2. **Dim the frame, keep the text bright** (D-33), highlighting the tapped word.
+3. **Peek sheet** (D-30, D-31), then the in-sheet kanji swap (D-32).
+4. **Confirm `ContentScale.Crop` end to end** — `phase-04-camera.md` flags that
+   the photograph is a superset of the viewfinder, which is invisible until it
+   becomes a coordinate bug here.
 
-   **Keep the margin** — the gap between the two candidate scores — because it
-   is what makes the rule say when it does not know. Validated across every
-   fixture available: no confident-and-wrong classification, and every case that
-   *was* unreliable reported a margin below 0.5. Single characters come back at
-   **0.00–0.02**, which is correct; a lone square glyph genuinely carries no
-   direction and must inherit from its siblings.
-2. **Reading order** — sort groups by descending x for vertical, ascending y for
-   horizontal. This is D-75's fix and it belongs in stage 2, before
-   concatenation, because the concatenation defines the offsets.
-3. **Ruby separation (V-26)** — require *two* agreeing signals: markedly smaller
-   than the group's modal glyph size **and** sitting in the ruby position (above
-   and horizontally overlapping for horizontal text, right and vertically
-   overlapping for vertical). Size alone eats legitimately small body text.
-   Excluded from the token stream, but the boxes are kept, so a tap on ruby can
-   resolve to the base word rather than doing nothing.
-4. **Line-break policy (V-28)** — the strong signal is that *a line stopping
-   short of the group's trailing edge ended a flow; a line running to the edge
-   wrapped*. That reads the evidence of how the text was actually set rather than
-   guessing. Ties stay conservative — separate — per V-28.
-5. **The offset↔pixel bridge** — `architecture.md`'s interpolation, on y instead
-   of x when vertical, in both directions: offset → rect to draw highlights,
-   point → offset to resolve taps. Must tolerate offsets owned by no element.
-
-Then the UI: dim frame and bright text (D-33), highlights, hit-testing, the peek
-sheet (D-30, D-31) and the in-sheet kanji swap (D-32).
-
-**Still outstanding from the list this replaces: real test images.** The three
-committed fixtures are all generated — clean text, plain ground, one font. They
-prove ordering and wiring, not accuracy on real signage, and V-26 has no fixture
-at all yet. D-75's accuracy finding argues for photographs sooner rather than
-more generated images.
+**Still outstanding: real photographed fixtures we own.** Everything committed is
+generated. The third-party images used for calibration are local-only and cannot
+be committed (see `.gitignore`), so the measurements they produced live in the
+docs and in `RealNoticeLayoutTest`, which is built from measured rectangles
+rather than from the photograph itself.
 
 **The three geometry problems are one problem.** V-10 (are these columns, and do
 they run right-to-left?), V-26 (is this small kana annotation or body text?) and
@@ -177,24 +156,28 @@ context window on a 106 KB file.
 
 ## Done
 
-- [ ] Offset↔pixel lookup table built by walking ML Kit elements in reading order
-- [ ] Per-character rectangles by interpolation within an element
-- [ ] **Vertical text (縦書き) in test images from day one** — interpolate on y,
+- [x] Offset↔pixel lookup table built by walking elements in reading order
+- [x] Per-character rectangles by interpolation within an element
+- [x] **Vertical text (縦書き) in test images from day one** — interpolate on y,
       columns right-to-left
-- [ ] **Furigana excluded from the token stream** (V-26) — ruby is separated
-      geometrically, by glyph size and baseline offset, in this same stage
-- [ ] **Line-break policy decided geometrically** (V-28) — Japanese does not
-      hyphenate, so a word may split across lines with no marker; Phase 4 ships a
-      conservative newline join that hides such words rather than inventing them
+- [x] **Furigana excluded from the token stream** (V-26) — ruby separated by two
+      agreeing signals, size *and* displacement, because size alone deletes the
+      small-but-real text on lanterns and donor plaques
+- [x] **Line-break policy decided geometrically** (V-28) — a line that runs to
+      the measure wrapped; one that stops short ended. Blocks of fewer than three
+      lines are never joined, because below that the test is circular
 - [x] **Confirm ML Kit's reading order for vertical text** — done 2026-08-26.
       Columns come back left-to-right, which is backwards, and stagger does not
       change it (D-75, V-10). Pinned by `VerticalTextOrderTest`.
 - [x] **Decide where the geometry lives** — `:domain`, on a portable box type
       (D-76), for the test-speed reason
-- [ ] Columns sorted right-to-left in stage 2, before concatenation (D-75)
+- [x] Columns sorted right-to-left in stage 2, before concatenation (D-75)
+- [x] Geometry built in `:domain` on a portable box type (D-76) — 68 JVM cases
 - [ ] Real photographed fixtures — vertical and furigana'd; all three committed
       fixtures are generated (V-10, V-26)
-- [ ] Tap resolves: pixel → element → character index → global offset → token
+- [x] Tap resolves: pixel → character → offset (`ScanLayout.offsetAt`), including
+      a tap on ruby falling through to the word beneath it
+- [ ] Screen-pixel to image-pixel transform, against `ContentScale.Crop`
 - [ ] Overlay dims the image, detected text stays bright (D-33)
 - [ ] Peek sheet, and the expand-to-word-screen gesture (D-30, D-31)
 - [ ] Kanji screen swaps in place inside the sheet, with a back arrow (D-32)
