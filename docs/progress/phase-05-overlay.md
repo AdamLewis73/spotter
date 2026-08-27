@@ -187,8 +187,9 @@ context window on a 106 KB file.
       a tap on ruby falling through to the word beneath it
 - [x] Screen-pixel to image-pixel transform, against `ContentScale.Crop`
       (`ScanProjection`, tested in `:domain` apart from the interpolation)
-- [x] Overlay dims the image, detected text stays bright (D-33) — redrawn as
-      type rather than revealed (D-77)
+- [x] Overlay dims the image, detected text stays bright (D-33) — the
+      photograph's **own pixels** are repainted over the scrim (D-78, which
+      superseded D-77's retyping after both were compared on real photographs)
 - [x] Peek sheet — word, glosses, two actions, and **no reading** (D-47)
 - [ ] The expand-to-word-screen gesture (D-30, D-31); the handle is drawn, the
       drag is not wired

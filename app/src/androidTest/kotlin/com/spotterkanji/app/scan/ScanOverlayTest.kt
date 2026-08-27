@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -66,9 +67,10 @@ class ScanOverlayTest {
             SpotterTheme {
                 Box(modifier = Modifier.size(viewWidth.dp, viewHeight.dp)) {
                     ScanOverlay(
+                        frame = android.graphics.Bitmap
+                            .createBitmap(1000, 500, android.graphics.Bitmap.Config.ARGB_8888)
+                            .asImageBitmap(),
                         layout = layout,
-                        frameWidth = 1000,
-                        frameHeight = 500,
                         selection = null,
                         onOffsetTapped = onTap,
                         modifier = Modifier.testTag(OVERLAY),

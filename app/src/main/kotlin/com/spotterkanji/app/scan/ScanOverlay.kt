@@ -26,109 +26,71 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spotterkanji.app.R
 import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
+import com.spotterkanji.domain.scan.CharacterPlacement
 import com.spotterkanji.domain.scan.ScanLayout
 import com.spotterkanji.domain.scan.ScanProjection
-import com.spotterkanji.domain.scan.ScreenRect
+import com.spotterkanji.domain.scan.TextBox
+import com.spotterkanji.domain.scan.WritingDirection
 import kotlin.math.roundToInt
 
 /**
  * The tappable overlay — artboard **1a**, "dim frame, bright text, solid
  * selection" (D-33).
  *
- * **The recognized text is redrawn, not revealed.** Un-dimming the photograph's
- * own pixels would leave dim text dim, and a scan of a shadowed sign would be no
- * more legible than the photograph. Drawing each character into its own measured
- * rectangle instead gives an evenly bright, crisply set line — which is what the
- * artboard shows and what makes "the legible text itself is the affordance"
- * (D-33) actually true rather than aspirational.
+ * **The photograph's own pixels are what stays bright** (D-78). The scrim covers
+ * the whole frame and the recognized text is painted back over it, unmodified,
+ * at full brightness. Nothing is retyped.
  *
- * Two things fall out of using `ScanLayout`'s per-character boxes for this:
- * alignment is exact by construction, since every glyph is drawn where it was
- * measured; and 縦書き needs no special case at all, because a vertical
- * character's box is simply lower than the one before it.
+ * The alternative — redrawing each character as type into its measured
+ * rectangle — was built first and rejected on the evidence (D-77, superseded).
+ * It ghosts, because the drawn glyphs never sit exactly on the photographed
+ * ones; and worse, it renders a misrecognition as clean, authoritative type. On
+ * a real notice it confidently displayed 合風 for 台風 and 休館 as 体館. Painting
+ * the photograph back cannot lie about what the sign says, because it *is* the
+ * sign — a misread then costs a wrong lookup rather than a wrong sign.
  *
- * What it costs is honesty about recognition: a misread comes back as confident,
- * well-set text. That is already true of everything downstream — the tokenizer
- * and dictionary see the same string — so the overlay is not introducing the
- * problem, only rendering it legibly.
+ * 縦書き needs no special case either way: a vertical character's box is simply
+ * lower than the one before it.
  */
 @Composable
 internal fun ScanOverlay(
+    frame: ImageBitmap,
     layout: ScanLayout,
-    frameWidth: Int,
-    frameHeight: Int,
     selection: IntRange?,
     onOffsetTapped: (Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val measurer = rememberTextMeasurer()
-    val density = LocalDensity.current
     val colors = MaterialTheme.colorScheme
-
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
 
-    val projection = remember(frameWidth, frameHeight, viewSize) {
+    val projection = remember(frame, viewSize) {
         ScanProjection.crop(
-            imageWidth = frameWidth,
-            imageHeight = frameHeight,
+            imageWidth = frame.width,
+            imageHeight = frame.height,
             viewWidth = viewSize.width.toDouble(),
             viewHeight = viewSize.height.toDouble(),
         )
     }
 
-    // Measured once per photograph and view size, never per tap. Selection is a
-    // colour decision made at draw time, so tapping along a line does not
-    // re-measure a hundred glyphs each time.
-    val glyphs = remember(layout, projection) {
-        if (viewSize == IntSize.Zero) {
-            emptyList()
-        } else {
-            layout.placements.map { placement ->
-                val rect = projection.project(placement.box)
-                // A CJK glyph is square, so either extent of its box describes
-                // it; the smaller one keeps a glyph inside its rectangle when
-                // the box is slightly off square.
-                val sizePx = minOf(rect.width, rect.height).coerceAtLeast(1.0)
-                val measured = measurer.measure(
-                    text = placement.char.toString(),
-                    style = TextStyle(
-                        fontFamily = SpotterJapanese,
-                        fontSize = with(density) { sizePx.toFloat().toSp() },
-                        fontWeight = FontWeight.Medium,
-                        // Lifts the text off a busy photograph. The scrim does
-                        // most of the work; this covers the bright patches it
-                        // cannot darken enough without hiding the picture.
-                        shadow = Shadow(
-                            color = Color.Black.copy(alpha = 0.9f),
-                            offset = Offset(0f, 2f),
-                            blurRadius = 12f,
-                        ),
-                    ),
-                )
-                Glyph(offset = placement.offset, measured = measured, rect = rect)
-            }
-        }
-    }
+    // Contiguous characters are repainted as one patch rather than one per
+    // glyph, so the seams between them do not show.
+    val runs = remember(layout) { layout.runs() }
 
     Canvas(
         modifier = modifier
@@ -149,66 +111,108 @@ internal fun ScanOverlay(
     ) {
         drawRect(color = SCRIM)
 
-        val selected = glyphs.filter { selection != null && it.offset in selection }
-        if (selected.isNotEmpty()) {
-            // One block behind the whole word, not a box per character. A token
-            // cannot span a separator — Kuromoji breaks at one — so the union is
-            // always a single run on a single line.
-            val union = selected.map { it.rect }.reduce(ScreenRect::union)
-            // Padding comes from the *glyph*, not from the union. A vertical run
-            // is as tall as its whole column, so scaling the inset by the union's
-            // height turns a five-character selection into a lozenge. The
-            // cross-axis extent is the glyph in both directions.
-            val glyph = minOf(union.width, union.height)
-            val pad = (glyph * 0.08).toFloat()
-            drawRoundRect(
-                color = colors.primary,
-                topLeft = Offset(union.left.toFloat() - pad, union.top.toFloat() - pad),
-                size = Size(
-                    width = union.width.toFloat() + pad * 2,
-                    height = union.height.toFloat() + pad * 2,
-                ),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(pad * 2.5f),
-            )
-        }
+        for (run in runs) {
+            val selected = selection != null && run.offsets.first in selection
+            // ML Kit's boxes sit tight against the ink and clip the odd stroke,
+            // so each patch is repainted very slightly proud of its box.
+            val bleed = (minOf(run.box.width, run.box.height) * PATCH_BLEED).toInt()
+            val source = run.box.expandedBy(bleed, frame.width, frame.height)
+            val target = projection.project(source)
 
-        for (glyph in glyphs) {
-            val isSelected = selection != null && glyph.offset in selection
-            drawText(
-                textLayoutResult = glyph.measured,
-                color = if (isSelected) colors.onPrimary else colors.onSurface,
-                topLeft = glyph.centredIn(),
+            if (selected) {
+                // The artboard's solid selection, showing as a band around the
+                // word. It cannot recolour the photograph's glyphs, so it frames
+                // them instead — which reads the same and stays honest.
+                val pad = (target.height.coerceAtMost(target.width) * 0.12).toFloat()
+                drawRoundRect(
+                    color = colors.primary,
+                    topLeft = Offset(target.left.toFloat() - pad, target.top.toFloat() - pad),
+                    size = Size(
+                        width = target.width.toFloat() + pad * 2,
+                        height = target.height.toFloat() + pad * 2,
+                    ),
+                    cornerRadius = CornerRadius(pad),
+                )
+            }
+
+            drawImage(
+                image = frame,
+                srcOffset = IntOffset(source.left, source.top),
+                srcSize = IntSize(
+                    source.width.coerceAtLeast(1),
+                    source.height.coerceAtLeast(1),
+                ),
+                dstOffset = IntOffset(target.left.toInt(), target.top.toInt()),
+                dstSize = IntSize(
+                    target.width.toInt().coerceAtLeast(1),
+                    target.height.toInt().coerceAtLeast(1),
+                ),
             )
         }
     }
 }
 
-/** One measured character and where it goes, in view coordinates. */
-private data class Glyph(
-    val offset: Int,
-    val measured: TextLayoutResult,
-    val rect: ScreenRect,
-) {
-    /**
-     * Centres the measured glyph inside its rectangle.
-     *
-     * A measured line box is taller than the ink it contains — ascent and
-     * descent are reserved whether or not the glyph uses them — so drawing at
-     * the rectangle's corner sits every character slightly high and slightly
-     * left of where it was photographed.
-     */
-    fun centredIn() = Offset(
-        x = (rect.left + (rect.width - measured.size.width) / 2).toFloat(),
-        y = (rect.top + (rect.height - measured.size.height) / 2).toFloat(),
-    )
+/** One unbroken stretch of text on a single line, and the box covering it. */
+private data class TextRun(val offsets: IntRange, val box: TextBox)
+
+/**
+ * Groups placements into stretches that can be repainted as one patch.
+ *
+ * A run breaks where the offsets stop being consecutive — a separator owns an
+ * offset and no rectangle — and **also** where the next character does not share
+ * a line with the last. The second test is the one that is easy to miss: when
+ * V-28 joins two columns into one flow their offsets *are* consecutive, and
+ * unioning across them would repaint a rectangle covering everything between.
+ */
+private fun ScanLayout.runs(): List<TextRun> {
+    val runs = mutableListOf<TextRun>()
+    var start: CharacterPlacement? = null
+    var previous: CharacterPlacement? = null
+    var box: TextBox? = null
+
+    fun flush() {
+        val s = start ?: return
+        val p = previous ?: return
+        runs += TextRun(s.offset..p.offset, box!!)
+        start = null
+    }
+
+    for (placement in placements) {
+        val last = previous
+        val continues = last != null &&
+            start != null &&
+            placement.offset == last.offset + 1 &&
+            placement.direction == last.direction &&
+            placement.sharesLineWith(last)
+
+        if (!continues) {
+            flush()
+            start = placement
+            box = placement.box
+        } else {
+            box = box!!.union(placement.box)
+        }
+        previous = placement
+    }
+    flush()
+    return runs
 }
 
-private fun ScreenRect.union(other: ScreenRect) = ScreenRect(
-    left = minOf(left, other.left),
-    top = minOf(top, other.top),
-    right = maxOf(right, other.right),
-    bottom = maxOf(bottom, other.bottom),
+private fun CharacterPlacement.sharesLineWith(other: CharacterPlacement): Boolean =
+    when (direction) {
+        WritingDirection.Horizontal -> box.overlapY(other.box) > 0
+        WritingDirection.Vertical -> box.overlapX(other.box) > 0
+    }
+
+private fun TextBox.expandedBy(amount: Int, maxWidth: Int, maxHeight: Int) = TextBox(
+    left = (left - amount).coerceAtLeast(0),
+    top = (top - amount).coerceAtLeast(0),
+    right = (right + amount).coerceAtMost(maxWidth),
+    bottom = (bottom + amount).coerceAtMost(maxHeight),
 )
+
+/** How far proud of its measured box each patch is repainted, in glyphs. */
+private const val PATCH_BLEED = 0.10
 
 /**
  * `rgba(10, 9, 8, .68)` from artboard 1a — warm near-black, not grey.

@@ -286,9 +286,8 @@ private fun CameraStage(
         val recognition = state.recognition
         if (frame != null && recognition is RecognitionState.Done && !recognition.layout.isEmpty) {
             ScanOverlay(
+                frame = frame.asImageBitmap(),
                 layout = recognition.layout,
-                frameWidth = frame.width,
-                frameHeight = frame.height,
                 selection = state.peek?.selection,
                 onOffsetTapped = onOffsetTapped,
             )
