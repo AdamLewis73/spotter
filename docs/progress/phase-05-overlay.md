@@ -34,6 +34,60 @@ speed — 19 seconds for the whole JVM suite against minutes per emulator round
 trip — which decides how many cases with known answers actually get written, and
 that is the only real defence against this phase's failure mode.
 
+## Calibrated against real images, 2026-08-26
+
+The rules below were checked against real typesetting and real photographs
+before any module was built around them. **Those images are third-party and
+local-only — see `.gitignore`.** What survives here is the numbers.
+
+**The direction classifier works, and it knows when it doesn't.** Details in the
+Next action section; the headline is that no fixture produced a confident wrong
+answer, and every unreliable case self-reported a small margin.
+
+**Furigana is worse than V-26 assumed, in a way that matters.** Ruby comes back
+interleaved with the body text in **no stable order** — scattered before,
+between and after the lines it annotates — so there is no shortcut like "ruby
+precedes its base". It must be separated geometrically. Ruby also **fragments
+the column it annotates**: one vertical column came back as four elements, split
+at each ruby interruption.
+
+Measured ruby-to-body height ratio is cleanly separated at capture scale (ruby
+32–46 px against body 64–68) and narrows dangerously at low resolution (9–16
+against 20–21). So the size signal alone is resolution-dependent and needs the
+positional test beside it, not behind it.
+
+**Small text is not necessarily ruby.** Donor plaques and shop lanterns carry
+company names, prefectures and titles set markedly smaller than the main name,
+inline in the same column. A size-only rule reads them as ruby and drops them
+from the token stream. This is the case that makes the two-signal requirement
+non-negotiable.
+
+**Grouping must precede ordering, and it is spatial.** The notice fixture has a
+*horizontal* header above *vertical* body columns; ML Kit drops it into the
+middle of the string, and sorting the whole image by x leaves it there. The
+lantern photograph is worse — a 2D grid of independent vertical texts, where any
+single global sort is meaningless. Group into spatial clusters, classify each,
+order the groups, then order within them.
+
+**Recognition quality on hard signage is well below the clean case, and that is
+not a geometry problem.** Measured, roughly:
+
+| Input | Result |
+|---|---|
+| Clean printed text (the notice, UDHR samples) | near-perfect |
+| Modern signage, moderate distance | partial — some elements clean, many garbled |
+| Night neon, curved lanterns, weathered wood at an angle | mostly fails |
+
+Worth holding in mind when judging the overlay: on a hard image the overlay will
+be sparse because there is little to draw, not because the bridge is broken.
+
+*Weak evidence on capture resolution, recorded so it is not over-read.* A sweep
+of one lantern photo and one plaque photo at 1620×1080, 2560×1707 and 3840×2560
+gave 3/4/6 and 13/12/16 elements — sub-linear, and **not monotonic**. Raising
+the cap is not the fix for hard signage. Two images is not enough to settle
+`phase-04-camera.md`'s open question, but it is enough to say resolution is not
+the dominant term.
+
 **Both halves this phase bridges now exist.** Phase 4 produces pixel
 boxes and Phase 2 produces character offsets, so the condition this file was
 waiting on is met.
@@ -65,11 +119,23 @@ will be wrong at exactly those positions.
 that D-75 requires.** The pieces below are one design and one module; splitting
 them is the documented failure mode.
 
-1. **Classification** — writing direction per group. The discriminator that the
-   measured boxes validate: divide the long-axis ratio by the character count.
-   It comes out **1.05–1.22** on the correct axis and **0.02** on the wrong one,
-   so it is not a delicate threshold. Single-character groups are genuinely
-   ambiguous and must fall back to how their siblings stack.
+1. **Classification** — writing direction per group. For a run of *n*
+   characters, compare `width/height` and `height/width` against *n* and take
+   whichever is nearer.
+
+   **State it as a comparison, never as a threshold.** An earlier draft of this
+   file quoted a band of 1.05–1.22 for the correct axis, measured off the
+   generated fixtures. That band is wrong — generated text is too uniform.
+   Against real typesetting the correct axis spans **0.69–1.01**, and 【重要】
+   sits at the bottom of it, so anything thresholding near 1.0 misclassifies a
+   perfectly ordinary heading. The comparison has no such problem.
+
+   **Keep the margin** — the gap between the two candidate scores — because it
+   is what makes the rule say when it does not know. Validated across every
+   fixture available: no confident-and-wrong classification, and every case that
+   *was* unreliable reported a margin below 0.5. Single characters come back at
+   **0.00–0.02**, which is correct; a lone square glyph genuinely carries no
+   direction and must inherit from its siblings.
 2. **Reading order** — sort groups by descending x for vertical, ascending y for
    horizontal. This is D-75's fix and it belongs in stage 2, before
    concatenation, because the concatenation defines the offsets.
