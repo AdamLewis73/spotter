@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -93,7 +94,9 @@ internal fun ScanScreen(
     onRetake: () -> Unit,
     onLookUp: (String) -> Unit,
     onOffsetTapped: (Int?) -> Unit,
+    selection: IntRange?,
     onOpenLookup: (() -> Unit)?,
+    sheet: @Composable BoxScope.() -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val permission = rememberCameraPermissionState()
@@ -117,6 +120,8 @@ internal fun ScanScreen(
                 onRetake = onRetake,
                 onLookUp = onLookUp,
                 onOffsetTapped = onOffsetTapped,
+                selection = selection,
+                sheet = sheet,
             )
 
             CameraPermissionState.Askable -> PermissionPanel(
@@ -165,6 +170,8 @@ private fun CameraStage(
     onRetake: () -> Unit,
     onLookUp: (String) -> Unit,
     onOffsetTapped: (Int?) -> Unit,
+    selection: IntRange?,
+    sheet: @Composable BoxScope.() -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -288,7 +295,7 @@ private fun CameraStage(
             ScanOverlay(
                 frame = frame.asImageBitmap(),
                 layout = recognition.layout,
-                selection = state.peek?.selection,
+                selection = selection,
                 onOffsetTapped = onOffsetTapped,
             )
         }
@@ -300,19 +307,12 @@ private fun CameraStage(
         // sit on a frozen frame for minutes, and at that point the battery cost
         // of a streaming preview nobody can see becomes the larger of the two.
 
-        state.peek?.let { peek ->
-            PeekSheet(
-                peek = peek,
-                onFullDetails = { onLookUp(peek.text) },
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-        }
+        sheet()
 
         ScanControls(
             frozen = frame != null,
             recognition = state.recognition,
-            peek = state.peek,
-            onFullDetails = onLookUp,
+            selectionActive = selection != null,
             capturing = state.capturing,
             onShutter = {
                 onShutterPressed()
@@ -361,8 +361,7 @@ private fun CameraStage(
 private fun ScanControls(
     frozen: Boolean,
     recognition: RecognitionState,
-    peek: PeekState?,
-    onFullDetails: (String) -> Unit,
+    selectionActive: Boolean,
     capturing: Boolean,
     onShutter: () -> Unit,
     onRetake: () -> Unit,
@@ -378,8 +377,7 @@ private fun ScanControls(
         if (frozen) {
             FrozenFrameControls(
                 recognition = recognition,
-                peek = peek,
-                onFullDetails = onFullDetails,
+                selectionActive = selectionActive,
                 onRetake = onRetake,
             )
         } else {
@@ -400,12 +398,11 @@ private fun ScanControls(
 @Composable
 private fun FrozenFrameControls(
     recognition: RecognitionState,
-    peek: PeekState?,
-    onFullDetails: (String) -> Unit,
+    selectionActive: Boolean,
     onRetake: () -> Unit,
 ) {
-    // The sheet owns the bottom of the screen while it is open.
-    if (peek != null) return
+    // The sheet owns the bottom of the screen while a word is selected.
+    if (selectionActive) return
 
     Column(
         modifier = Modifier

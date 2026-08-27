@@ -84,7 +84,9 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **The overlay is built to artboard 1a**: the frame dims and the **photograph's own pixels** are repainted at full brightness over the rectangles `ScanLayout` measured (D-78), the tapped word takes a jade band, and a peek sheet gives the word, its glosses and two actions — with no reading, per D-47. Retyping the text was built first and rejected on the evidence (D-77): it ghosts, and it renders a misread as authoritative type — the reveal cannot lie about what the sign says, because it *is* the sign. `ScanProjection` handles the `ContentScale.Crop` transform and is tested in `:domain` apart from the interpolation, because on screen a wrong transform and a wrong interpolation look identical.
 
-**What is left is the sheet's second half** — dragging it up into the word screen (D-30) and swapping the kanji screen in place (D-32) — plus Save, which is drawn and disabled until the Phase 6 user-data checkpoint settles the schema.
+**The sheet expands** (D-30): one component at two heights — a 30% peek and a 92% word screen — dragged by its handle or opened by *Full details*, with the kanji screen swapping its contents in place at full height (D-32). Back unwinds one level at a time: kanji → word → peek → frozen frame → viewfinder. The scan drives the same `WordLookupViewModel` the text route uses, so alternates (D-70) and the lone-kanji rule (D-49) come for free.
+
+**Phase 5 is essentially done.** What remains is Save, which is drawn and disabled until the Phase 6 user-data checkpoint settles the schema, plus the optional artboards 1b (ambiguity chips) and 1c (loupe).
 
 **Read `docs/progress/phase-05-overlay.md` first**, then `phase-04-camera.md` — which carries the camera and ML Kit knowledge, including two measurement traps that produce confident wrong answers — then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors. Both `phase-03-stroke-order.md` and `phase-04-camera.md` carry how to read the Claude Design project without burning a context window on a 106 KB file.
 

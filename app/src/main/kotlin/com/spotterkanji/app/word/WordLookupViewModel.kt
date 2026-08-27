@@ -75,7 +75,15 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      */
     private var matches: List<WordMatch> = emptyList()
 
-    fun onQueryChanged(query: String) {
+    /**
+     * @param autoSelect open the first word worth explaining once the text is
+     *   segmented. True for the text box, where something must be on screen to
+     *   answer the typing. **False for a scan**, where the photograph is the
+     *   query and the user chooses the word by tapping it — opening a sheet over
+     *   the frame they have not looked at yet would be answering a question
+     *   nobody asked (D-31).
+     */
+    fun onQueryChanged(query: String, autoSelect: Boolean = true) {
         _state.value = _state.value.copy(query = query)
 
         // Every keystroke starts work and cancels what came before. Without the
@@ -117,12 +125,33 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
 
             // Open on the first word worth explaining rather than on whatever
             // came first — for 先生と生産 that is 先生, not the particle と.
-            val selection = tokens.firstOrNull { it.isContentWord } ?: tokens.firstOrNull()
+            val selection = if (!autoSelect) null else {
+                tokens.firstOrNull { it.isContentWord } ?: tokens.firstOrNull()
+            }
             _state.value = _state.value.copy(tokens = tokens, selected = selection)
             selection?.let { load(it) } ?: run {
                 _state.value = _state.value.copy(searching = false)
             }
         }
+    }
+
+    /**
+     * Deselect the word, keeping the text and its tokens.
+     *
+     * Distinct from [onResultDismissed], which empties the search entirely.
+     * When a scan drives this, the text is the photograph and must survive —
+     * dismissing the sheet means "no word is selected", not "forget the sign".
+     */
+    fun onSelectionCleared() {
+        lookupJob?.cancel()
+        _state.value = _state.value.copy(
+            selected = null,
+            entries = emptyList(),
+            alternates = emptyList(),
+            kanji = emptyList(),
+            openKanji = null,
+            searching = false,
+        )
     }
 
     fun onKanjiSelected(character: String) {
