@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
@@ -111,44 +112,21 @@ internal fun ScanOverlay(
     ) {
         drawRect(color = SCRIM)
 
-        for (run in runs) {
-            val selected = selection != null && run.offsets.first in selection
-            // ML Kit's boxes sit tight against the ink and clip the odd stroke,
-            // so each patch is repainted very slightly proud of its box.
-            val bleed = (minOf(run.box.width, run.box.height) * PATCH_BLEED).toInt()
-            val source = run.box.expandedBy(bleed, frame.width, frame.height)
-            val target = projection.project(source)
-
-            if (selected) {
-                // The artboard's solid selection, showing as a band around the
-                // word. It cannot recolour the photograph's glyphs, so it frames
-                // them instead — which reads the same and stays honest.
-                val pad = (target.height.coerceAtMost(target.width) * 0.12).toFloat()
-                drawRoundRect(
-                    color = colors.primary,
-                    topLeft = Offset(target.left.toFloat() - pad, target.top.toFloat() - pad),
-                    size = Size(
-                        width = target.width.toFloat() + pad * 2,
-                        height = target.height.toFloat() + pad * 2,
-                    ),
-                    cornerRadius = CornerRadius(pad),
-                )
-            }
-
-            drawImage(
-                image = frame,
-                srcOffset = IntOffset(source.left, source.top),
-                srcSize = IntSize(
-                    source.width.coerceAtLeast(1),
-                    source.height.coerceAtLeast(1),
-                ),
-                dstOffset = IntOffset(target.left.toInt(), target.top.toInt()),
-                dstSize = IntSize(
-                    target.width.toInt().coerceAtLeast(1),
-                    target.height.toInt().coerceAtLeast(1),
-                ),
-            )
+        // Drawn in three passes rather than one run at a time, because the
+        // patches overlap. A neighbouring sign is often close enough that its
+        // patch lands on top of the selected word's band, and painting each run
+        // as "band then patch" in sequence let a *later* run erase an *earlier*
+        // run's band — the selection showing up with a side missing.
+        //
+        // Every unselected patch first, then every band, then the selected
+        // patches over their own bands.
+        val (selectedRuns, rest) = runs.partition { run ->
+            selection != null && run.offsets.first in selection
         }
+
+        for (run in rest) drawPatch(frame, run, projection)
+        for (run in selectedRuns) drawSelectionBand(colors.primary, run, projection)
+        for (run in selectedRuns) drawPatch(frame, run, projection)
     }
 }
 
@@ -211,8 +189,58 @@ private fun TextBox.expandedBy(amount: Int, maxWidth: Int, maxHeight: Int) = Tex
     bottom = (bottom + amount).coerceAtMost(maxHeight),
 )
 
-/** How far proud of its measured box each patch is repainted, in glyphs. */
+
+/**
+ * How far proud of its measured box each patch is repainted, in glyphs.
+ *
+ * ML Kit's boxes sit tight against the ink and clip the odd stroke.
+ */
 private const val PATCH_BLEED = 0.10
+
+/** The box actually repainted for a run: its own, bled slightly, clamped. */
+private fun TextRun.patchBox(frame: ImageBitmap): TextBox {
+    val bleed = (minOf(box.width, box.height) * PATCH_BLEED).toInt()
+    return box.expandedBy(bleed, frame.width, frame.height)
+}
+
+private fun DrawScope.drawPatch(frame: ImageBitmap, run: TextRun, projection: ScanProjection) {
+    val source = run.patchBox(frame)
+    val target = projection.project(source)
+    drawImage(
+        image = frame,
+        srcOffset = IntOffset(source.left, source.top),
+        srcSize = IntSize(source.width.coerceAtLeast(1), source.height.coerceAtLeast(1)),
+        dstOffset = IntOffset(target.left.toInt(), target.top.toInt()),
+        dstSize = IntSize(
+            target.width.toInt().coerceAtLeast(1),
+            target.height.toInt().coerceAtLeast(1),
+        ),
+    )
+}
+
+/**
+ * Artboard 1a's solid selection, showing as a band around the word.
+ *
+ * It cannot recolour the photograph's glyphs, so it frames them instead — which
+ * reads the same and stays honest about what the sign says (D-78).
+ */
+private fun DrawScope.drawSelectionBand(
+    color: Color,
+    run: TextRun,
+    projection: ScanProjection,
+) {
+    val target = projection.project(run.box)
+    val pad = (minOf(target.height, target.width) * 0.22).toFloat()
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(target.left.toFloat() - pad, target.top.toFloat() - pad),
+        size = Size(
+            width = target.width.toFloat() + pad * 2,
+            height = target.height.toFloat() + pad * 2,
+        ),
+        cornerRadius = CornerRadius(pad * 0.7f),
+    )
+}
 
 /**
  * `rgba(10, 9, 8, .68)` from artboard 1a — warm near-black, not grey.
