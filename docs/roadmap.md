@@ -21,7 +21,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 2 | Android app, text input only | **Feature-complete** — every `V-##` case this phase owns is met; the user-data checkpoint lands with Save in Phase 6 | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit; overlay is Phase 5 | Raw recognized text into the Phase 2 pipeline |
-| 5 | Tappable overlay | **In progress** — vertical-text order measured and answered (D-75); coordinate work not started | The real scan experience |
+| 5 | Tappable overlay | **In progress** — geometry, transform and overlay built (D-75–D-78); sheet expansion and Save remain | The real scan experience |
 | 6 | Saved lists | Not started | Multiple lists, many-to-many |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |

@@ -1,8 +1,12 @@
 package com.spotterkanji.app.scan
 
+import android.app.Application
 import android.graphics.Bitmap
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import com.spotterkanji.app.data.DictionaryProvider
+import com.spotterkanji.data.tokenize.KuromojiTokenizer
 import com.spotterkanji.domain.scan.ScanLayout
+import com.spotterkanji.domain.tokenize.Token
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +45,39 @@ internal data class ScanUiState(
 
     /** Set when a capture fails, cleared when the message has been shown. */
     val error: ScanError? = null,
+
+    /**
+     * The recognized text, segmented. Empty until recognition finishes.
+     *
+     * Held for the whole frame rather than recomputed per tap: Kuromoji loads a
+     * ~12 MB dictionary and the answer does not change while the photograph does
+     * not.
+     */
+    val tokens: List<Token> = emptyList(),
+
+    /** The word under the last tap, if any (D-30, D-31). */
+    val peek: PeekState? = null,
 )
+
+/**
+ * The peek sheet's contents — artboard 1a.
+ *
+ * **No reading** (D-47). The app would be guessing which one applies, and a
+ * learner who already knew the reading would not be scanning the word. The
+ * reading lives on the word screen, one drag further in.
+ */
+internal data class PeekState(
+    val token: Token,
+    /** Offsets to highlight on the photograph. */
+    val selection: IntRange,
+    /** Glosses of the first sense, joined — "teacher; instructor; master". */
+    val glosses: String? = null,
+    val loading: Boolean = true,
+) {
+    val text: String get() = token.text
+    /** True once the lookup finished and found nothing. */
+    val notFound: Boolean get() = !loading && glosses == null
+}
 
 /**
  * Where text recognition has got to on the frozen frame.
@@ -60,7 +96,11 @@ internal sealed interface RecognitionState {
 
 internal enum class ScanError { CaptureFailed, CameraUnavailable }
 
-internal class ScanViewModel : ViewModel() {
+internal class ScanViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = DictionaryProvider.repository(application)
+    private val tokenizer = KuromojiTokenizer()
+    private var peekJob: Job? = null
 
     private val _state = MutableStateFlow(ScanUiState())
     val state: StateFlow<ScanUiState> = _state.asStateFlow()
@@ -105,7 +145,67 @@ internal class ScanViewModel : ViewModel() {
                 RecognitionState.Failed
             }
             _state.update { it.copy(recognition = next) }
+
+            // Segment as soon as there is something to segment, so the first tap
+            // does not pay for Kuromoji's dictionary load.
+            if (next is RecognitionState.Done && !next.layout.isEmpty) {
+                val tokens = withContext(Dispatchers.Default) {
+                    tokenizer.tokenize(next.layout.text)
+                }
+                _state.update { it.copy(tokens = tokens) }
+            }
         }
+    }
+
+    /**
+     * A tap on the photograph, already resolved to a character offset.
+     *
+     * Null means the tap landed on bare image, which dismisses the peek — the
+     * only way out of it other than Retake, and the reason a tap that resolves to
+     * nothing must be reported rather than swallowed.
+     */
+    fun onOffsetTapped(offset: Int?) {
+        peekJob?.cancel()
+
+        val token = offset?.let { at ->
+            _state.value.tokens.firstOrNull { at >= it.start && at < it.endExclusive }
+        }
+        if (token == null) {
+            _state.update { it.copy(peek = null) }
+            return
+        }
+
+        _state.update {
+            it.copy(
+                peek = PeekState(
+                    token = token,
+                    selection = token.start until token.endExclusive,
+                ),
+            )
+        }
+
+        peekJob = viewModelScope.launch {
+            val glosses = withContext(Dispatchers.Default) {
+                repository.lookup(token.text)
+                    .firstOrNull()
+                    ?.senses
+                    ?.firstOrNull()
+                    ?.glosses
+                    ?.joinToString("; ")
+            }
+            _state.update { state ->
+                // Only apply to the peek that asked for it. Tapping quickly along
+                // a line otherwise lets a slow answer for one word overwrite a
+                // newer answer for the next.
+                if (state.peek?.token !== token) state
+                else state.copy(peek = state.peek.copy(glosses = glosses, loading = false))
+            }
+        }
+    }
+
+    fun onPeekDismissed() {
+        peekJob?.cancel()
+        _state.update { it.copy(peek = null) }
     }
 
     fun onCaptureFailed() {
@@ -141,6 +241,8 @@ internal class ScanViewModel : ViewModel() {
                 capturing = false,
                 error = null,
                 recognition = RecognitionState.Idle,
+                tokens = emptyList(),
+                peek = null,
             )
         }
     }

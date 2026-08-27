@@ -48,3 +48,7 @@ captures/
 /app/src/androidTest/assets/probe-*
 # The scratch probe that reads them. Disposable; must not outlive the images.
 /app/src/androidTest/kotlin/com/spotterkanji/app/scan/FixtureProbeTest.kt
+# The overlay screenshot harness. Renders to PNG for a design check; asserts
+# nothing, so it is a local tool rather than a test. Regenerate with the
+# am instrument recipe in docs/progress/phase-05-overlay.md.
+/app/src/androidTest/kotlin/com/spotterkanji/app/scan/OverlayShotTest.kt

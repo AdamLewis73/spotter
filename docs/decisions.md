@@ -105,6 +105,8 @@ Scan for the relevant entry rather than reading the whole file.
 | D-74 | ML Kit's model is **bundled** into the APK, measured at ~14.8 MB per device | Data / Product |
 | D-75 | ML Kit orders 縦書き columns backwards; stage 2 imposes its own reading order | Tokenization |
 | D-76 | Scan geometry lives in `:domain` behind a portable box type | Architecture |
+| D-77 | ~~The overlay redraws recognized text~~ — SUPERSEDED by D-78 | UI |
+| D-78 | The overlay **reveals** the photograph's own pixels; nothing is retyped | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1079,6 +1081,40 @@ That creates a conflict, because the Phase 2 text-input screen is not decoration
 *Why bundled, given unbundled is ten times cheaper:* the scanner is the product (D-61), and the unbundled model downloads through Play Services on first use. That puts a network dependency on the **first scan** — the exact moment the app has to work, often the moment someone is standing in a shop with bad signal. It also requires Google Play Services at all, which some devices and regions do not have. D-46 permits a one-time download and so does not forbid unbundled; this is a judgement that 14.8 MB is a fair price for "the first scan always works", in an app whose baseline is already 66 MB of dictionary.
 
 *Cost to reverse:* one line in `libs.versions.toml`. The two artifacts expose the same API at the same version — the bundled one simply depends on the unbundled one and adds the model — so nothing but the dependency coordinate changes.
+
+**D-77 — SUPERSEDED by D-78. The overlay redraws the recognized text as type, rather than revealing the photograph's own pixels through a hole in the scrim.**
+
+D-33 says "dim the image, detected text stays bright", and the obvious reading is to leave the text regions undimmed. That does not work: un-dimming a dim sign leaves it dim. A photograph taken at dusk, at an angle, or of weathered wood has text that is *hard to read in the photograph*, and the overlay's job is to make it readable — brightening the surrounding scrim is not the same as making the glyphs legible. Artboard 1a settles it visually: it draws evenly bright, crisply set characters, which no amount of selective dimming produces.
+
+So each character is drawn as type into the rectangle `ScanLayout` measured for it.
+
+*Two things fall out of using the per-character boxes for this*, and both are why it is cheap. Alignment is exact **by construction** — every glyph is drawn where it was measured, so there is no second positioning scheme to disagree with the first. And 縦書き needs no special case at all: a vertical character's box is simply lower than the one before it, so the same loop draws both directions.
+
+*The cost, stated plainly:* a misrecognition is rendered as confident, well-set text. 都 misread as 者 appears as a clean 者. This does not *introduce* the problem — the tokenizer and the dictionary already see the same string, and V-10 records that vertical recognition misreads more — but it does present it more persuasively than a blurry photograph would. Judged acceptable because the alternative is an overlay that is illegible exactly when it is most needed, and because the learner can always see the photograph underneath.
+
+*Cost to reverse:* low, and confined to one composable. `ScanLayout` already supplies the rectangles either way; revealing rather than redrawing means punching the scrim instead of drawing glyphs into the same boxes.
+
+**D-78 — The overlay reveals the photograph's own pixels at full brightness. Nothing is retyped. Supersedes D-77.**
+
+D-77 built the opposite and it was wrong. Both were rendered over the same real photographs and compared, which is the only way this was ever going to be settled.
+
+*What redrawing actually looked like:*
+
+- **It ghosts.** Drawn glyphs never sit exactly on the photographed ones — different face, different metrics, different optical weight — so every sign reads as doubled. Obvious on a street photo and still obvious on a flat, square-on printed notice.
+- **It renders misrecognitions as authoritative type.** On the museum notice it confidently displayed 合風 for 台風, 体館 for 休館 and 増い for 怖い, in clean well-set Noto Sans JP. The reveal of the same photograph shows 台風, 休館 and 怖い, because those are the pixels the camera recorded.
+
+That second point is the decisive one and it is a *correctness* argument rather than an aesthetic one. **The overlay cannot lie about what the sign says, because it is the sign.** A misread then costs a wrong dictionary lookup — recoverable, and visibly odd next to text the user can still read — instead of a wrong sign presented as fact. In an app whose whole claim is meaning in context (D-44), the latter is the failure that actively does harm, and it is the same reasoning V-28 uses to prefer missing a word over inventing one.
+
+*What D-77 got right, and what it over-weighted:* it is true that un-dimming a dim sign leaves it dim, and that is a real limit of this approach — a photograph of weathered wood at dusk is not made legible by dimming its surroundings. But the scrim is doing more work than that argument credits: against a 68% ground, even poorly-lit text separates clearly, and D-33's claim that "the legible text itself is the affordance" holds. Legibility was traded for honesty, and honesty is worth more here.
+
+*Two implementation consequences:*
+
+- Contiguous characters are repainted as **one patch**, not one per glyph, or the seams show. A run breaks where offsets stop being consecutive **and** where the next character stops sharing a line — the second test matters because V-28 joins columns into one flow, and unioning across a column break would repaint a rectangle covering everything between.
+- Selection cannot recolour the photograph's glyphs, so artboard 1a's solid block becomes a **jade band framing** the revealed patch. It reads the same and stays honest.
+
+*Endorsed by the project owner on 2026-08-26, in the terms that matter for later:* how readable the overlay is depends partly on the photograph, and a bad photograph is the user's to retake. **Do not spend effort compensating for input quality at the cost of honesty** — no sharpening or denoising pass, no "redraw when the photo is poor" fallback, no automatic retake. Those all reintroduce D-77's failure by a side door, because every one of them ends in showing the user something the sign does not say. Retaking a photo is cheap and obvious; being confidently told the wrong word is neither.
+
+*Cost to reverse:* low, and confined to one composable. `ScanLayout` supplies the same rectangles either way.
 
 ---
 
