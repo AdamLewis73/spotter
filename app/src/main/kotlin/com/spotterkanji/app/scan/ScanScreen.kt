@@ -92,6 +92,7 @@ internal fun ScanScreen(
     onCameraBound: () -> Unit,
     onRetake: () -> Unit,
     onLookUp: (String) -> Unit,
+    onOffsetTapped: (Int?) -> Unit,
     onOpenLookup: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -115,6 +116,7 @@ internal fun ScanScreen(
                 onCameraBound = onCameraBound,
                 onRetake = onRetake,
                 onLookUp = onLookUp,
+                onOffsetTapped = onOffsetTapped,
             )
 
             CameraPermissionState.Askable -> PermissionPanel(
@@ -162,6 +164,7 @@ private fun CameraStage(
     onCameraBound: () -> Unit,
     onRetake: () -> Unit,
     onLookUp: (String) -> Unit,
+    onOffsetTapped: (Int?) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -277,6 +280,20 @@ private fun CameraStage(
             }
         }
 
+        // The overlay sits on the photograph itself (artboard 1a). It is drawn
+        // inside this Box, above the Image and below the controls, so the scrim
+        // dims the picture without dimming the chrome.
+        val recognition = state.recognition
+        if (frame != null && recognition is RecognitionState.Done && !recognition.layout.isEmpty) {
+            ScanOverlay(
+                layout = recognition.layout,
+                frameWidth = frame.width,
+                frameHeight = frame.height,
+                selection = state.peek?.selection,
+                onOffsetTapped = onOffsetTapped,
+            )
+        }
+
         // The camera stays bound while a frame is frozen rather than being
         // unbound and rebound around it. Rebinding costs a few hundred
         // milliseconds, which is the delay a user would feel on every Retake.
@@ -284,10 +301,19 @@ private fun CameraStage(
         // sit on a frozen frame for minutes, and at that point the battery cost
         // of a streaming preview nobody can see becomes the larger of the two.
 
+        state.peek?.let { peek ->
+            PeekSheet(
+                peek = peek,
+                onFullDetails = { onLookUp(peek.text) },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+
         ScanControls(
             frozen = frame != null,
             recognition = state.recognition,
-            onLookUp = onLookUp,
+            peek = state.peek,
+            onFullDetails = onLookUp,
             capturing = state.capturing,
             onShutter = {
                 onShutterPressed()
@@ -336,7 +362,8 @@ private fun CameraStage(
 private fun ScanControls(
     frozen: Boolean,
     recognition: RecognitionState,
-    onLookUp: (String) -> Unit,
+    peek: PeekState?,
+    onFullDetails: (String) -> Unit,
     capturing: Boolean,
     onShutter: () -> Unit,
     onRetake: () -> Unit,
@@ -352,7 +379,8 @@ private fun ScanControls(
         if (frozen) {
             FrozenFrameControls(
                 recognition = recognition,
-                onLookUp = onLookUp,
+                peek = peek,
+                onFullDetails = onFullDetails,
                 onRetake = onRetake,
             )
         } else {
@@ -362,21 +390,24 @@ private fun ScanControls(
 }
 
 /**
- * What sits under a frozen frame: what was read, and the two things to do next.
+ * What sits under a frozen frame while nothing is selected.
  *
- * **This is not the overlay.** Artboard 1a puts the recognized words on the
- * photograph itself with a peek sheet under the tap, and that needs stage 4's
- * offset-to-pixel bridge — Phase 5, and the hardest work in the project. Until
- * it exists the recognized text is shown as a strip and handed whole to the
- * Phase 2 lookup screen, which already tokenizes it and makes every word
- * tappable. The pipeline runs end to end; only the tap target is interim.
+ * Once a word is tapped the peek sheet takes the bottom of the screen and this
+ * disappears: the words are on the photograph, so a strip repeating them would
+ * be the clutter D-33 exists to avoid, and D-61 puts simplicity above showing
+ * more. What remains here is the states the overlay cannot express — still
+ * reading, unreadable, or nothing found.
  */
 @Composable
 private fun FrozenFrameControls(
     recognition: RecognitionState,
-    onLookUp: (String) -> Unit,
+    peek: PeekState?,
+    onFullDetails: (String) -> Unit,
     onRetake: () -> Unit,
 ) {
+    // The sheet owns the bottom of the screen while it is open.
+    if (peek != null) return
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -393,10 +424,9 @@ private fun FrozenFrameControls(
             is RecognitionState.Done -> if (recognition.layout.isEmpty) {
                 ReadingStrip(stringResource(R.string.scan_no_text))
             } else {
-                RecognizedStrip(
-                    layout = recognition.layout,
-                    onLookUp = { onLookUp(recognition.layout.text) },
-                )
+                // Text was found and is drawn on the photograph. The only thing
+                // left to say is how to use it, once.
+                ReadingStrip(stringResource(R.string.scan_tap_a_word))
             }
         }
 

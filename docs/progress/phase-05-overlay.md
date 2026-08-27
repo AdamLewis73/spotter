@@ -1,7 +1,7 @@
 # Phase 5 — Tappable overlay
 
-**Status:** in progress — the geometry module is built, tested and wired into
-stage 2. The overlay UI has not started.
+**Status:** in progress — geometry, the transform and the overlay itself are
+built to artboard 1a. What is left is the sheet's expansion (D-30, D-32) and Save.
 **Updated:** 2026-08-26
 
 ## Current state
@@ -115,31 +115,39 @@ will be wrong at exactly those positions.
 
 ## Next action
 
-**The overlay UI.** Everything below the UI now exists: `domain/scan/ScanLayout`
-lays the scan out and answers both directions of the bridge — `boxAt(offset)` to
-draw a highlight, `offsetAt(x, y)` to resolve a tap — and stage 2 produces one
-instead of a raw string.
+**The sheet's second half.** The overlay, the transform and the peek sheet are
+built; `ScanOverlay.kt` draws artboard 1a and `ScanProjection` handles
+`ContentScale.Crop`. What artboard 1a implies but this does not yet do:
 
-What is left is drawing it, to artboard **1a**:
+1. **Drag the peek sheet up into the word screen** (D-30). The handle is drawn,
+   deliberately, so the affordance does not appear later as if bolted on — but
+   the drag is not wired. The two are meant to be one expanding component, and
+   `ModalBottomSheet` has no back stack, so this needs the custom plumbing D-32
+   accepts the cost of.
+2. **Kanji screen swapping in place inside the sheet** (D-32), with a back arrow.
+3. **Save** — drawn and disabled. It writes user data, which is gated behind the
+   Phase 6 checkpoint (D-15–D-18, D-43). The button waits for the schema rather
+   than the schema being improvised for the button.
+4. **Ambiguity chips (1b) and the loupe (1c)**, if wanted. Both are drawn in the
+   design project as additions to 1a rather than alternatives to it; neither is
+   implemented and neither is on any `V-##`.
 
-1. **The image-to-screen transform**, and it is the next real trap. Everything in
-   `ScanLayout` is in *image pixel* coordinates; the frozen frame is drawn with
-   `ContentScale.Crop`, so part of the bitmap is off-screen and the mapping is
-   not a plain scale. Derive it from the **measured** layout size, never an
-   assumed one, and test it independently of the interpolation — a wrong
-   transform and a wrong interpolation are indistinguishable on screen, and both
-   present as "taps are slightly off".
-2. **Dim the frame, keep the text bright** (D-33), highlighting the tapped word.
-3. **Peek sheet** (D-30, D-31), then the in-sheet kanji swap (D-32).
-4. **Confirm `ContentScale.Crop` end to end** — `phase-04-camera.md` flags that
-   the photograph is a superset of the viewfinder, which is invisible until it
-   becomes a coordinate bug here.
+**Looking at it.** `OverlayShotTest` renders the overlay to PNG for a design
+check. It asserts nothing, so it is gitignored as a local tool. `connectedAndroidTest`
+uninstalls the app and takes its files with it, so drive it directly:
+
+```
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+adb install -r -t app/build/outputs/apk/debug/app-debug.apk
+adb install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb shell am instrument -w -e class com.spotterkanji.app.scan.OverlayShotTest   com.spotterkanji.app.test/androidx.test.runner.AndroidJUnitRunner
+adb pull /sdcard/Android/data/com.spotterkanji.app/files/overlay-horizontal.png
+```
 
 **Still outstanding: real photographed fixtures we own.** Everything committed is
 generated. The third-party images used for calibration are local-only and cannot
 be committed (see `.gitignore`), so the measurements they produced live in the
-docs and in `RealNoticeLayoutTest`, which is built from measured rectangles
-rather than from the photograph itself.
+docs and in `RealNoticeLayoutTest`.
 
 **The three geometry problems are one problem.** V-10 (are these columns, and do
 they run right-to-left?), V-26 (is this small kana annotation or body text?) and
@@ -177,9 +185,13 @@ context window on a 106 KB file.
       fixtures are generated (V-10, V-26)
 - [x] Tap resolves: pixel → character → offset (`ScanLayout.offsetAt`), including
       a tap on ruby falling through to the word beneath it
-- [ ] Screen-pixel to image-pixel transform, against `ContentScale.Crop`
-- [ ] Overlay dims the image, detected text stays bright (D-33)
-- [ ] Peek sheet, and the expand-to-word-screen gesture (D-30, D-31)
+- [x] Screen-pixel to image-pixel transform, against `ContentScale.Crop`
+      (`ScanProjection`, tested in `:domain` apart from the interpolation)
+- [x] Overlay dims the image, detected text stays bright (D-33) — redrawn as
+      type rather than revealed (D-77)
+- [x] Peek sheet — word, glosses, two actions, and **no reading** (D-47)
+- [ ] The expand-to-word-screen gesture (D-30, D-31); the handle is drawn, the
+      drag is not wired
 - [ ] Kanji screen swaps in place inside the sheet, with a back arrow (D-32)
 - [ ] Checkpoint: bounding box stored in the scan record (D-22)
 - [ ] Relevant `V-##` cases from `verification.md` added to this list

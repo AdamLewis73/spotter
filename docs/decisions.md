@@ -105,6 +105,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-74 | ML Kit's model is **bundled** into the APK, measured at ~14.8 MB per device | Data / Product |
 | D-75 | ML Kit orders 縦書き columns backwards; stage 2 imposes its own reading order | Tokenization |
 | D-76 | Scan geometry lives in `:domain` behind a portable box type | Architecture |
+| D-77 | The overlay **redraws** recognized text; it does not reveal the photo's pixels | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1079,6 +1080,18 @@ That creates a conflict, because the Phase 2 text-input screen is not decoration
 *Why bundled, given unbundled is ten times cheaper:* the scanner is the product (D-61), and the unbundled model downloads through Play Services on first use. That puts a network dependency on the **first scan** — the exact moment the app has to work, often the moment someone is standing in a shop with bad signal. It also requires Google Play Services at all, which some devices and regions do not have. D-46 permits a one-time download and so does not forbid unbundled; this is a judgement that 14.8 MB is a fair price for "the first scan always works", in an app whose baseline is already 66 MB of dictionary.
 
 *Cost to reverse:* one line in `libs.versions.toml`. The two artifacts expose the same API at the same version — the bundled one simply depends on the unbundled one and adds the model — so nothing but the dependency coordinate changes.
+
+**D-77 — The overlay redraws the recognized text as type, rather than revealing the photograph's own pixels through a hole in the scrim.**
+
+D-33 says "dim the image, detected text stays bright", and the obvious reading is to leave the text regions undimmed. That does not work: un-dimming a dim sign leaves it dim. A photograph taken at dusk, at an angle, or of weathered wood has text that is *hard to read in the photograph*, and the overlay's job is to make it readable — brightening the surrounding scrim is not the same as making the glyphs legible. Artboard 1a settles it visually: it draws evenly bright, crisply set characters, which no amount of selective dimming produces.
+
+So each character is drawn as type into the rectangle `ScanLayout` measured for it.
+
+*Two things fall out of using the per-character boxes for this*, and both are why it is cheap. Alignment is exact **by construction** — every glyph is drawn where it was measured, so there is no second positioning scheme to disagree with the first. And 縦書き needs no special case at all: a vertical character's box is simply lower than the one before it, so the same loop draws both directions.
+
+*The cost, stated plainly:* a misrecognition is rendered as confident, well-set text. 都 misread as 者 appears as a clean 者. This does not *introduce* the problem — the tokenizer and the dictionary already see the same string, and V-10 records that vertical recognition misreads more — but it does present it more persuasively than a blurry photograph would. Judged acceptable because the alternative is an overlay that is illegible exactly when it is most needed, and because the learner can always see the photograph underneath.
+
+*Cost to reverse:* low, and confined to one composable. `ScanLayout` already supplies the rectangles either way; revealing rather than redrawing means punching the scrim instead of drawing glyphs into the same boxes.
 
 ---
 

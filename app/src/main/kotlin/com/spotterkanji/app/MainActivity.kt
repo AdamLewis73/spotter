@@ -133,7 +133,12 @@ private fun ScanRoute(
     // Back on a frozen frame returns to the viewfinder rather than leaving the
     // app. The freeze is a state of the scan screen, not a destination (D-02),
     // but the system back button has no way to know that.
-    BackHandler(enabled = state.frame != null, onBack = viewModel::onRetake)
+    BackHandler(enabled = state.frame != null) {
+        // The peek sheet is a state within the frozen frame, just as the frozen
+        // frame is a state within the scan screen (D-02, D-31). Back unwinds one
+        // level at a time rather than jumping straight to the viewfinder.
+        if (state.peek != null) viewModel.onPeekDismissed() else viewModel.onRetake()
+    }
 
     ScanScreen(
         state = state,
@@ -144,6 +149,7 @@ private fun ScanRoute(
         onCameraBound = viewModel::onCameraBound,
         onRetake = viewModel::onRetake,
         onLookUp = onLookUp,
+        onOffsetTapped = viewModel::onOffsetTapped,
         onOpenLookup = onOpenLookup,
     )
 }
