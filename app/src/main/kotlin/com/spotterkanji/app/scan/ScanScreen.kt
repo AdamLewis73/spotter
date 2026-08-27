@@ -61,6 +61,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.spotterkanji.domain.scan.ScanLayout
 import com.spotterkanji.app.R
 import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
@@ -389,12 +390,12 @@ private fun FrozenFrameControls(
             RecognitionState.Failed ->
                 ReadingStrip(stringResource(R.string.scan_recognize_failed))
 
-            is RecognitionState.Done -> if (recognition.result.isEmpty) {
+            is RecognitionState.Done -> if (recognition.layout.isEmpty) {
                 ReadingStrip(stringResource(R.string.scan_no_text))
             } else {
                 RecognizedStrip(
-                    result = recognition.result,
-                    onLookUp = { onLookUp(recognition.result.text) },
+                    layout = recognition.layout,
+                    onLookUp = { onLookUp(recognition.layout.text) },
                 )
             }
         }
@@ -434,7 +435,7 @@ private fun ReadingStrip(text: String) {
 
 @Composable
 private fun RecognizedStrip(
-    result: RecognizedText,
+    layout: ScanLayout,
     onLookUp: () -> Unit,
 ) {
     Column(
@@ -450,7 +451,7 @@ private fun RecognizedStrip(
             // place in the string itself — it stops a word being invented across
             // a line break — but rendering it here would turn a two-line sign
             // into a two-line strip for no gain.
-            text = result.text.replace(RecognizedText.LINE_SEPARATOR, " "),
+            text = layout.text.replace(ScanLayout.SEPARATOR, " "),
             // `SpotterJapanese` explicitly, per D-34. IBM Plex carries no CJK and
             // falls back to the system font silently, which on some devices means
             // Chinese glyph forms for 直, 骨, 令 and 化 (V-12). In an app that

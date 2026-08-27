@@ -371,13 +371,22 @@ So flattening ML Kit's lines into the single string the tokenizer wants (stage 2
 
 Nothing errors either way. The recognizer succeeds, the tokenizer segments happily, and the words are simply wrong — which reads downstream as "the OCR is a bit flaky", exactly like V-11 and V-26.
 
-**As built in Phase 4: lines are joined with a newline** (`scan/RecognizedText.kt`), so the app currently sits in the right-hand column — it hides words rather than inventing them.
+**As built in Phase 4: lines were joined with a newline unconditionally**, so the app sat in the right-hand column — hiding words rather than inventing them. **Settled geometrically in Phase 5** (`domain/scan/ScanLayout.kt`); see below.
 
 *That is a deliberate default, not the answer.* **Inventing is worse than missing.** A missed word means the learner taps 生 and gets 生 — degraded, but true. An invented word means they tap and get a confident, plausible, wrong answer, which in an app whose entire claim is teaching meaning in context is the failure that actively does harm (D-44, D-04).
 
 **Expected, once stage 4 exists: the decision is geometric, not fixed.** Whether two lines are one flow or two separate things is answerable from the boxes — block membership, line spacing, alignment of the leading edge — which is the same *kind* of signal V-26 uses to separate ruby from body text and V-10 uses to find columns. All three are one question wearing three hats: *what does this geometry mean?* None of them can be settled from the text alone, and the third cannot even be posed before the first, because "the line above" is undefined until the writing direction is known.
 
 *One consequence stage 4 must expect either way:* wherever a separator sits in the string, that character offset belongs to **no element** and maps to no rectangle. A tap can never land there, but a lookup table assuming every offset has a box is wrong at exactly those positions.
+
+**As decided, 2026-08-26.** The rule is *a line that runs to the block's far edge wrapped; one that stops short ended.* That reads the evidence of how the text was actually set rather than guessing, and it works: run over the real notice's eight columns it breaks the text into exactly its three sentences, purely from where the ink stops, with nothing in the code knowing what a sentence is.
+
+Two guards sit on top of it, both paid for by a failing test:
+
+- **A block of fewer than three lines is never joined.** The wrap test is circular below that: the block's far edge is derived from its own lines, so in a two-line block the longer line *defines* the measure and always appears to reach it — which would join every two-line shop sign. Three lines is where a consistent measure becomes evidence rather than a tautology. The cost is a genuine two-line paragraph losing a word split across its break; accepted, and rare beside two-line signage.
+- **Blocks are clustered at 1.5 glyphs of separation**, the top of the typographic range for 行間 and below the range at which independent objects sit apart.
+
+**A known limit, recorded rather than tuned away.** A row of equal-length independent texts — shop lanterns, donor plaques — is *geometrically identical* to a justified paragraph: same starts, same ends, same spacing. Where such objects sit closer than the clustering threshold they merge and join, which is the inventing failure. Separation distance is the only available signal and it is not always sufficient. Observed only on photographs where recognition had already failed badly, so the joined text was unusable regardless; revisit with better fixtures rather than by tightening the constant, which risks splitting real paragraphs.
 
 ---
 

@@ -80,7 +80,9 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **Current phase:** Phase 5 — the tappable overlay, in progress. **This is the core of v1** and the highest-risk work in the project: stage 4's offset-to-pixel bridge, plus vertical text (V-10), tap resolution (V-11) and furigana separation (V-26). `RecognizedText` already carries a box and character offset per element, which is what stage 4 consumes.
 
-The gating question is answered: **ML Kit emits 縦書き columns left-to-right, which is backwards**, so the reorder belongs in stage 2 before concatenation (D-75). Within a column it reads correctly, so it is a sort, not a reconstruction. The geometry itself lives in `:domain` on a portable box type (D-76), because JVM tests run in seconds and emulator tests in minutes — and this phase is defended by the number of cases, not the cleverness of any one.
+**The geometry module is built** (`domain/scan/ScanLayout`, D-76): reading order, writing direction, ruby separation and the line-break policy, on a portable box type in `:domain` so a case costs seconds rather than an emulator round trip. Stage 2 now emits a laid-out `ScanLayout` rather than a raw string, so 縦書き columns read right to left (D-75), ruby stays out of the token stream (V-26) and lines join only on evidence (V-28).
+
+**What is left is the overlay UI**, and its trap is that `ScanLayout` speaks *image* pixels while the frozen frame is drawn with `ContentScale.Crop`. Derive that transform from the measured layout size and test it apart from the interpolation — on screen a wrong transform and a wrong interpolation look the same.
 
 **Read `docs/progress/phase-05-overlay.md` first**, then `phase-04-camera.md` — which carries the camera and ML Kit knowledge, including two measurement traps that produce confident wrong answers — then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors. Both `phase-03-stroke-order.md` and `phase-04-camera.md` carry how to read the Claude Design project without burning a context window on a 106 KB file.
 

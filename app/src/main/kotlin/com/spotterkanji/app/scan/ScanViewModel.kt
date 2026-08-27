@@ -2,6 +2,7 @@ package com.spotterkanji.app.scan
 
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
+import com.spotterkanji.domain.scan.ScanLayout
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -45,7 +46,7 @@ internal data class ScanUiState(
 /**
  * Where text recognition has got to on the frozen frame.
  *
- * [Done] carrying an empty [RecognizedText] is a real and common outcome, not a
+ * [Done] carrying an empty [ScanLayout] is a real and common outcome, not a
  * failure — it is what happens when someone photographs a wall. It is kept
  * distinct from [Failed], which means the recognizer itself errored, because the
  * two want different words on screen and only one of them is worth retrying.
@@ -53,7 +54,7 @@ internal data class ScanUiState(
 internal sealed interface RecognitionState {
     data object Idle : RecognitionState
     data object Running : RecognitionState
-    data class Done(val result: RecognizedText) : RecognitionState
+    data class Done(val layout: ScanLayout) : RecognitionState
     data object Failed : RecognitionState
 }
 
