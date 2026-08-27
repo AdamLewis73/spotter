@@ -103,6 +103,14 @@ file rather than to context, so slice the artboard out of that file by
   pixels help; the ceiling is memory, since a full-sensor 4000×3000 frame is
   ~48 MB as ARGB_8888. Revisit once ML Kit is reading real signage and the
   accuracy cost can be measured instead of guessed at.
+
+  *First measurement, 2026-08-26, and it does not support raising the cap.* Two
+  hard photographs swept at 1620×1080 / 2560×1707 / 3840×2560 returned 3/4/6 and
+  13/12/16 elements — sub-linear and **not monotonic**, the plaque doing worse at
+  the middle size than the smallest. Whatever limits recognition on weathered
+  wood, curved lanterns and stylized brush script, it is not pixel count. Two
+  images is too thin to close this, but enough to stop treating resolution as the
+  obvious lever. See `phase-05-overlay.md` for the fuller quality picture.
 - **The camera stays bound while a frame is frozen.** Rebinding costs a few
   hundred milliseconds, and today a frozen frame has nothing on it to read, so
   every freeze is followed by an immediate retake and that latency is what a user

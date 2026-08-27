@@ -348,6 +348,14 @@ Expected: ruby is **excluded from the token stream**, and taps on the base text 
 
 The signal to separate them is geometric, not linguistic: ruby glyphs are markedly smaller than their base text and sit consistently above it (horizontal) or to its right (vertical). ML Kit supplies per-element bounding boxes, so the height ratio and baseline offset are both available in stage 4 — the same stage that already has to distinguish vertical from horizontal (V-10).
 
+**Confirmed on real typesetting 2026-08-26, with three corrections to the above.**
+
+- **The interleaving has no stable order.** This case's table implies ruby lands adjacent to its base. It does not — ruby elements come back scattered before, between and after the lines they annotate, with no consistent relationship. Any rule of the form "ruby precedes its base" is unavailable; separation must be purely geometric.
+- **Ruby fragments the column it annotates.** One vertical column returned as four elements, split at each ruby interruption. This is the strongest form of the "never assume one element per line" constraint that V-10 also records.
+- **Small text is frequently not ruby**, and this is the trap that makes a size-only rule actively harmful. Shop lanterns and shrine donor plaques set company names, prefectures and job titles markedly smaller than the main name, *inline in the same column*. A size-only test reads them as annotation and drops them from the token stream — deleting real words, silently. **Both signals must agree**: markedly smaller *and* positioned in the ruby slot (above and horizontally overlapping, or right and vertically overlapping).
+
+Measured ruby-to-body height ratio is cleanly separated at capture scale — ruby 32–46 px against body 64–68 — but narrows to 9–16 against 20–21 on a low-resolution source, where it would misfire. The size signal is resolution-dependent; the positional signal is not.
+
 *Why this is worth a case rather than a backlog item:* it is one of the few OCR failures competitors visibly have, and "works on furigana'd text" is demonstrable in a store listing (D-61). It is also cheapest to handle while stage 4 is being designed, for exactly the reason V-10 gives — retrofitting the coordinate layer is the most error-prone work in the project.
 
 ### V-28 · A line break must neither invent a word nor hide one (`architecture.md` stage 2 and 4)

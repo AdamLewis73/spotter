@@ -30,3 +30,21 @@ local.properties
 .idea/
 .cxx/
 captures/
+
+# Third-party test images, used for measurement and never committed.
+#
+# Photographs and scans found online are invaluable for tuning the scan
+# geometry — real typesetting, real perspective, real lighting — but their
+# licensing is unknown and this repository is public. They are therefore
+# treated as strictly local: dropped in fixtures-raw/, processed into
+# probe-prefixed assets so an instrumented test can read them, measured, and
+# deleted. What survives is the *numbers* in docs/ and any fixture we generate
+# ourselves to match them (tools/fixtures/make_fixtures.py).
+#
+# The `probe-` prefix is load-bearing: it is what keeps `git add -A` from
+# sweeping a third-party image into a public repository's permanent history.
+# Committed fixtures are named sign-* (generated) or photo-* (ours by right).
+/fixtures-raw/
+/app/src/androidTest/assets/probe-*
+# The scratch probe that reads them. Disposable; must not outlive the images.
+/app/src/androidTest/kotlin/com/spotterkanji/app/scan/FixtureProbeTest.kt
