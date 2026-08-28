@@ -1,7 +1,9 @@
 # Phase 4 — CameraX + ML Kit
 
-**Status:** in progress — camera and ML Kit both done. Overlay is Phase 5.
-**Updated:** 2026-08-24
+**Status:** complete, bar one deferred item — the live-preview "Japanese text
+detected" indicator, which is a viewfinder feature rather than a pipeline one and
+has no `V-##`. Everything the scan depends on is done.
+**Updated:** 2026-08-27
 
 ## Current state
 
@@ -34,8 +36,9 @@ a strip under the frozen frame and handed whole to the lookup screen. The
 pipeline is real; only the tap target is interim.
 
 Files: `app/src/main/kotlin/com/spotterkanji/app/scan/` — `ScanScreen.kt`,
-`ScanViewModel.kt`, `CameraPermission.kt`, `JapaneseTextRecognizer.kt`,
-`RecognizedText.kt`.
+`ScanViewModel.kt`, `CameraPermission.kt`, `JapaneseTextRecognizer.kt`. (Phase 5
+deleted `RecognizedText.kt` and added `ScanOverlay.kt` and `ScanSheet.kt`; the
+recognizer now returns a laid-out `domain/scan/ScanLayout`.)
 
 ## What the first pass got wrong, because it will recur
 
@@ -58,18 +61,12 @@ screen and come back.
 
 ## Next action
 
-**Phase 5 — the overlay.** Stage 4's offset-to-pixel bridge, then taps on the
-photograph itself (artboard 1a). `RecognizedText` already carries a box and a
-character offset per element, which is the raw material stage 4 needs; nothing
-interpolates *within* an element yet, and nothing handles vertical text or
-furigana (V-10, V-11, V-26).
-
-**One thing Phase 4 shipped that Phase 5 has since found wrong:** stage 2 takes
-ML Kit's block-then-line order as given, and that order is backwards for 縦書き —
-columns come out left-to-right (D-75, measured 2026-08-26). It does not break
-taps, because each element's box and offset agree; it makes the *flow* backwards,
-which matters as soon as V-28 lets two lines join. The fix is a sort in
-`RecognizedText`, not in stage 4.
+**Phase 5 is complete** — see `phase-05-overlay.md`. It found one thing Phase 4
+had shipped wrong: stage 2 took ML Kit's block-then-line order as given, and that
+order is backwards for 縦書き (D-75, measured 2026-08-26). It did not break taps,
+because each element's box and offset agreed; it made the *flow* backwards. Fixed
+by sorting before concatenation, which is where `RecognizedText` used to be and
+where `ScanLayout` now is.
 
 Still open inside Phase 4, and small:
 
@@ -77,8 +74,10 @@ Still open inside Phase 4, and small:
   a cheap recognition pass on preview frames rather than on the captured still,
   which is a different use case (`ImageAnalysis`, not `ImageCapture`) — worth
   doing deliberately rather than by reusing the capture path.
-- **Real photographs as fixtures.** The one committed fixture is generated: clean
-  text on a plain ground, the easy case. It proves the wiring, not the accuracy.
+- **Real photographs as fixtures.** Every committed fixture is still generated:
+  clean text on a plain ground, the easy case. They prove the wiring, not the
+  accuracy. Phase 5 calibrated against real photographs but could not commit
+  them — see `phase-05-overlay.md`.
 
 ## Design
 
@@ -133,7 +132,12 @@ file rather than to context, so slice the artboard out of that file by
 - [x] Confirm the APK size cost of bundling — ~14.8 MB per device (D-74)
 - [x] Recognized text fed into the existing Phase 2 tokenize-and-look-up path
 - [ ] "Japanese text detected" indicator on the live preview
-- [ ] Collect a **furigana'd** test image alongside the vertical-text one (V-26)
+- [~] Collect a **furigana'd** test image alongside the vertical-text one (V-26)
+      — **moved to Phase 5, and partly done there.** Furigana images were found
+      and measured, but they are third-party and local-only, so nothing could be
+      committed. V-26's rule is built and tested against generated cases plus the
+      measured numbers; a photographed fixture *we own* is still outstanding and
+      is tracked in `phase-05-overlay.md`.
 - [x] Relevant `V-##` cases from `verification.md` reviewed — **Phase 4 owns none.**
       `verification.md`'s "Phase 4–5" section holds V-10 (vertical text), V-11
       (character-level tap resolution) and V-26 (furigana separation); all three

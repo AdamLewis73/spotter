@@ -299,7 +299,7 @@ Measured 2026-08-26 on generated fixtures whose correct answer is known exactly,
 
 *The stagger result is the one that decides this.* On a fixture whose right-hand column starts 284 px above its left-hand one, anything ordering by vertical position emits the right column first. ML Kit still emitted the left column first — so this is not a position sort that vertical text happens to confuse, it is a horizontal-text reading order applied unconditionally. It will not come right on its own, on any image, ever.
 
-**Therefore the reorder belongs in stage 2, before concatenation**, in `scan/RecognizedText.kt` — because the concatenation is what defines the character offsets stages 3 and 4 both speak in. Sorting downstream would mean two walks that can disagree, which is the exact failure that file exists to prevent.
+**Therefore the reorder belongs in stage 2, before concatenation**, in what was then `scan/RecognizedText.kt` — because the concatenation is what defines the character offsets stages 3 and 4 both speak in. (That file no longer exists: the reorder was built in `domain/scan/ScanLayout`, which the recognizer now feeds directly.) Sorting downstream would mean two walks that can disagree, which is the exact failure that file exists to prevent.
 
 *Two things this is not:*
 
@@ -312,7 +312,7 @@ Measured 2026-08-26 on generated fixtures whose correct answer is known exactly,
 
 **D-76 — The scan geometry — reading order, writing direction, ruby separation, character interpolation — lives in `:domain`, on a portable box type, not in `:app` on `android.graphics.Rect`.**
 
-ML Kit hands back `android.graphics.Rect`, and `RecognizedText` stores it as-is in `:app`. But the stage 4 work is arithmetic over rectangles: which boxes form a column, which way it reads, which are ruby, where each character sits. Nothing in it is Android-specific — it is only *typed* that way, by accident of where the rectangles came from.
+ML Kit hands back `android.graphics.Rect`, and `RecognizedText` stored it as-is in `:app` when this was decided. But the stage 4 work is arithmetic over rectangles: which boxes form a column, which way it reads, which are ruby, where each character sits. Nothing in it is Android-specific — it is only *typed* that way, by accident of where the rectangles came from.
 
 So `:domain` gets a four-integer box type, `:app` converts once at the ML Kit boundary, and the geometry moves across the line D-60 draws.
 

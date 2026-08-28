@@ -19,9 +19,9 @@ Read `overview.md` first if you're new to this project — it explains what the 
 
 **Versions live in `gradle/libs.versions.toml`, which is the single source of truth.** Do not paste version numbers into module build files, and do not trust a remembered one — check Google Maven or Maven Central. That instruction has already earned its keep: AGP 9 removed the Kotlin Android plugin, so every pre-2026 tutorial gives advice that is now a build error. The scaffold's findings are in `progress/phase-02-android-text-input.md`.
 
-**Dependency coordinates still to add, for later phases:**
-- `com.google.android.gms:play-services-mlkit-text-recognition-japanese` (Phase 4)
-- `com.atilika.kuromoji:kuromoji-ipadic` (Phase 2)
+**Both of the coordinates this section used to list as pending are in**, as of
+Phases 2 and 4: `com.atilika.kuromoji:kuromoji-ipadic` and the *bundled* ML Kit
+Japanese recognizer. See `gradle/libs.versions.toml`.
 
 ML Kit offers *bundled* and *unbundled* variants. Bundled ships the model inside the APK (larger download, works immediately); unbundled downloads it via Google Play Services on first use (smaller APK, but the first scan can fail offline). **Bundled is the choice, and the size cost was measured in Phase 4 (D-74): ~14.8 MB per device, not the 43 MB a universal APK suggests.** The gap is entirely per-ABI native libraries, which a Play app bundle splits away.
 
@@ -90,11 +90,11 @@ A tree, roughly: `Text` → `TextBlock` → `Line` → `Element`. Every node car
 
 Important caveat: for Japanese, `Element` boundaries do **not** correspond to word boundaries. ML Kit does not know where Japanese words begin and end — that's what stage 3 is for. Elements are useful for their *positions*, not their segmentation.
 
-**Flattening that tree defines the character offsets stage 3 and stage 4 both speak in**, so it is done exactly once, in `scan/RecognizedText.kt`, which records each element's box *and* its start offset. A second walk in stage 4 could disagree with the first and shift every tap by a character, silently.
+**Flattening that tree defines the character offsets stage 3 and stage 4 both speak in**, so it is done exactly once. `scan/JapaneseTextRecognizer.kt` converts the tree to portable `ScanLine`s and decides nothing; `domain/scan/ScanLayout` lays them out and records a rectangle per character. A second walk of the tree could disagree with the first and shift every tap by a character, silently.
 
 Two consequences of the flattening are load-bearing:
 
-- **Lines are joined with a newline, not butted together** — otherwise 先生 above 産業 concatenates to `先生産業` and the tokenizer finds 生産, a word nobody wrote. This is a conservative default rather than a solution: Japanese does not hyphenate, so a word may also split across a line break with no marker, and the separator hides those. **V-28**, and settled properly in stage 4 where the geometry is available.
+- **Lines are joined with a newline, not butted together** — otherwise 先生 above 産業 concatenates to `先生産業` and the tokenizer finds 生産, a word nobody wrote. It was a conservative default rather than a solution — Japanese does not hyphenate, so a word may equally split *across* a break with no marker, and an unconditional separator hides those. **Settled geometrically in Phase 5** (V-28): a line that runs to its block's far edge wrapped and is joined; one that stops short ended and is separated. `ScanLayout` decides it, so the separator is no longer unconditional.
 - **A separator occupies an offset owned by no element**, so it maps to no rectangle. A tap can never land there; a lookup table assuming every offset has a box is wrong exactly there.
 
 ### Stage 3 — what the tokenizers return

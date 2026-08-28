@@ -89,30 +89,23 @@ the cap is not the fix for hard signage. Two images is not enough to settle
 `phase-04-camera.md`'s open question, but it is enough to say resolution is not
 the dominant term.
 
-**Both halves this phase bridges now exist.** Phase 4 produces pixel
-boxes and Phase 2 produces character offsets, so the condition this file was
-waiting on is met.
+**Both halves this phase bridged existed before it started**, and the joining is
+what it built. Phase 4 produced pixel boxes; Phase 2 produced character offsets.
 
-Specifically, `app/src/main/kotlin/com/spotterkanji/app/scan/RecognizedText.kt`
-already carries, per ML Kit element, its text, its bounding box in **image pixel
-coordinates**, and its **start offset** into the concatenated string the
-tokenizer sees. The concatenation happens exactly once, there, on purpose — if
-this phase re-walked ML Kit's tree itself the two walks could disagree and shift
-every tap by a character, silently.
+The flattening that defines those offsets happens **exactly once**, and where it
+lives moved during this phase: it was `scan/RecognizedText.kt`, and is now
+`scan/JapaneseTextRecognizer.kt` converting ML Kit's tree into `ScanLine`s that
+`domain/scan/ScanLayout` lays out. The reason it happens once is unchanged — two
+walks of the tree could disagree and shift every tap by a character, silently.
 
-Two things that concatenation does **not** do, and that belong here:
+`RecognizedText` itself is **gone**, not renamed. Its job was to carry text plus
+per-element boxes and offsets; `ScanLayout` carries text plus a rectangle per
+*character*, in true reading order, which is a superset. Its reasoning moved into
+that module rather than being lost.
 
-- Nothing interpolates *within* an element, so there are no per-character
-  rectangles yet.
-- Reading order is ML Kit's own block-then-line order, taken as given. That is
-  **now confirmed wrong** for vertical text (D-75) and nothing has been
-  reordered, so nothing has to be un-reordered — the sort is added here, on
-  untouched input.
-
-One wrinkle to expect: lines are joined with a newline separator, so a few
-character offsets belong to **no element**. A tap can never land on one, because
-no rectangle maps to one — but a lookup table that assumes every offset has a box
-will be wrong at exactly those positions.
+One wrinkle that survived the move intact: separators own a character offset and
+**no rectangle**. A tap can never land on one, but a lookup table assuming every
+offset has a box is wrong at exactly those positions.
 
 ## Next action
 
