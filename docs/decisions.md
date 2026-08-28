@@ -107,6 +107,8 @@ Scan for the relevant entry rather than reading the whole file.
 | D-76 | Scan geometry lives in `:domain` behind a portable box type | Architecture |
 | D-77 | ~~The overlay redraws recognized text~~ — SUPERSEDED by D-78 | UI |
 | D-78 | The overlay **reveals** the photograph's own pixels; nothing is retyped | UI |
+| D-79 | Built-in FSRS **and** Anki export; scheduler first, export in Phase 8 | SRS |
+| D-80 | Soft delete is for rows the user deletes; derived children cascade | Migrations |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -683,7 +685,7 @@ Three layers, all required:
 **D-15 — UUID primary keys on all user data, never auto-increment integers.**
 Two devices creating records while offline will both generate `id = 5`, and there is no way to reconcile them afterward. This is unfixable once real user data exists. UUIDs cost nothing now and are a precondition for the sync described in D-19.
 
-**D-16 — Every user row carries `updated_at`; deletions are soft (`deleted_at`), never hard `DELETE`.**
+**D-16 — Every user row carries `updated_at`; deletions are soft (`deleted_at`), never hard `DELETE`.** *Scoped by D-80 — the soft-delete clause governs rows the user deletes; `updated_at` stays universal.*
 `updated_at` is required for sync conflict resolution. Soft delete is required for deletion *propagation*: if phone A hard-deletes a record, tablet B has no way to learn that it was deleted — B simply observes that A is missing a record it has, and helpfully re-adds it. A tombstone row communicates the deletion.
 
 **D-17 — `fallbackToDestructiveMigration()` is banned in every build type.**
@@ -706,6 +708,22 @@ D-15, D-16, and the repository pattern (`architecture.md`) are the parts that ar
 An in-app action that writes a versioned JSON or zip file and hands it to Android's share sheet or file picker, importable on a fresh install or a different device.
 
 Beyond its direct user value, it earns its place early for two reasons: it is the recovery path if a production migration ever fails, and defining a clean serializable representation of all user data is precisely the payload a future sync API would send. Building export first is therefore a head start on D-19, not a detour from it.
+
+**D-80 — D-16's soft delete applies to rows the *user* deletes. Rows that exist only to serve a parent are removed with it. `updated_at` stays universal.**
+
+Read literally, D-16 covers all six tables in the Phase 6 schema. Read as reasoning, it covers four. This entry records which, so a later session does not find the code and the rule disagreeing and "fix" the wrong one.
+
+*The rule exists for deletion propagation.* A tombstone is how a second device — or a restored backup — learns that a row was deliberately removed rather than merely missing. Absence alone is ambiguous, and the resolution it invites is to re-add. That argument is entirely about **deletions the user performs**, and it has no purchase on rows the user cannot address.
+
+**Tombstones (`deleted_at`): `study_item`, `saved_list`, `list_membership`, `scan`.** Each is something the user deletes by tapping something.
+
+**Cascade: `srs_state`, `scan_word`.** `srs_state` is one row per `study_item` (D-29) — the schedule *for* that item, not an object the user owns; a schedule outliving its word is not data, it is a resurrection bug with somewhere to live. `scan_word` is where a word sat on a photograph (D-22) and dies with its `scan`.
+
+**`list_membership` is the case that forced this entry, and the draft schema in `data-model.md` had it wrong** — it carried neither column. "Remove this word from Street Signs" is the deletion users perform most often, and hard-deleting the join row means a sync or a restore silently puts the word back in the list. That is precisely D-16's failure mode, in the table most exposed to it and the one place where a user would read it as the app ignoring them.
+
+**`updated_at` takes no exception, cascading tables included.** It is for conflict resolution, not deletion: a schedule advanced on two devices needs the same last-writer comparison as anything else.
+
+*Cost to reverse:* adding tombstones to a cascading table later is a migration over rows that are all still alive, and dropping them from a table that accumulated them is free. What cannot be undone is the option this entry rejects — shipping `list_membership` with hard deletes — because by the time it is noticed, the removals that already happened have left nothing behind to recover.
 
 ---
 
@@ -761,6 +779,18 @@ There is exactly one `srs_state` row per study item. It hangs off `study_item`, 
 *Why this matters:* if scheduling attached to list membership, a word saved to two lists would carry two independent schedules. The user would review 先生 today because it appeared in "Street Signs" and again tomorrow via "Food Menu" — doubling their workload and corrupting the algorithm's model of their memory, since FSRS infers retention from the interval since the last review.
 
 Lists are organizational tags. Review sessions may *filter* by list ("review only my Food Menu words"), which gives the same flexibility with correct behavior.
+
+**D-79 — Spotter schedules reviews itself, *and* exports to Anki. The scheduler is built first; export is a Phase 8 format. Resolves the open question held in `progress/phase-07-srs-review.md`.**
+
+The question was whether to build a scheduler at all (D-26, D-29) or hand saved words to Anki and let it do the work. It had to be settled before Phase 6, because the schema Phase 6 writes assumes an answer: a built-in scheduler needs `srs_state` and `review_log` hanging off `study_item`, and an export-only app needs neither.
+
+*Both audiences are real, and they are not the same person.* Serious learners already run a stack — grammar in one app, kanji in another, and **Anki for vocabulary**, holding years of review history. A new scheduler competes with that and loses; for them the app's job is to produce a well-formed card and get out of the way. The beginner `overview.md` is aimed at does not run Anki, will not install it in order to use a camera dictionary, and would be handed a dead end. For that user, export-only is not a review feature at all — it is the absence of one.
+
+*Order is load-bearing and not arbitrary.* Building export first would ship the surface that hands the retention loop to another app before this app has a loop of its own, and D-61's argument — the scanner is the product, the study loop is what makes it worth keeping — does not survive that. FSRS lands in `:domain` per D-26 and D-29; Anki export becomes a second output format in Phase 8, whose export/import work (D-20) is already scheduled and already has to serialize exactly this data.
+
+*Cost to reverse: asymmetric, which is the whole reason to take this order.* Dropping the built-in scheduler later means deleting code and leaving two tables unread — harmless. Adding one after shipping export-only means introducing scheduling state over rows that real users already own.
+
+*What Phase 6 must therefore do:* shape `study_item` as `data-model.md` draws it. `srs_state` and `review_log` may arrive in Phase 7 as new tables — Room's `AutoMigration` handles an added table — but nothing built in Phase 6 may assume they will never exist.
 
 ---
 

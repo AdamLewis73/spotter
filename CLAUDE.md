@@ -17,7 +17,7 @@ Violating any of these destroys user data or forces a rewrite. Each links to ful
 1. **Never** call `fallbackToDestructiveMigration()` — it silently deletes the entire user database. Banned in all build types, including debug. (D-17)
 2. **Never** store dictionary row IDs in user data. Dictionary rebuilds reassign them, corrupting saved words with no error. Use the natural key: word text + reading. (D-11)
 3. User-data primary keys are **UUIDs**, never auto-increment — offline devices generate colliding integers, and it's unfixable afterward. (D-15)
-4. Every user-data row has `updated_at`, and deletions are **soft** (`deleted_at`), never hard `DELETE`. (D-16)
+4. Every user-data row has `updated_at`. Deletions are **soft** (`deleted_at`) for anything the user deletes; rows that exist only to serve a parent cascade with it. (D-16, scoped by D-80)
 5. Saved-item identity is **(text, reading)** — never text alone. 上手 is three different words. (D-12)
 6. `:domain` and `:data` modules **must not import `android.*`**. This is the iOS-portability line and cannot be retrofitted cheaply. (`architecture.md`)
 7. Room schema export stays **on**; generated schema JSON is committed to git. (D-18)
@@ -88,9 +88,9 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **Phase 5 is feature-complete.** Every `V-##` it owns is met (V-10, V-11, V-12, V-26, V-28) and the D-22 checkpoint is discharged — `ScanLayout.boxFor` makes a saved word's position knowable, and the schema field carries into Phase 6. What remains is Save, drawn and disabled until the Phase 6 user-data checkpoint settles the schema; the optional artboards 1b (ambiguity chips) and 1c (loupe); and a photographed fixture we own, since every committed one is generated.
 
-**Next is the Phase 6 user-data checkpoint** — D-15 to D-18 and D-43, the decisions that destroy user data if taken wrongly. Raise them before writing any schema.
+**Phase 6 — saved lists: in progress.** Its two entry checkpoints are settled. **D-79**: the app schedules reviews itself *and* exports to Anki — scheduler first, because building export first hands the retention loop away before there is one. **D-80**: soft delete (D-16) applies to rows the user deletes; `srs_state` and `scan_word` cascade with their parents; `updated_at` is universal. The standing user-data decisions (D-15–D-18, D-43) were reviewed and stand as written. Next is the schema itself — `:domain` models, then `UserDatabase` v1 in `:data`.
 
-**Read `docs/progress/phase-05-overlay.md` first**, then `phase-04-camera.md` — which carries the camera and ML Kit knowledge, including two measurement traps that produce confident wrong answers — then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors. Both `phase-03-stroke-order.md` and `phase-04-camera.md` carry how to read the Claude Design project without burning a context window on a 106 KB file.
+**Read `docs/progress/phase-06-saved-lists.md` first**, then `phase-05-overlay.md` and `phase-04-camera.md` — which carries the camera and ML Kit knowledge, including two measurement traps that produce confident wrong answers — then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors. Both `phase-03-stroke-order.md` and `phase-04-camera.md` carry how to read the Claude Design project without burning a context window on a 106 KB file.
 
 Run it with **`/launch`** (starts it for you to drive) or **`/inspect`** (drives it against specific words and reports). Build with `./gradlew :app:assembleDebug`, which needs `JAVA_HOME` pointing at Android Studio's JBR — there is no other JDK on this machine. AGP 9 removed the Kotlin Android plugin, so most published advice is now a build error.
 

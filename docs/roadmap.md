@@ -22,7 +22,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit. One deferred item: the live-preview detection indicator, which has no `V-##` | Raw recognized text into the Phase 2 pipeline |
 | 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save is drawn and disabled; it lands with the Phase 6 checkpoint | The real scan experience |
-| 6 | Saved lists | Not started | Multiple lists, many-to-many |
+| 6 | Saved lists | **In progress** — checkpoints settled (D-79, D-80); schema next | Multiple lists, many-to-many |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |
 
@@ -95,6 +95,8 @@ Stage 4 does four geometric jobs at once, and they must be designed together rat
 
 Saved lists, then FSRS review, then export/import.
 
+**Settled before Phase 6, as it had to be (D-79):** Spotter schedules reviews itself *and* exports to Anki — the scheduler first, because building export first hands the retention loop away before there is one, and the beginner this app is aimed at does not run Anki. So Phase 7 is unchanged and Phase 8 gains a second export format.
+
 **Open for Phase 7:** what goes on the **back of a review card** for a word with several senses. 甘い is "sweet; sugary; mild; naive; lenient" — all of it, or the primary sense only, or something the user chooses? This is a flashcard design question, not a data or scanning one (D-44), and it is the only part of the sense-disambiguation discussion that remains unresolved.
 
 **A shippable v1 is Phases 1–5.** Phases 6–8 turn it from a lookup tool into a study app. The staging matters: the full spec is a large build, and stalling at 60% is the common failure mode for solo projects of this size.
@@ -117,7 +119,8 @@ The project owner has asked to be consulted at these points rather than having a
 | Phase 2, first user-data write | `snapshot_gloss` on `study_item` (D-43) | Adding it later is a migration, **and** every word saved before it has a permanently empty snapshot — the gloss cannot be recovered for a word the dictionary has since dropped |
 | Phase 5 | ~~Bounding box stored in the scan record (D-22)~~ — **discharged 2026-08-26**: `ScanLayout.boxFor` makes the box knowable at save time; the schema field itself is Phase 6's to add | Cheap now; later requires re-running OCR over every saved image |
 | Phase 6 | Study-item identity `(text, reading)` plus the `type` discriminator (D-12, D-27) | All review history is keyed to it |
-| Phase 6 | **Built-in SRS, or export to Anki?** (D-26, D-29) | The schema Phase 6 builds assumes the answer. Serious learners already live in Anki; beginners don't have it. See the open question in `progress/phase-07-srs-review.md` |
+| ~~Phase 6~~ | ~~Which user tables carry tombstones (D-16)~~ — **settled 2026-08-28 (D-80):** soft delete where the user deletes, cascade for derived children | Once real removals have happened with no tombstone, there is nothing left to recover |
+| ~~Phase 6~~ | ~~**Built-in SRS, or export to Anki?** (D-26, D-29)~~ — **settled 2026-08-28: both (D-79).** FSRS is built in Phase 7; Anki export joins the Phase 8 export formats | The schema Phase 6 builds assumes the answer. Serious learners already live in Anki; beginners don't have it |
 
 ---
 
