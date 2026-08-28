@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  layering:
-    name: Layering rule (D-60)
+  rules:
+    name: Repository rules
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -42,6 +42,28 @@ jobs:
             exit 1
           fi
           echo "No android.* imports outside :app."
+
+      - name: No third-party fixtures in the repository
+        # The photographs used to calibrate the scan geometry are other people's
+        # and this repository is public, so they are gitignored under a `probe-`
+        # prefix and only ever live on a developer's machine. What survives of
+        # them is measured rectangles in RealNoticeLayoutTest and numbers in the
+        # docs.
+        #
+        # .gitignore already prevents this; the check exists because the cost of
+        # being wrong is a history rewrite, and because `git add -f` and an
+        # edited .gitignore both go around it. Same reasoning as the layering
+        # grep above, which is also already enforced elsewhere.
+        run: |
+          # Mirrors the two .gitignore rules exactly, so the check and the
+          # ignore cannot drift into disagreeing about what is forbidden.
+          if git ls-files | grep -E '^(app/src/androidTest/assets/probe-|fixtures-raw/)'; then
+            echo "::error::A probe- fixture is committed. These are third-party"
+            echo "images kept local-only — see the .gitignore comment. Remove it"
+            echo "before this reaches a public history."
+            exit 1
+          fi
+          echo "No third-party fixtures committed."
 
   unit:
     name: Unit tests
@@ -182,12 +204,31 @@ jobs:
           ls "$ANDROID_HOME/platforms"
 
       # :domain is a plain Kotlin/JVM module, so these are ordinary JUnit tests
-      # with no emulator (D-60).
+      # with no emulator (D-60). This is where the scan geometry is proven —
+      # reading order, ruby separation, line breaks and the crop transform
+      # (D-75-D-78) — which is the highest-risk logic in the app and the reason
+      # it was put in a JVM module in the first place (D-76).
       - name: Domain unit tests
         run: ./gradlew :domain:test
 
+      # :data is an Android library, so its JVM tests live under the debug
+      # variant. Small, but it holds the Kuromoji tokenizer, and CI ran nothing
+      # from this module until 2026-08-27.
+      - name: Data unit tests
+        run: ./gradlew :data:testDebugUnitTest
+
       - name: Assemble debug
         run: ./gradlew :app:assembleDebug
+
+      # Compiled, not run. The instrumented tests need a device, and an emulator
+      # in CI costs 10-20 minutes and is flaky — for coverage that largely
+      # duplicates the :domain cases above, which prove the same geometry in
+      # seconds. What CI could not catch until now is the test code failing to
+      # *compile*, which breaks anyone running the suite locally and shows up as
+      # a confusing Gradle error rather than as a test failure. That is worth two
+      # minutes; running them is not.
+      - name: Compile the instrumented tests
+        run: ./gradlew :app:assembleDebugAndroidTest
 
       # Proves the dictionary actually reached the APK. A build that quietly
       # produced an app with no dictionary would otherwise pass every check
