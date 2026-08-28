@@ -14,11 +14,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.spotterkanji.app.scan.ScanScreen
+import com.spotterkanji.app.scan.PeekContents
+import com.spotterkanji.app.scan.RecognitionState
+import com.spotterkanji.app.scan.ScanSheet
 import com.spotterkanji.app.scan.ScanViewModel
+import com.spotterkanji.app.scan.SheetStage
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.app.word.KanjiScreen
 import com.spotterkanji.app.word.WordLookupViewModel
@@ -127,30 +132,112 @@ private fun ScanRoute(
     onLookUp: (String) -> Unit,
     onOpenLookup: (() -> Unit)?,
 ) {
-    val viewModel: ScanViewModel = viewModel()
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val scan: ScanViewModel = viewModel()
+    val state by scan.state.collectAsStateWithLifecycle()
 
-    // Back on a frozen frame returns to the viewfinder rather than leaving the
-    // app. The freeze is a state of the scan screen, not a destination (D-02),
-    // but the system back button has no way to know that.
-    BackHandler(enabled = state.frame != null) {
-        // The peek sheet is a state within the frozen frame, just as the frozen
-        // frame is a state within the scan screen (D-02, D-31). Back unwinds one
-        // level at a time rather than jumping straight to the viewfinder.
-        if (state.peek != null) viewModel.onPeekDismissed() else viewModel.onRetake()
+    // The dictionary half of the scan screen is the same ViewModel the Phase 2
+    // route uses. Reusing it rather than duplicating a lookup inside
+    // ScanViewModel is what makes the sheet's expansion nearly free: tokens,
+    // alternates (D-70), the lone-kanji rule (D-49) and the in-place kanji swap
+    // (D-32) are all already here, and the peek is simply the same selection
+    // shown smaller.
+    val words: WordLookupViewModel = viewModel()
+    val wordState by words.state.collectAsStateWithLifecycle()
+
+    var stage by rememberSaveable { mutableStateOf(SheetStage.Peek) }
+
+    // Segment the photograph as soon as it is read, so the first tap does not
+    // pay for Kuromoji's dictionary load.
+    val recognition = state.recognition
+    LaunchedEffect(recognition) {
+        if (recognition is RecognitionState.Done && !recognition.layout.isEmpty) {
+            // autoSelect = false: the photograph is the query, and the word is
+            // whichever one the user taps. Calling onSelectionCleared() after a
+            // selecting call would not do — it cancels the lookup job, which is
+            // the same coroutine still doing the tokenizing.
+            words.onQueryChanged(recognition.layout.text, autoSelect = false)
+            stage = SheetStage.Peek
+        }
     }
+
+    val selected = wordState.selected
+    val openKanji = wordState.openKanji
+
+    /** One level of unwinding, in the order the user built the state up. */
+    fun back() {
+        when {
+            openKanji != null -> words.onKanjiClosed()
+            stage == SheetStage.Full -> stage = SheetStage.Peek
+            selected != null -> words.onSelectionCleared()
+            else -> scan.onRetake()
+        }
+    }
+
+    // Back unwinds one level at a time rather than jumping to the viewfinder:
+    // kanji screen → word screen → peek → frozen frame → camera. The freeze and
+    // the sheet are states of this screen, not destinations (D-02, D-31), so
+    // the system back button has no way to know any of this on its own.
+    BackHandler(enabled = state.frame != null) { back() }
 
     ScanScreen(
         state = state,
-        onShutterPressed = viewModel::onShutterPressed,
-        onFrameCaptured = viewModel::onFrameCaptured,
-        onCaptureFailed = viewModel::onCaptureFailed,
-        onCameraUnavailable = viewModel::onCameraUnavailable,
-        onCameraBound = viewModel::onCameraBound,
-        onRetake = viewModel::onRetake,
+        onShutterPressed = scan::onShutterPressed,
+        onFrameCaptured = scan::onFrameCaptured,
+        onCaptureFailed = scan::onCaptureFailed,
+        onCameraUnavailable = scan::onCameraUnavailable,
+        onCameraBound = scan::onCameraBound,
+        onRetake = scan::onRetake,
         onLookUp = onLookUp,
-        onOffsetTapped = viewModel::onOffsetTapped,
+        onOffsetTapped = { offset ->
+            val token = offset?.let { at ->
+                wordState.tokens.firstOrNull { at >= it.start && at < it.endExclusive }
+            }
+            if (token == null) {
+                words.onSelectionCleared()
+            } else {
+                stage = SheetStage.Peek
+                words.onTokenSelected(token)
+            }
+        },
+        selection = selected?.let { it.start until it.endExclusive },
         onOpenLookup = onOpenLookup,
+        sheet = {
+            if (selected != null) {
+                ScanSheet(
+                    stage = stage,
+                    onStageChanged = { stage = it },
+                    onDismiss = words::onSelectionCleared,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                ) { shown ->
+                    when {
+                        shown == SheetStage.Peek -> PeekContents(
+                            word = selected.text,
+                            glosses = wordState.entries.firstOrNull()
+                                ?.senses?.firstOrNull()?.glosses?.joinToString("; "),
+                            loading = wordState.searching,
+                            onFullDetails = { stage = SheetStage.Full },
+                        )
+
+                        openKanji != null -> KanjiScreen(
+                            detail = openKanji,
+                            onBack = words::onKanjiClosed,
+                            onSave = {},
+                        )
+
+                        else -> WordScreen(
+                            state = wordState,
+                            onQueryChanged = {},
+                            onTokenSelected = words::onTokenSelected,
+                            onKanjiSelected = words::onKanjiSelected,
+                            onAlternateSelected = words::onAlternateSelected,
+                            onSave = {},
+                            onDismiss = { stage = SheetStage.Peek },
+                            standalone = false,
+                        )
+                    }
+                }
+            }
+        },
     )
 }
 

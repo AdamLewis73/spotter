@@ -81,6 +81,14 @@ fun WordScreen(
     onSave: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Whether to show the text field and the drag handle.
+     *
+     * Both belong to the Phase 2 debug route. When a scan drives this screen the
+     * text is the photograph — there is nothing to type — and the handle belongs
+     * to the sheet that owns the drag, not to the content inside it (D-30).
+     */
+    standalone: Boolean = true,
 ) {
     val tokens = SpotterTheme.tokens
 
@@ -88,7 +96,7 @@ fun WordScreen(
         // Not in the design, and unavoidable: 2a is drawn as the sheet a scan
         // opens, and until Phase 4 there is no scan. This field is the only way
         // to put a word on the screen.
-        OutlinedTextField(
+        if (standalone) OutlinedTextField(
             value = state.query,
             onValueChange = onQueryChanged,
             label = { Text("Japanese text") },
@@ -119,7 +127,7 @@ fun WordScreen(
 
             else -> LazyColumn(contentPadding = PaddingValues(bottom = tokens.spaceLg)) {
                 if (state.entries.isNotEmpty()) {
-                    item { WordHeader(state.entries, onSave = onSave, onDismiss = onDismiss) }
+                    item { WordHeader(state.entries, onSave, onDismiss, showHandle = standalone) }
                 }
                 // One section per reading. 上手 produces five, and the app does
                 // not choose between them — it cannot know which one a
@@ -153,13 +161,14 @@ private fun WordHeader(
     entries: List<DictionaryEntry>,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
+    showHandle: Boolean,
 ) {
     val tokens = SpotterTheme.tokens
     val archaic = entries.count { it.readingStatus.isMarked }
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = tokens.spaceMd)) {
-        // Inert until this becomes a real bottom sheet (D-30, Phase 5).
-        Box(
+        // Real as of Phase 5, and drawn by the sheet itself when there is one.
+        if (showHandle) Box(
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
                 .padding(bottom = tokens.spaceMd)

@@ -1,7 +1,7 @@
 # Phase 5 — Tappable overlay
 
-**Status:** in progress — geometry, the transform and the overlay itself are
-built to artboard 1a. What is left is the sheet's expansion (D-30, D-32) and Save.
+**Status:** in progress — geometry, transform, overlay and the expanding sheet
+are built. Save is what remains, and it belongs to Phase 6.
 **Updated:** 2026-08-26
 
 ## Current state
@@ -115,22 +115,39 @@ will be wrong at exactly those positions.
 
 ## Next action
 
-**The sheet's second half.** The overlay, the transform and the peek sheet are
-built; `ScanOverlay.kt` draws artboard 1a and `ScanProjection` handles
-`ContentScale.Crop`. What artboard 1a implies but this does not yet do:
+**Phase 5 is essentially done.** The scan reads, lays out, draws, resolves a tap,
+peeks, expands into the word screen and swaps the kanji screen in place. What is
+left is either owned by another phase or optional:
 
-1. **Drag the peek sheet up into the word screen** (D-30). The handle is drawn,
-   deliberately, so the affordance does not appear later as if bolted on — but
-   the drag is not wired. The two are meant to be one expanding component, and
-   `ModalBottomSheet` has no back stack, so this needs the custom plumbing D-32
-   accepts the cost of.
-2. **Kanji screen swapping in place inside the sheet** (D-32), with a back arrow.
-3. **Save** — drawn and disabled. It writes user data, which is gated behind the
-   Phase 6 checkpoint (D-15–D-18, D-43). The button waits for the schema rather
-   than the schema being improvised for the button.
-4. **Ambiguity chips (1b) and the loupe (1c)**, if wanted. Both are drawn in the
-   design project as additions to 1a rather than alternatives to it; neither is
-   implemented and neither is on any `V-##`.
+1. **Save** — drawn and disabled, on both the peek and the word screen. It writes
+   user data, gated behind the Phase 6 checkpoint (D-15–D-18, D-43).
+2. **Ambiguity chips (1b) and the loupe (1c)** — additions to 1a in the design
+   project rather than alternatives to it. The *data* behind 1b already exists
+   and is rendered: `AlternateStrip` on the word screen shows every overlapping
+   dictionary word (D-07, D-70). 1b is that same list moved to chips at the touch
+   point on the photograph. Neither is on a `V-##`; both are optional for v1.
+3. **The camera's own states** — artboard `4k` "lens covered" and the rest of
+   section 4. Camera chrome rather than overlay, so it belongs with whatever
+   phase revisits the camera screen.
+
+**The sheet, as built.** `ScanSheet` is a height, not a destination (D-30): one
+component that animates between a 30% peek and a 92% full stage, dragged by its
+handle or moved by *Full details*. The kanji screen swaps its **contents** at
+full height rather than being a third stage (D-32).
+
+Back unwinds exactly one level at a time, which is the flow the project owner
+asked for on 2026-08-26:
+
+```
+kanji screen → word screen → peek → frozen frame → viewfinder
+```
+
+**One trap worth keeping.** The scan seeds the lookup with
+`onQueryChanged(text, autoSelect = false)`. Selecting a word for the user would
+open a sheet over a photograph they have not looked at yet, and the obvious
+alternative — seed, then clear the selection — silently breaks the screen, because
+clearing cancels the lookup job and that is the same coroutine still doing the
+tokenizing. Taps then resolve to nothing, with no error anywhere.
 
 **Looking at it.** `OverlayShotTest` renders the overlay to PNG for a design
 check. It asserts nothing, so it is gitignored as a local tool. `connectedAndroidTest`
@@ -191,9 +208,9 @@ context window on a 106 KB file.
       photograph's **own pixels** are repainted over the scrim (D-78, which
       superseded D-77's retyping after both were compared on real photographs)
 - [x] Peek sheet — word, glosses, two actions, and **no reading** (D-47)
-- [ ] The expand-to-word-screen gesture (D-30, D-31); the handle is drawn, the
-      drag is not wired
-- [ ] Kanji screen swaps in place inside the sheet, with a back arrow (D-32)
+- [x] The expand-to-word-screen gesture (D-30, D-31) — one component, two
+      heights, dragged by the handle or opened by *Full details*
+- [x] Kanji screen swaps in place inside the sheet, with a back arrow (D-32)
 - [ ] Checkpoint: bounding box stored in the scan record (D-22)
 - [ ] Relevant `V-##` cases from `verification.md` added to this list
 
