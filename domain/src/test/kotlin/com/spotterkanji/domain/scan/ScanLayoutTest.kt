@@ -385,4 +385,46 @@ class ScanLayoutTest {
     fun no_lines_lays_out_to_nothing() {
         assertTrue(ScanLayout.of(emptyList()).isEmpty)
     }
+
+    // ---- the saved word's box (D-22) -------------------------------------
+
+    /**
+     * D-22's requirement, from the Phase 5 side: a word's position in the
+     * photograph is recoverable, so a later move to word crops never has to
+     * re-run OCR over saved images.
+     */
+    @Test
+    fun a_word_reports_the_box_it_occupied() {
+        val layout = ScanLayout.of(listOf(across("先生と生産", left = 100, top = 50, glyph = 20)))
+
+        val box = layout.boxFor(0..1)!!
+        assertEquals(100, box.left)
+        assertEquals(50, box.top)
+        assertEquals(140, box.right)
+        assertEquals(70, box.bottom)
+    }
+
+    @Test
+    fun a_vertical_word_reports_its_column_slice() {
+        val layout = ScanLayout.of(listOf(down("先生と生産", left = 100, top = 50, glyph = 20)))
+
+        val box = layout.boxFor(3..4)!!
+        assertEquals(100, box.left)
+        assertEquals(110, box.top)
+        assertEquals(120, box.right)
+        assertEquals(150, box.bottom)
+    }
+
+    /** Separators own an offset and no rectangle; a range of them has no box. */
+    @Test
+    fun a_range_covering_no_characters_has_no_box() {
+        val layout = ScanLayout.of(
+            listOf(
+                across("先生", left = 0, top = 0),
+                across("産業のあゆみ", left = 0, top = 20),
+            ),
+        )
+        val separator = layout.text.indexOf(ScanLayout.SEPARATOR)
+        assertNull(layout.boxFor(separator..separator))
+    }
 }
