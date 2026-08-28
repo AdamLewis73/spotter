@@ -78,7 +78,7 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **Phase 4 — CameraX + ML Kit: complete.** The app **opens on a live viewfinder**, the shutter freezes a still (D-02), ML Kit reads the Japanese off it, and the text goes into the Phase 2 tokenize-and-look-up path — photograph a sign, tap a word, get its readings and senses. The camera is the launcher destination and the Phase 2 text box is a **debug path**, not a second front door (D-73); `/inspect` is unaffected. The ML Kit model is **bundled** at a measured ~14.8 MB per device (D-74).
 
-**Current phase:** Phase 5 — the tappable overlay, in progress. **This is the core of v1** and the highest-risk work in the project: stage 4's offset-to-pixel bridge, plus vertical text (V-10), tap resolution (V-11) and furigana separation (V-26). `RecognizedText` already carries a box and character offset per element, which is what stage 4 consumes.
+**Phase 5 — the tappable overlay: feature-complete.** **This is the core of v1** and was the highest-risk work in the project: stage 4's offset-to-pixel bridge, plus vertical text (V-10), tap resolution (V-11) and furigana separation (V-26). All three are met, and stage 4 exists as `domain/scan/ScanLayout`.
 
 **The geometry module is built** (`domain/scan/ScanLayout`, D-76): reading order, writing direction, ruby separation and the line-break policy, on a portable box type in `:domain` so a case costs seconds rather than an emulator round trip. Stage 2 now emits a laid-out `ScanLayout` rather than a raw string, so 縦書き columns read right to left (D-75), ruby stays out of the token stream (V-26) and lines join only on evidence (V-28).
 
@@ -86,7 +86,9 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **The sheet expands** (D-30): one component at two heights — a 30% peek and a 92% word screen — dragged by its handle or opened by *Full details*, with the kanji screen swapping its contents in place at full height (D-32). Back unwinds one level at a time: kanji → word → peek → frozen frame → viewfinder. The scan drives the same `WordLookupViewModel` the text route uses, so alternates (D-70) and the lone-kanji rule (D-49) come for free.
 
-**Phase 5 is essentially done.** What remains is Save, which is drawn and disabled until the Phase 6 user-data checkpoint settles the schema, plus the optional artboards 1b (ambiguity chips) and 1c (loupe).
+**Phase 5 is feature-complete.** Every `V-##` it owns is met (V-10, V-11, V-12, V-26, V-28) and the D-22 checkpoint is discharged — `ScanLayout.boxFor` makes a saved word's position knowable, and the schema field carries into Phase 6. What remains is Save, drawn and disabled until the Phase 6 user-data checkpoint settles the schema; the optional artboards 1b (ambiguity chips) and 1c (loupe); and a photographed fixture we own, since every committed one is generated.
+
+**Next is the Phase 6 user-data checkpoint** — D-15 to D-18 and D-43, the decisions that destroy user data if taken wrongly. Raise them before writing any schema.
 
 **Read `docs/progress/phase-05-overlay.md` first**, then `phase-04-camera.md` — which carries the camera and ML Kit knowledge, including two measurement traps that produce confident wrong answers — then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors. Both `phase-03-stroke-order.md` and `phase-04-camera.md` carry how to read the Claude Design project without burning a context window on a 106 KB file.
 

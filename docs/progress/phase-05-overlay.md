@@ -1,7 +1,8 @@
 # Phase 5 — Tappable overlay
 
-**Status:** in progress — geometry, transform, overlay and the expanding sheet
-are built. Save is what remains, and it belongs to Phase 6.
+**Status:** feature-complete. Every `V-##` case this phase owns is met and the
+D-22 checkpoint is discharged. The one thing outstanding is a photographed
+fixture we own; Save belongs to Phase 6.
 **Updated:** 2026-08-26
 
 ## Current state
@@ -211,8 +212,41 @@ context window on a 106 KB file.
 - [x] The expand-to-word-screen gesture (D-30, D-31) — one component, two
       heights, dragged by the handle or opened by *Full details*
 - [x] Kanji screen swaps in place inside the sheet, with a back arrow (D-32)
-- [ ] Checkpoint: bounding box stored in the scan record (D-22)
-- [ ] Relevant `V-##` cases from `verification.md` added to this list
+- [x] **Checkpoint: bounding box stored in the scan record (D-22)** — discharged
+      2026-08-26. Nothing stores it yet because the user-data schema is Phase 6's;
+      what this phase owed was that the box still be *knowable* at save time, and
+      `ScanLayout.boxFor(offsets)` provides it, tested. The schema field carries
+      into Phase 6 as an obligation.
+- [x] **Relevant `V-##` cases swept** — see below.
+
+## Verification cases this phase owns
+
+`verification.md`'s "Phase 4–5" section holds five. Phase 4 owns none of them
+(`phase-04-camera.md` records why), so all five land here.
+
+| Case | Status |
+|---|---|
+| **V-10** vertical text (縦書き) | **Met.** Reading order was measured, found backwards, and fixed in stage 2 (D-75); tap targets are asserted per character. Caveat below. |
+| **V-11** character-level tap resolution | **Met.** Asserted at every character of a run, in `:domain` and again through real Compose layout in `ScanOverlayTest` — the second one covering the `ContentScale.Crop` transform that the first cannot see. |
+| **V-12** Japanese glyph forms | **Met, and now moot for the overlay.** It was met in Phase 2 by bundling Noto Sans JP. Since D-78 the overlay draws **no glyphs of its own** — the photograph supplies them — so the case now applies only to the sheet and the screens inside it, which take `SpotterJapanese` explicitly. |
+| **V-26** furigana excluded from the token stream | **Met.** Ruby is separated by two agreeing signals, size *and* displacement. Caveat below. |
+| **V-28** a line break neither invents nor hides a word | **Met.** Decided geometrically, and checked against a real notice whose eight columns break into exactly its three sentences. |
+
+**The caveat on V-10 and V-26 is the same one**, and it is the last open item in
+the phase: every *committed* fixture is generated. The real photographs used to
+calibrate the rules are third-party and local-only (see `.gitignore`), so what
+survives of them is measured rectangles in `RealNoticeLayoutTest` and numbers in
+these docs. Both cases ask for a permanent photographed fixture, and neither has
+one we own. V-26 in particular has no photographed fixture at all.
+
+**Cases from other phases that the scan path now inherits.** The sheet drives the
+same `WordLookupViewModel` and the same screens as the Phase 2 text route, so
+V-06 (alternates), V-07 (conjugated verbs), V-08 (reading scripts), V-21
+(obsolete readings), V-23 (sense filtering) and V-27 (one sentence per reading)
+hold on a scanned word for the same reason they hold on a typed one — it is
+literally the same code. That is a consequence of reusing the ViewModel rather
+than duplicating it, and it is worth stating because the alternative would have
+quietly forked six verification cases.
 
 ## Open questions
 
