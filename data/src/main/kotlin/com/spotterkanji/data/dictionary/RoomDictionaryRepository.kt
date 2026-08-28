@@ -81,6 +81,7 @@ class RoomDictionaryRepository(
                     )
                 },
                 frequencyRank = word.freqRank,
+                entSeq = word.entSeq,
                 isCommon = word.isCommon != 0,
                 readingStatus = ReadingStatus.of(readingTags),
                 isGikun = ReadingStatus.isGikun(readingTags),

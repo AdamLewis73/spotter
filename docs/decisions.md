@@ -107,6 +107,12 @@ Scan for the relevant entry rather than reading the whole file.
 | D-76 | Scan geometry lives in `:domain` behind a portable box type | Architecture |
 | D-77 | ~~The overlay redraws recognized text~~ — SUPERSEDED by D-78 | UI |
 | D-78 | The overlay **reveals** the photograph's own pixels; nothing is retyped | UI |
+| D-79 | Built-in FSRS **and** Anki export; scheduler first, export in Phase 8 | SRS |
+| D-80 | Soft delete is for rows the user deletes; derived children cascade | Migrations |
+| D-81 | Save stores the **top-ranked** entry — the one whose glosses are shown | UI |
+| D-82 | Re-saving a **deleted** word resets `created_at`; re-saving a live one does not | UI / Data |
+| D-83 | A word's scan history outlives unsaving — photos belong to the word | Images |
+| D-84 | A reading's **own** priority breaks ties between readings of one word | Data |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -674,6 +680,23 @@ Three layers, all required:
 
 *Note the asymmetry that made this expensive:* committing the datasets (D-55) was a sound decision, but it combined with an automatic reviewer to produce a cost neither change implied on its own. Any future decision to commit large files should check what reads them automatically.
 
+**D-84 — A reading's own `re_pri` breaks ties between the readings of one word. The combined writing+reading rank still ranks words against each other.**
+
+`freq_rank` collapses JMdict's priority markers into one sortable number, taking the union of the writing's `ke_pri` and the reading's `re_pri` (`ingest_jmdict.py`, and the table in `data-model.md`). That is correct for its original job — ranking whole words for V-04's example lists — and wrong for a job it was later asked to do, which is ordering the readings *within* one written form. A strongly-marked writing floods every reading it pairs with, so readings that JMdict distinguishes clearly arrive equal. V-29 has the measurements; 一人 leads with いちにん rather than ひとり because of it.
+
+*The fix is additive:* store a second, **reading-level** rank derived from `re_pri` alone, and consult it as the tiebreak before falling back to kana order. The existing combined rank is unchanged, so nothing that ranks words is affected.
+
+*Two alternatives were measured and rejected*, and they are recorded because both look reasonable and neither is:
+
+- **Tiebreak by dictionary row id.** JMdict lists a reading element's primary form first, so row order within one entry really does carry editorial intent — it fixes 一人 and 上手. But it is meaningless *across* entries, and 米 and 先 are exactly that case: it promotes 米 to メートル over こめ, and 先 to さっき over さき. 4,803 written forms change, most of them for no reason.
+- **Tiebreak by `ent_seq` then row id.** Same outcome to the character, for the same reason — entry numbers are not a frequency signal either.
+
+*Why reading-level rank is better than both:* it moves only the words where the data actually distinguishes the readings, and leaves the genuinely-tied ones (米, 先) exactly where they are. A tiebreak that guesses is worse than one that declines to.
+
+*Cost:* a column on `word`, a rebuild, and a `DictionaryDatabase.SCHEMA_VERSION` bump — the dictionary is disposable and never migrated (D-38), so the bump is a re-extract rather than a migration. **Not yet implemented**; V-29 is the case that will confirm it.
+
+*Note this does not touch identity.* Which reading leads a screen is a display and default-selection question. (text, reading) remains the identity (D-12), and D-81 continues to save whichever entry leads — it will simply be leading for a better reason.
+
 ---
 
 ## User data and migrations
@@ -683,7 +706,7 @@ Three layers, all required:
 **D-15 — UUID primary keys on all user data, never auto-increment integers.**
 Two devices creating records while offline will both generate `id = 5`, and there is no way to reconcile them afterward. This is unfixable once real user data exists. UUIDs cost nothing now and are a precondition for the sync described in D-19.
 
-**D-16 — Every user row carries `updated_at`; deletions are soft (`deleted_at`), never hard `DELETE`.**
+**D-16 — Every user row carries `updated_at`; deletions are soft (`deleted_at`), never hard `DELETE`.** *Scoped by D-80 — the soft-delete clause governs rows the user deletes; `updated_at` stays universal.*
 `updated_at` is required for sync conflict resolution. Soft delete is required for deletion *propagation*: if phone A hard-deletes a record, tablet B has no way to learn that it was deleted — B simply observes that A is missing a record it has, and helpfully re-adds it. A tombstone row communicates the deletion.
 
 **D-17 — `fallbackToDestructiveMigration()` is banned in every build type.**
@@ -706,6 +729,22 @@ D-15, D-16, and the repository pattern (`architecture.md`) are the parts that ar
 An in-app action that writes a versioned JSON or zip file and hands it to Android's share sheet or file picker, importable on a fresh install or a different device.
 
 Beyond its direct user value, it earns its place early for two reasons: it is the recovery path if a production migration ever fails, and defining a clean serializable representation of all user data is precisely the payload a future sync API would send. Building export first is therefore a head start on D-19, not a detour from it.
+
+**D-80 — D-16's soft delete applies to rows the *user* deletes. Rows that exist only to serve a parent are removed with it. `updated_at` stays universal.**
+
+Read literally, D-16 covers all six tables in the Phase 6 schema. Read as reasoning, it covers four. This entry records which, so a later session does not find the code and the rule disagreeing and "fix" the wrong one.
+
+*The rule exists for deletion propagation.* A tombstone is how a second device — or a restored backup — learns that a row was deliberately removed rather than merely missing. Absence alone is ambiguous, and the resolution it invites is to re-add. That argument is entirely about **deletions the user performs**, and it has no purchase on rows the user cannot address.
+
+**Tombstones (`deleted_at`): `study_item`, `saved_list`, `list_membership`, `scan`.** Each is something the user deletes by tapping something.
+
+**Cascade: `srs_state`, `scan_word`.** `srs_state` is one row per `study_item` (D-29) — the schedule *for* that item, not an object the user owns; a schedule outliving its word is not data, it is a resurrection bug with somewhere to live. `scan_word` is where a word sat on a photograph (D-22) and dies with its `scan`.
+
+**`list_membership` is the case that forced this entry, and the draft schema in `data-model.md` had it wrong** — it carried neither column. "Remove this word from Street Signs" is the deletion users perform most often, and hard-deleting the join row means a sync or a restore silently puts the word back in the list. That is precisely D-16's failure mode, in the table most exposed to it and the one place where a user would read it as the app ignoring them.
+
+**`updated_at` takes no exception, cascading tables included.** It is for conflict resolution, not deletion: a schedule advanced on two devices needs the same last-writer comparison as anything else.
+
+*Cost to reverse:* adding tombstones to a cascading table later is a migration over rows that are all still alive, and dropping them from a table that accumulated them is free. What cannot be undone is the option this entry rejects — shipping `list_membership` with hard deletes — because by the time it is noticed, the removals that already happened have left nothing behind to recover.
 
 ---
 
@@ -761,6 +800,18 @@ There is exactly one `srs_state` row per study item. It hangs off `study_item`, 
 *Why this matters:* if scheduling attached to list membership, a word saved to two lists would carry two independent schedules. The user would review 先生 today because it appeared in "Street Signs" and again tomorrow via "Food Menu" — doubling their workload and corrupting the algorithm's model of their memory, since FSRS infers retention from the interval since the last review.
 
 Lists are organizational tags. Review sessions may *filter* by list ("review only my Food Menu words"), which gives the same flexibility with correct behavior.
+
+**D-79 — Spotter schedules reviews itself, *and* exports to Anki. The scheduler is built first; export is a Phase 8 format. Resolves the open question held in `progress/phase-07-srs-review.md`.**
+
+The question was whether to build a scheduler at all (D-26, D-29) or hand saved words to Anki and let it do the work. It had to be settled before Phase 6, because the schema Phase 6 writes assumes an answer: a built-in scheduler needs `srs_state` and `review_log` hanging off `study_item`, and an export-only app needs neither.
+
+*Both audiences are real, and they are not the same person.* Serious learners already run a stack — grammar in one app, kanji in another, and **Anki for vocabulary**, holding years of review history. A new scheduler competes with that and loses; for them the app's job is to produce a well-formed card and get out of the way. The beginner `overview.md` is aimed at does not run Anki, will not install it in order to use a camera dictionary, and would be handed a dead end. For that user, export-only is not a review feature at all — it is the absence of one.
+
+*Order is load-bearing and not arbitrary.* Building export first would ship the surface that hands the retention loop to another app before this app has a loop of its own, and D-61's argument — the scanner is the product, the study loop is what makes it worth keeping — does not survive that. FSRS lands in `:domain` per D-26 and D-29; Anki export becomes a second output format in Phase 8, whose export/import work (D-20) is already scheduled and already has to serialize exactly this data.
+
+*Cost to reverse: asymmetric, which is the whole reason to take this order.* Dropping the built-in scheduler later means deleting code and leaving two tables unread — harmless. Adding one after shipping export-only means introducing scheduling state over rows that real users already own.
+
+*What Phase 6 must therefore do:* shape `study_item` as `data-model.md` draws it. `srs_state` and `review_log` may arrive in Phase 7 as new tables — Room's `AutoMigration` handles an added table — but nothing built in Phase 6 may assume they will never exist.
 
 ---
 
@@ -1117,6 +1168,46 @@ That second point is the decisive one and it is a *correctness* argument rather 
 *Endorsed by the project owner on 2026-08-26, in the terms that matter for later:* how readable the overlay is depends partly on the photograph, and a bad photograph is the user's to retake. **Do not spend effort compensating for input quality at the cost of honesty** — no sharpening or denoising pass, no "redraw when the photo is poor" fallback, no automatic retake. Those all reintroduce D-77's failure by a side door, because every one of them ends in showing the user something the sign does not say. Retaking a photo is cheap and obvious; being confidently told the wrong word is neither.
 
 *Cost to reverse:* low, and confined to one composable. `ScanLayout` supplies the same rectangles either way.
+
+**D-81 — Save stores the top-ranked entry: the one whose glosses are already on screen. It is a toggle, and it is disabled when the lookup found nothing.**
+
+Wiring Save exposed a genuine collision between two existing decisions. **D-47** says the peek sheet shows the word and its meanings and *never a reading*, because the app cannot tell which reading a photograph meant and a learner who knew it would not be scanning the word. **D-12** says a saved item's identity is (text, reading) and never text alone. So the one button on the sheet has to commit to a reading the sheet deliberately refuses to display.
+
+*Three ways out, and why this one.* Prompting for a reading puts the choice back on the user in the exact place D-47 argues they cannot make it, and adds a step to the app's most common action — D-61 rules that out on its own. Disabling Save on the peek until the word screen is opened makes 上手 behave differently from 先生 for a reason invisible on screen. Saving with the reading left empty violates D-12 and manufactures the unresolvable row D-40 then has to render forever.
+
+**So Save stores the entry whose meaning the user is looking at.** The peek already prints the top-ranked entry's first sense (ordered most-common-first per V-04), so the button saves what was on screen rather than something adjacent to it. A user who wants a different reading opens *Full details*, where readings are sections (D-48) — and the word screen's own Save is the same control on the same entry, so the two never disagree.
+
+*What this accepts:* scanning 上手 on a sign and tapping Save stores じょうず, which is the commonest reading and not necessarily the one on that sign. The learner is not misled about a meaning — the gloss they saved is the gloss they read — but they may have filed the word under the wrong reading. Judged the right trade because the alternative asks a beginner to disambiguate a reading before they have been told what the word means, which is the wrong order for a learning app, and because it is visible and correctable on the word screen rather than silent.
+
+*It is a toggle, not a one-way action.* The button reports saved state, and a control that shows state without undoing it is a trap — the only route back would be finding the word again somewhere else. Tapping again unsaves, which is a soft delete (D-16) and therefore loses nothing: re-saving revives the same row, keeping any review history attached to it.
+
+*Disabled while the lookup is running or after it fails.* Saving a word with no gloss to snapshot (D-43) and no reading to key on produces precisely the row D-40 obliges the app to render forever, with nothing in it.
+
+*Cost to reverse:* near zero. The choice is one expression naming which entry to save, and nothing about the schema assumes it — a later ambiguity chip (artboard 1b) could offer the reading explicitly without touching a table.
+
+**D-82 — Re-saving a word that was deleted resets `created_at`. Re-saving one that is already saved does not. The row id survives both.**
+
+Three timestamps were bundled into one behaviour and they come apart cleanly once the question is asked as *what does the user see*.
+
+*Reviving keeps the row id*, and that is the part with a hard requirement behind it: Phase 7's `review_log` hangs off `study_item.id`, so minting a new id on re-save would orphan every review of that word. The unique index on (text, reading, type) covers tombstones, so there is nowhere to put a second row in any case.
+
+*But `created_at` should move.* The original design kept it on the grounds that when a word was first saved is a fact. Nothing uses that fact, and holding it produces a visible defect: the Saved list is ordered newest-first, so a word the user just re-saved would reappear in the middle of the list rather than at the top, where they would go looking for it. Their mental model is *I saved this now*, and the list should agree.
+
+*Re-saving a word that is already saved leaves it alone.* Tapping a button that is already on is not a save, and reordering the list underneath the user because they double-tapped would be surprising. The snapshot gloss still refreshes in both cases, because a live lookup just succeeded and its result is newer than the stored one (D-43).
+
+*Cost to reverse:* zero. No column changes; this is which of two `UPDATE` statements runs.
+
+**D-83 — A word's scan history outlives unsaving. Photos belong to the word, not to the save.**
+
+Unsaving 先生 tombstones the study item and its list memberships. It does **not** discard the scans that word was found in. Save it again a year later and every place it has ever been photographed is still attached.
+
+*Endorsed by the project owner on 2026-08-28, and it resolves an incoherence D-80 would otherwise have left.* `scan_word` cascades with its parent rather than carrying a tombstone — but the parent is only ever *soft* deleted, so the cascade never fires and the rows survive by accident. This makes that survival deliberate, which matters because "it happens to work" is not a thing a later cleanup will respect.
+
+*Why it is right rather than merely convenient:* `overview.md` makes real-world capture a product principle — *that sign outside the ramen shop* is a stronger memory hook than a bare flashcard — and a word accumulating the places it has been met is that principle compounding rather than resetting. It also matches D-25's split, where scan history and saved-word images already have separate lifecycles: history is a record of what the camera saw, and the user unsaving a word is not a claim that they never saw it.
+
+*What this does not license:* it is not a reason to keep images forever regardless of cost. D-25's auto-purge of unsaved casual scans still applies, and the storage screen it requires is still owed. The claim here is narrow — unsaving is not itself a deletion of history.
+
+*Cost to reverse:* low while `scan_word` does not exist, which is why it was settled now. Once photographs are attached to words in the field, changing the rule means deciding what to do with records already kept under it.
 
 ---
 

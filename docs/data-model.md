@@ -75,6 +75,8 @@ Note these live on **writing and reading elements separately** (`ke_pri`, `re_pr
 
 Confirmed against the data: 学校 / 生活 / 生産 land at nf01, 先生 at nf02, 誕生日 at 49. Only **44,311 of 322,323 words** carry any marker, so the NULL case is the common one and must sort last, not first (V-04).
 
+> **Altered by D-84.** Taking the union of `ke_pri` and `re_pri` ranks *words* correctly and orders the readings *within* one word wrongly: a strongly-marked writing floods every reading it pairs with, so readings JMdict separates clearly arrive equal. 一人 leads with いちにん rather than ひとり because of it. D-84 adds a second, reading-level rank from `re_pri` alone as the tiebreak; the combined rank above is unchanged. **Not yet implemented** — V-29 is the case that confirms it.
+
 **KANJIDIC2 details that affect the schema.** Confirmed by inspection 2026-08-05.
 
 - **`radical` is a number, not a character.** 生 yields `<rad_value rad_type="classical">100</rad_value>`. Displaying it would need a 214-entry number→glyph mapping KANJIDIC2 does not contain. **Moot for v1** — D-50 drops the radical entirely, which retires this task. Recorded because the finding outlives the decision: anyone reinstating radicals inherits the mapping problem.
@@ -213,7 +215,9 @@ Unranked words are stored as `9999` rather than NULL precisely so a plain ascend
 
 ### User DB — writable, irreplaceable
 
-Every table follows D-15 (UUID keys), D-16 (`updated_at` + soft delete), and D-24 (image paths, not blobs).
+Every table follows D-15 (UUID keys), D-16 (`updated_at` + soft delete) as scoped by **D-80**, and D-24 (image paths, not blobs).
+
+**D-80 splits the tables in two.** Rows the user deletes by tapping something — `study_item`, `saved_list`, `list_membership`, `scan` — are soft-deleted and keep a tombstone, because that is how a restored backup or a second device learns the removal was deliberate. Rows that exist only to serve a parent — `srs_state`, `scan_word` — cascade with it. `updated_at` is on every table without exception, cascading ones included, because it serves conflict resolution rather than deletion.
 
 ```
 study_item
@@ -227,26 +231,33 @@ study_item
   created_at, updated_at, deleted_at             (D-16)
   UNIQUE(text, reading, type)
 
-srs_state                                        one row per study_item (D-29)
-  study_item_id      FK
+srs_state                       PHASE 7. one row per study_item (D-29)
+  study_item_id      FK, ON DELETE CASCADE — no tombstone (D-80)
   due_at             when this item should next be reviewed
   stability          FSRS: days until recall probability falls to ~90%
   difficulty         FSRS: intrinsic difficulty of this item, ~1–10
   review_count
   last_reviewed_at   FSRS needs elapsed time since this to compute recall
+  updated_at                                     (D-80 — universal)
 
-review_log
-  id UUID, study_item_id
+review_log                      PHASE 7.
+  id UUID, study_item_id        ON DELETE CASCADE — no tombstone (D-80)
   rating             the user's self-assessment: Again | Hard | Good | Easy
   reviewed_at, elapsed_ms
                      kept as history so the schedule can be recomputed if
                      the algorithm is ever retuned or replaced
+  updated_at                                     (D-80 — universal)
 
 saved_list
   id UUID, name, created_at, updated_at, deleted_at
 
 list_membership                                  join table (D-28)
-  list_id, study_item_id, added_at
+  id            UUID PK                          (D-15)
+  list_id, study_item_id
+  added_at
+  updated_at, deleted_at   TOMBSTONED — "remove from list" is a user
+                           deletion and must survive a restore (D-80)
+  UNIQUE(list_id, study_item_id)
 
 scan
   id UUID, created_at
@@ -256,7 +267,9 @@ scan
   app_version        which build created this record
 
 scan_word            links a scanned word to where it appeared
-  scan_id, study_item_id
+  id            UUID PK                          (D-15)
+  scan_id, study_item_id    ON DELETE CASCADE — no tombstone (D-80)
+  updated_at                                     (D-80 — universal)
   bbox_x, bbox_y, bbox_w, bbox_h                 (D-22)
   char_offset, char_length
 ```

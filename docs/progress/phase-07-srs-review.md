@@ -1,7 +1,7 @@
 # Phase 7 — SRS review
 
 **Status:** not started
-**Updated:** 2026-08-09
+**Updated:** 2026-08-28
 
 ## Current state
 
@@ -31,18 +31,14 @@ Nothing yet — needs Phase 6's saved items to schedule.
 
 ## Open questions
 
-- **Should this phase build an SRS at all, or export to Anki? Decide before Phase 6, not here.**
-  Competitive research in August 2026 found that serious learners run a *stack* — one app for
-  grammar, one for kanji, and **Anki for vocabulary** — rather than one app. Takoboto exports to
-  AnkiDroid; Dokuen's headline feature is one-tap Anki export. A built-in scheduler competes with
-  the tool these users already have years of review history in, and loses. Anki export is also a
-  fraction of the work of D-26.
-  Counter-argument, and the reason this is open rather than decided: export assumes the user
-  already runs Anki, which the beginner this app is aimed at very likely does not, and it hands
-  the retention loop to somebody else's app. Both may be right — export for the immersion crowd,
-  built-in for beginners.
-  This affects D-26 and D-29, and it must be settled **before Phase 6** builds the schema those
-  decisions imply.
+- ~~**Should this phase build an SRS at all, or export to Anki?**~~ — **resolved
+  2026-08-28: both, scheduler first (D-79).** The reasoning is now in
+  `decisions.md`; the short version is that the two audiences are different
+  people. Serious learners run a stack with Anki at its centre and a new
+  scheduler loses to it; the beginner `overview.md` targets does not run Anki
+  and would be handed a dead end. So this phase proceeds exactly as D-26 and
+  D-29 describe, and Anki export becomes a second format in Phase 8 (D-20).
+
 - **What goes on the back of a review card for a word with several senses?**
   甘い is "sweet; sugary; mild; naive; lenient" — all of it, the primary sense
   only, or something the user chooses? This is a flashcard design question, not
