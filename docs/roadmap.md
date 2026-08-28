@@ -17,7 +17,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 
 | # | Phase | Status | Output |
 |---|---|---|---|
-| 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
+| 1 | Dictionary builder (desktop Python) | **Complete**, with one case opened later: **V-29** (reading-level frequency, fix in D-84) | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
 | 2 | Android app, text input only | **Feature-complete** — every `V-##` case this phase owns is met; the user-data checkpoint lands with Save in Phase 6 | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit. One deferred item: the live-preview detection indicator, which has no `V-##` | Raw recognized text into the Phase 2 pipeline |

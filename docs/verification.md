@@ -183,6 +183,25 @@ FROM kanji_in_word WHERE reading_type IS NULL;
 
 This is the whole reason unmatched spans are stored with NULL rather than dropped. Deleting them destroys the evidence and the Examples tab simply gets thinner, which nobody notices. Spot-check that 仕事, 出口, 学校 and 一生 all resolve — those are the high-frequency compounds that fail under exact matching.
 
+### V-29 · Frequency ranking separates a word's own readings (D-04, D-84, V-04)
+
+**Not met as of 2026-08-28.** V-04 checks that ranking is applied *between* words. This checks it is applied *within* one — and it is not.
+
+**Paste 一人. The screen must lead with ひとり, not いちにん.**
+
+The trap is that both are perfectly ordinary readings. Neither carries an `re_inf` tag, so V-21's status ordering — which is what rescues 上手 from leading with じょうしゅ — has nothing to act on here. Only frequency separates them, and the stored frequency says they are equal.
+
+The cause is in the builder, not the app. `ingest_jmdict.py` computes a word's priority as `r_pri | writings.get(keb)`, unioning the *writing's* markers into every reading it pairs with. That is right for ranking a word and wrong for ordering readings inside one, because a strongly-marked writing floods every reading and erases the signal JMdict actually carries:
+
+| Word | Writing `ke_pri` | Reading `re_pri` | Leads today | Expected |
+|---|---|---|---|---|
+| **一人** | ichi1 news1 nf02 | ひとり: nf02 nf16 spec1 · いちにん: **none** | いちにん | **ひとり** |
+| **その他** | spec1 | そのほか: ichi1 spec1 · そのた: **none** | そのた | **そのほか** |
+
+**Also confirm the cases with no reading-level signal do not move.** 米 (こめ ichi1 · メートル gai1 ichi1) and 先 (さき ichi1 · さっき ichi1) tie at reading level too, so they must keep their current leading reading. This half of the case is what fails under the rejected alternatives in D-84, and it is the reason the fix has to be a *reading-level rank* rather than any reordering of the existing one.
+
+**Why it is worth a case rather than a bug report:** it renders perfectly. 一人 shows a real reading, correctly spelled, with correct meanings, badged common — and it is the wrong one, for one of the first hundred words a learner meets.
+
 ---
 
 ## Phase 2 — Tokenization and lookup

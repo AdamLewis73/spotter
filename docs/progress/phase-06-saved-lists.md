@@ -108,12 +108,12 @@ After that, in order:
   otherwise have done by accident, since it cascades from a parent that is only
   ever soft-deleted.
 
-**Found here, fixed elsewhere:** the leading reading of a word can be wrong —
+**Found here, owned elsewhere:** the leading reading of a word can be wrong —
 一人 displays as いちにん rather than ひとり — because `freq_rank` unions the
-writing's priority into every reading. It is a dictionary-builder bug with a
-confirmed fix; the measurement and the two rejected alternatives are in
-`phase-01-dictionary-builder.md`. Not fixed on this branch: it needs a rebuild
-and a `SCHEMA_VERSION` bump, which do not belong beside a user-data schema.
+writing's priority into every reading. Recorded as **V-29** with the expected
+values and **D-84** with the fix and two rejected alternatives. Not fixed on this
+branch: it needs a dictionary rebuild and a `SCHEMA_VERSION` bump, which do not
+belong beside a user-data schema.
 
 ## Open questions
 

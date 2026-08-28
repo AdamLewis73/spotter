@@ -112,6 +112,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-81 | Save stores the **top-ranked** entry — the one whose glosses are shown | UI |
 | D-82 | Re-saving a **deleted** word resets `created_at`; re-saving a live one does not | UI / Data |
 | D-83 | A word's scan history outlives unsaving — photos belong to the word | Images |
+| D-84 | A reading's **own** priority breaks ties between readings of one word | Data |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -678,6 +679,23 @@ Three layers, all required:
 `CLAUDE.md` carries a do-not-read table so a local session does not repeat it either. `inspect_sources.py` is the supported way to examine those files' structure.
 
 *Note the asymmetry that made this expensive:* committing the datasets (D-55) was a sound decision, but it combined with an automatic reviewer to produce a cost neither change implied on its own. Any future decision to commit large files should check what reads them automatically.
+
+**D-84 — A reading's own `re_pri` breaks ties between the readings of one word. The combined writing+reading rank still ranks words against each other.**
+
+`freq_rank` collapses JMdict's priority markers into one sortable number, taking the union of the writing's `ke_pri` and the reading's `re_pri` (`ingest_jmdict.py`, and the table in `data-model.md`). That is correct for its original job — ranking whole words for V-04's example lists — and wrong for a job it was later asked to do, which is ordering the readings *within* one written form. A strongly-marked writing floods every reading it pairs with, so readings that JMdict distinguishes clearly arrive equal. V-29 has the measurements; 一人 leads with いちにん rather than ひとり because of it.
+
+*The fix is additive:* store a second, **reading-level** rank derived from `re_pri` alone, and consult it as the tiebreak before falling back to kana order. The existing combined rank is unchanged, so nothing that ranks words is affected.
+
+*Two alternatives were measured and rejected*, and they are recorded because both look reasonable and neither is:
+
+- **Tiebreak by dictionary row id.** JMdict lists a reading element's primary form first, so row order within one entry really does carry editorial intent — it fixes 一人 and 上手. But it is meaningless *across* entries, and 米 and 先 are exactly that case: it promotes 米 to メートル over こめ, and 先 to さっき over さき. 4,803 written forms change, most of them for no reason.
+- **Tiebreak by `ent_seq` then row id.** Same outcome to the character, for the same reason — entry numbers are not a frequency signal either.
+
+*Why reading-level rank is better than both:* it moves only the words where the data actually distinguishes the readings, and leaves the genuinely-tied ones (米, 先) exactly where they are. A tiebreak that guesses is worse than one that declines to.
+
+*Cost:* a column on `word`, a rebuild, and a `DictionaryDatabase.SCHEMA_VERSION` bump — the dictionary is disposable and never migrated (D-38), so the bump is a re-extract rather than a migration. **Not yet implemented**; V-29 is the case that will confirm it.
+
+*Note this does not touch identity.* Which reading leads a screen is a display and default-selection question. (text, reading) remains the identity (D-12), and D-81 continues to save whichever entry leads — it will simply be leading for a better reason.
 
 ---
 
