@@ -84,20 +84,10 @@ Combining adds **1.7 points**, because they are the same corpus — `JMdict_e_ex
 
 ## Next action
 
-**Phase 2** — the Android app with a text box. Size settled at 99.7 MB on disk /
-30.3 MB gzipped, so the APK contribution is 30 MB and the device footprint about
-135 MB once Room extracts the asset.
-
-**One case opened against this phase after it closed: V-29** (found 2026-08-28
-from Phase 6). `freq_rank` unions the writing's priority into every reading, so a
-word's own readings arrive equal and 一人 leads with いちにん instead of ひとり.
-The fix is **D-84** — a reading-level rank as the tiebreak — and both the
-measurements and the two rejected alternatives live there and in V-29 rather
-than here, because they are an expected value and a decision, not work in
-flight.
-
-It needs a rebuild and a `SCHEMA_VERSION` bump, which is a re-extract rather
-than a migration (D-38).
+**Phase 2** — the Android app with a text box. Nothing in Phase 1 is
+outstanding. Size settled at 99.7 MB on disk / 30.3 MB gzipped, so the APK
+contribution is 30 MB and the device footprint about 135 MB once Room
+extracts the asset.
 
 ## Done
 

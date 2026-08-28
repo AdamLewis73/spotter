@@ -75,6 +75,8 @@ Note these live on **writing and reading elements separately** (`ke_pri`, `re_pr
 
 Confirmed against the data: 学校 / 生活 / 生産 land at nf01, 先生 at nf02, 誕生日 at 49. Only **44,311 of 322,323 words** carry any marker, so the NULL case is the common one and must sort last, not first (V-04).
 
+> **Altered by D-84.** Taking the union of `ke_pri` and `re_pri` ranks *words* correctly and orders the readings *within* one word wrongly: a strongly-marked writing floods every reading it pairs with, so readings JMdict separates clearly arrive equal. 一人 leads with いちにん rather than ひとり because of it. D-84 adds a second, reading-level rank from `re_pri` alone as the tiebreak; the combined rank above is unchanged. **Not yet implemented** — V-29 is the case that confirms it.
+
 **KANJIDIC2 details that affect the schema.** Confirmed by inspection 2026-08-05.
 
 - **`radical` is a number, not a character.** 生 yields `<rad_value rad_type="classical">100</rad_value>`. Displaying it would need a 214-entry number→glyph mapping KANJIDIC2 does not contain. **Moot for v1** — D-50 drops the radical entirely, which retires this task. Recorded because the finding outlives the decision: anyone reinstating radicals inherits the mapping problem.
