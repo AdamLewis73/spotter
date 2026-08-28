@@ -76,16 +76,46 @@ interface StudyItemDao {
     @Insert
     suspend fun insert(row: StudyItemRow)
 
-    /** Revives a tombstone and refreshes the snapshot, which a live lookup just supplied. */
+    /**
+     * Revives a **tombstoned** row, resetting `created_at` to now.
+     *
+     * The reset is deliberate and is the one place this schema treats
+     * `created_at` as anything but immutable. From the user's point of view they
+     * saved this word just now, and the Saved list is ordered newest-first — so
+     * keeping the original date would drop a word they had just re-saved back
+     * into the middle of the list, where they would go looking for it at the top
+     * (D-82).
+     *
+     * The row **id** is still preserved, which is the part that matters for
+     * Phase 7: `review_log` will hang off it, and minting a new id here would
+     * orphan every review of the word.
+     */
     @Query(
         """
         UPDATE study_item
         SET deleted_at = NULL, snapshot_gloss = :snapshotGloss, ent_seq = :entSeq,
-            updated_at = :now
+            created_at = :now, updated_at = :now
         WHERE id = :id
         """
     )
     suspend fun reviveAndRefresh(id: String, snapshotGloss: String, entSeq: Long?, now: Long)
+
+    /**
+     * Refreshes an **already live** row's snapshot without touching
+     * `created_at`.
+     *
+     * Saving a word that is already saved is a no-op the user did not ask for —
+     * re-ordering their Saved list because they tapped a button that was already
+     * on would be surprising (D-82).
+     */
+    @Query(
+        """
+        UPDATE study_item
+        SET snapshot_gloss = :snapshotGloss, ent_seq = :entSeq, updated_at = :now
+        WHERE id = :id
+        """
+    )
+    suspend fun refreshLive(id: String, snapshotGloss: String, entSeq: Long?, now: Long)
 
     /** Soft delete (D-16). There is deliberately no hard-delete counterpart. */
     @Query("UPDATE study_item SET deleted_at = :now, updated_at = :now WHERE id = :id")

@@ -96,6 +96,25 @@ After that, in order:
 - [ ] Saved tab in the bottom nav (D-36)
 - [ ] Relevant `V-##` cases from `verification.md` added to this list
 
+## Settled while wiring Save, 2026-08-28
+
+- **D-82** — re-saving a *deleted* word resets `created_at`, so it returns to the
+  top of a newest-first Saved list where the user will look for it; re-saving one
+  that is already saved changes nothing. The row **id** survives either way,
+  which is the part Phase 7's review history depends on.
+- **D-83** — a word's scan history outlives unsaving. Photos belong to the word,
+  not to the save, so saving 上手 again a year later still shows every place it
+  has been photographed. This also makes deliberate something `scan_word` would
+  otherwise have done by accident, since it cascades from a parent that is only
+  ever soft-deleted.
+
+**Found here, fixed elsewhere:** the leading reading of a word can be wrong —
+一人 displays as いちにん rather than ひとり — because `freq_rank` unions the
+writing's priority into every reading. It is a dictionary-builder bug with a
+confirmed fix; the measurement and the two rejected alternatives are in
+`phase-01-dictionary-builder.md`. Not fixed on this branch: it needs a rebuild
+and a `SCHEMA_VERSION` bump, which do not belong beside a user-data schema.
+
 ## Open questions
 
 - **Does the app get a bottom nav bar, and is Saved the second destination?**

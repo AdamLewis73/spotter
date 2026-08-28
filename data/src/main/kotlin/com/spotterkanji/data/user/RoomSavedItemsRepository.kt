@@ -66,18 +66,27 @@ class RoomSavedItemsRepository(
             )
             dao.insert(row)
             row.toModel()
-        } else {
-            // Live or tombstoned, the same call is right: it clears deleted_at
-            // (a no-op when already live) and refreshes the snapshot from the
-            // lookup that just succeeded, which is newer than the stored one.
-            // createdAt is deliberately NOT touched — when the user first saved
-            // this word is a fact, and a delete-and-resave should not rewrite it.
+        } else if (existing.deletedAt != null) {
+            // Previously deleted: revive the row, keeping its id so Phase 7's
+            // review history stays attached, but reset created_at — the user
+            // saved this now, and the Saved list is newest-first (D-82).
             dao.reviveAndRefresh(existing.id, snapshotGloss, entSeq, now)
             existing.copy(
                 snapshotGloss = snapshotGloss,
                 entSeq = entSeq,
+                createdAt = now,
                 updatedAt = now,
                 deletedAt = null,
+            ).toModel()
+        } else {
+            // Already saved. Refresh the snapshot from the lookup that just
+            // succeeded, and leave created_at alone: tapping Save on a word that
+            // is already saved must not shuffle the user's list (D-82).
+            dao.refreshLive(existing.id, snapshotGloss, entSeq, now)
+            existing.copy(
+                snapshotGloss = snapshotGloss,
+                entSeq = entSeq,
+                updatedAt = now,
             ).toModel()
         }
     }

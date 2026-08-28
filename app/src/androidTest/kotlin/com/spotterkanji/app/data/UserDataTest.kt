@@ -95,7 +95,8 @@ class UserDataTest {
         // The snapshot refreshes — a live lookup just succeeded, so its result
         // is newer than the stored one (D-43).
         assertEquals("teacher; instructor; master", second.snapshotGloss)
-        // ...but when the user first saved it is a fact, not a cache.
+        // Saving a word that is ALREADY saved leaves created_at alone: tapping a
+        // button that was already on must not shuffle the Saved list (D-82).
         assertEquals(first.createdAt, second.createdAt)
     }
 
@@ -118,6 +119,49 @@ class UserDataTest {
         val revived = items.save(sensei, "teacher")
         assertEquals(original.id, revived.id)
         assertEquals(1, items.observeSaved().first().size)
+    }
+
+    /**
+     * Re-saving a **deleted** word resets `created_at` (D-82).
+     *
+     * The Saved list is ordered newest-first, so keeping the original date would
+     * drop a word the user had just re-saved into the middle of the list — they
+     * would go looking for it at the top and not find it. The row id is still
+     * the original, which is the part Phase 7's review history depends on.
+     */
+    @Test
+    fun resaving_a_deleted_word_moves_it_to_the_top() = runBlocking {
+        val original = items.save(sensei, "teacher")
+        items.unsave(sensei)
+
+        val revived = items.save(sensei, "teacher")
+
+        assertEquals(original.id, revived.id)
+        assertTrue(
+            "created_at should move forward on revive, was ${original.createdAt} " +
+                "and is ${revived.createdAt}",
+            revived.createdAt.isAfter(original.createdAt),
+        )
+    }
+
+    /**
+     * And the newest-first ordering that reset exists to serve.
+     *
+     * Asserted through `observeSaved` rather than on the timestamp alone,
+     * because the ordering is the thing the user actually sees.
+     */
+    @Test
+    fun a_resaved_word_leads_the_saved_list() = runBlocking {
+        items.save(sensei, "teacher")
+        val later = StudyItemKey("生産", "せいさん")
+        items.save(later, "production")
+        // 生産 is newest, so it leads.
+        assertEquals("生産", items.observeSaved().first().first().key.text)
+
+        items.unsave(sensei)
+        items.save(sensei, "teacher")
+
+        assertEquals("先生", items.observeSaved().first().first().key.text)
     }
 
     @Test

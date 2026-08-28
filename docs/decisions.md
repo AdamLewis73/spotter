@@ -110,6 +110,8 @@ Scan for the relevant entry rather than reading the whole file.
 | D-79 | Built-in FSRS **and** Anki export; scheduler first, export in Phase 8 | SRS |
 | D-80 | Soft delete is for rows the user deletes; derived children cascade | Migrations |
 | D-81 | Save stores the **top-ranked** entry — the one whose glosses are shown | UI |
+| D-82 | Re-saving a **deleted** word resets `created_at`; re-saving a live one does not | UI / Data |
+| D-83 | A word's scan history outlives unsaving — photos belong to the word | Images |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1164,6 +1166,30 @@ Wiring Save exposed a genuine collision between two existing decisions. **D-47**
 *Disabled while the lookup is running or after it fails.* Saving a word with no gloss to snapshot (D-43) and no reading to key on produces precisely the row D-40 obliges the app to render forever, with nothing in it.
 
 *Cost to reverse:* near zero. The choice is one expression naming which entry to save, and nothing about the schema assumes it — a later ambiguity chip (artboard 1b) could offer the reading explicitly without touching a table.
+
+**D-82 — Re-saving a word that was deleted resets `created_at`. Re-saving one that is already saved does not. The row id survives both.**
+
+Three timestamps were bundled into one behaviour and they come apart cleanly once the question is asked as *what does the user see*.
+
+*Reviving keeps the row id*, and that is the part with a hard requirement behind it: Phase 7's `review_log` hangs off `study_item.id`, so minting a new id on re-save would orphan every review of that word. The unique index on (text, reading, type) covers tombstones, so there is nowhere to put a second row in any case.
+
+*But `created_at` should move.* The original design kept it on the grounds that when a word was first saved is a fact. Nothing uses that fact, and holding it produces a visible defect: the Saved list is ordered newest-first, so a word the user just re-saved would reappear in the middle of the list rather than at the top, where they would go looking for it. Their mental model is *I saved this now*, and the list should agree.
+
+*Re-saving a word that is already saved leaves it alone.* Tapping a button that is already on is not a save, and reordering the list underneath the user because they double-tapped would be surprising. The snapshot gloss still refreshes in both cases, because a live lookup just succeeded and its result is newer than the stored one (D-43).
+
+*Cost to reverse:* zero. No column changes; this is which of two `UPDATE` statements runs.
+
+**D-83 — A word's scan history outlives unsaving. Photos belong to the word, not to the save.**
+
+Unsaving 先生 tombstones the study item and its list memberships. It does **not** discard the scans that word was found in. Save it again a year later and every place it has ever been photographed is still attached.
+
+*Endorsed by the project owner on 2026-08-28, and it resolves an incoherence D-80 would otherwise have left.* `scan_word` cascades with its parent rather than carrying a tombstone — but the parent is only ever *soft* deleted, so the cascade never fires and the rows survive by accident. This makes that survival deliberate, which matters because "it happens to work" is not a thing a later cleanup will respect.
+
+*Why it is right rather than merely convenient:* `overview.md` makes real-world capture a product principle — *that sign outside the ramen shop* is a stronger memory hook than a bare flashcard — and a word accumulating the places it has been met is that principle compounding rather than resetting. It also matches D-25's split, where scan history and saved-word images already have separate lifecycles: history is a record of what the camera saw, and the user unsaving a word is not a claim that they never saw it.
+
+*What this does not license:* it is not a reason to keep images forever regardless of cost. D-25's auto-purge of unsaved casual scans still applies, and the storage screen it requires is still owed. The claim here is narrow — unsaving is not itself a deletion of history.
+
+*Cost to reverse:* low while `scan_word` does not exist, which is why it was settled now. Once photographs are attached to words in the field, changing the rule means deciding what to do with records already kept under it.
 
 ---
 

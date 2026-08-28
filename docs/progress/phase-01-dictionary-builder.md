@@ -84,8 +84,43 @@ Combining adds **1.7 points**, because they are the same corpus — `JMdict_e_ex
 
 ## Next action
 
-**Phase 2** — the Android app with a text box. Nothing in Phase 1 is
-outstanding. Size settled at 99.7 MB on disk / 30.3 MB gzipped, so the APK
+**One real bug is outstanding, found from Phase 6 on 2026-08-28: the leading
+reading of a word can be wrong, because `freq_rank` unions the writing's
+priority into every reading.**
+
+`ingest_jmdict.py:142` computes `"pri": r_pri | writings.get(keb, set())`. That
+is right for ranking a *word*, and wrong for ordering the readings *within* one,
+because a strongly-marked writing floods every reading it pairs with and erases
+the reading-level signal JMdict actually carries. Measured against the source:
+
+| Word | Writing `ke_pri` | Reading `re_pri` | Leads today | Should lead |
+|---|---|---|---|---|
+| 一人 | ichi1 news1 nf02 | ひとり: nf02 nf16 spec1 · いちにん: **none** | いちにん | ひとり |
+| その他 | spec1 | そのほか: ichi1 spec1 · そのた: **none** | そのた | そのほか |
+
+**一人 displaying as いちにん is the case to fix on.** Both readings land at rank 2,
+so V-21's status sort cannot help — neither carries an `re_inf` tag; they are
+both perfectly current readings, and only frequency separates them.
+
+*The fix, proposed by the project owner and confirmed against the source:* keep
+the combined rank for ranking words, and add a **reading-level** rank as the
+tiebreak before kana. It is conservative — 米 (こめ / メートル) and 先 (さき /
+さっき) tie at reading level too, so they keep their current order rather than
+regressing.
+
+*Two rejected alternatives, both measured:* ordering ties by dictionary row id,
+or by `ent_seq` then id, fixes 一人 but **regresses 米 to メートル and 先 to
+さっき** — row order is meaningful *within* a JMdict entry and meaningless
+across entries, which is exactly the case those two words are. 4,803 written
+forms change under either, against a targeted fix that touches only those with a
+real reading-level signal.
+
+*Cost:* a column on `word`, a rebuild, a `DictionaryDatabase.SCHEMA_VERSION`
+bump, and a V-04 case recording the expected value for 一人. Not done here
+because it is a Phase 1 change and was found on a Phase 6 branch, which should
+not carry a dictionary rebuild.
+
+Otherwise nothing in Phase 1 is outstanding. Size settled at 99.7 MB on disk / 30.3 MB gzipped, so the APK
 contribution is 30 MB and the device footprint about 135 MB once Room
 extracts the asset.
 
