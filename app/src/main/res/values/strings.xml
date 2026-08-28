@@ -30,6 +30,8 @@
     <string name="scan_tap_to_look_up">Tap to look these words up</string>
     <string name="scan_tap_a_word">Tap a word</string>
     <string name="scan_peek_save">Save</string>
+    <!-- The same button once the word is saved; tapping it again unsaves. -->
+    <string name="scan_peek_saved">Saved</string>
     <string name="scan_peek_full_details">Full details</string>
     <string name="scan_peek_looking_up">Looking up…</string>
     <string name="scan_peek_not_found">Not in the dictionary</string>

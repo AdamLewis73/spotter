@@ -154,6 +154,9 @@ internal fun PeekContents(
     word: String,
     glosses: String?,
     loading: Boolean,
+    saved: Boolean,
+    canSave: Boolean,
+    onSave: () -> Unit,
     onFullDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -190,20 +193,38 @@ internal fun PeekContents(
             modifier = Modifier.padding(top = SpotterTheme.tokens.spaceMd),
             horizontalArrangement = Arrangement.spacedBy(SpotterTheme.tokens.spaceSm),
         ) {
-            // Save is drawn and disabled. It writes user data, gated behind the
-            // Phase 6 checkpoint (D-15–D-18, D-43) — getting those wrong deletes
-            // real data in production, so the button waits for the schema rather
-            // than the schema being improvised for the button.
+            // Live as of Phase 6, once the schema its checkpoints gate was
+            // settled (D-79, D-80) rather than improvised for the button.
+            //
+            // It saves the top-ranked entry — the one whose glosses are printed
+            // above it (D-81). The peek shows no reading (D-47) but identity
+            // needs one (D-12), so the button saves what the user was actually
+            // looking at rather than asking them to choose a reading they were
+            // deliberately not shown.
+            //
+            // A toggle, not a one-way action: it reports state, and a control
+            // that shows state without undoing it strands the user.
+            //
+            // Disabled only when there is nothing to save — while the lookup is
+            // still running, or when it found nothing. Saving a word with no
+            // gloss and no reading creates exactly the unresolvable row D-40
+            // then has to render forever.
             Button(
-                onClick = {},
-                enabled = false,
+                onClick = onSave,
+                enabled = canSave,
                 modifier = Modifier.weight(1f).height(44.dp),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
-            ) { Text(stringResource(R.string.scan_peek_save)) }
+            ) {
+                Text(
+                    stringResource(
+                        if (saved) R.string.scan_peek_saved else R.string.scan_peek_save
+                    )
+                )
+            }
 
             OutlinedButton(
                 onClick = onFullDetails,

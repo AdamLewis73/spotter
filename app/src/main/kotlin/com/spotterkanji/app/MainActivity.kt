@@ -212,9 +212,14 @@ private fun ScanRoute(
                     when {
                         shown == SheetStage.Peek -> PeekContents(
                             word = selected.text,
-                            glosses = wordState.entries.firstOrNull()
+                            glosses = wordState.saveTarget
                                 ?.senses?.firstOrNull()?.glosses?.joinToString("; "),
                             loading = wordState.searching,
+                            saved = wordState.saved,
+                            // Nothing to save while the lookup runs or when it
+                            // found nothing (D-81).
+                            canSave = wordState.saveTarget != null,
+                            onSave = words::onSaveToggled,
                             onFullDetails = { stage = SheetStage.Full },
                         )
 
@@ -230,7 +235,8 @@ private fun ScanRoute(
                             onTokenSelected = words::onTokenSelected,
                             onKanjiSelected = words::onKanjiSelected,
                             onAlternateSelected = words::onAlternateSelected,
-                            onSave = {},
+                            onSave = words::onSaveToggled,
+                            saved = wordState.saved,
                             onDismiss = { stage = SheetStage.Peek },
                             standalone = false,
                         )
@@ -273,10 +279,8 @@ private fun LookupRoute(seed: String?) {
             onTokenSelected = viewModel::onTokenSelected,
             onKanjiSelected = viewModel::onKanjiSelected,
             onAlternateSelected = viewModel::onAlternateSelected,
-            // Saving arrives in Phase 6 with the user-data checkpoint
-            // (D-15–D-18, D-43). The control is built now because it is part of
-            // the screen's structure, not because it works.
-            onSave = {},
+            onSave = viewModel::onSaveToggled,
+            saved = state.saved,
             onDismiss = viewModel::onResultDismissed,
             modifier = Modifier.safeDrawingPadding(),
         )

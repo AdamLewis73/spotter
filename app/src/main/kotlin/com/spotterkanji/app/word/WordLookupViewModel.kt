@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.spotterkanji.app.data.DictionaryProvider
+import com.spotterkanji.app.data.UserDataProvider
 import com.spotterkanji.data.tokenize.KuromojiTokenizer
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiDetail
@@ -12,6 +13,7 @@ import com.spotterkanji.domain.text.isKanji
 import com.spotterkanji.domain.tokenize.LongestMatch
 import com.spotterkanji.domain.tokenize.Token
 import com.spotterkanji.domain.tokenize.WordMatch
+import com.spotterkanji.domain.user.StudyItemKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,7 +52,25 @@ data class WordLookupState(
      * eventually own anyway.
      */
     val openKanji: KanjiDetail? = null,
+    /**
+     * Whether the word on screen is currently in the user's saved words.
+     *
+     * Held in state rather than asked for on tap so the button reflects a write
+     * made anywhere — including an unsave performed elsewhere while this sheet
+     * is still open over the photograph.
+     */
+    val saved: Boolean = false,
 ) {
+    /**
+     * The entry Save acts on: the **top-ranked** one, which is the entry whose
+     * glosses the peek sheet is already showing.
+     *
+     * See D-81. Identity needs a reading (D-12) and the peek deliberately shows
+     * none (D-47), so saving from the peek has to choose one; choosing the
+     * entry whose meaning is on screen makes the button save what the user was
+     * looking at.
+     */
+    val saveTarget: DictionaryEntry? get() = entries.firstOrNull()
     val hasSearched: Boolean get() = query.isNotBlank() && !searching
     val notFound: Boolean get() = hasSearched && selected != null && entries.isEmpty()
     /** A single word needs no token strip — it would just repeat the input. */
@@ -60,12 +80,22 @@ data class WordLookupState(
 class WordLookupViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = DictionaryProvider.repository(application)
+    private val savedItems = UserDataProvider.savedItems(application)
     private val tokenizer = KuromojiTokenizer()
 
     private val _state = MutableStateFlow(WordLookupState())
     val state: StateFlow<WordLookupState> = _state.asStateFlow()
 
     private var lookupJob: Job? = null
+
+    /**
+     * Follows the saved/unsaved state of whichever word is on screen.
+     *
+     * Separate from [lookupJob] and outlives it: the lookup finishes, but this
+     * keeps running so the button still moves if the same word is unsaved from
+     * somewhere else.
+     */
+    private var savedWatchJob: Job? = null
 
     /**
      * Every dictionary word in the current query, from the longest-match pass.
@@ -94,6 +124,7 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
 
         if (query.isBlank()) {
             matches = emptyList()
+            savedWatchJob?.cancel()
             _state.value = WordLookupState(query = query)
             return
         }
@@ -144,6 +175,7 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun onSelectionCleared() {
         lookupJob?.cancel()
+        savedWatchJob?.cancel()
         _state.value = _state.value.copy(
             selected = null,
             entries = emptyList(),
@@ -151,6 +183,7 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
             kanji = emptyList(),
             openKanji = null,
             searching = false,
+            saved = false,
         )
     }
 
@@ -169,6 +202,7 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun onResultDismissed() {
         lookupJob?.cancel()
+        savedWatchJob?.cancel()
         _state.value = WordLookupState()
     }
 
@@ -232,5 +266,53 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
             openKanji = if (loneKanji) repository.kanjiDetail(token.text) else _state.value.openKanji,
             searching = false,
         )
+        watchSaved()
+    }
+
+    /**
+     * Toggle the word on screen in and out of the user's saved words.
+     *
+     * A toggle rather than a one-way Save because the button shows saved state,
+     * and a control that shows state and does not undo it is a trap — the only
+     * way back would be to find the word again on a different screen.
+     *
+     * Does nothing when the lookup failed. There is no gloss to snapshot (D-43)
+     * and no reading to key on (D-12), and a saved item with neither is exactly
+     * the unresolvable row D-40 has to render forever.
+     */
+    fun onSaveToggled() {
+        val entry = _state.value.saveTarget ?: return
+        val key = StudyItemKey(entry.text, entry.reading)
+        viewModelScope.launch {
+            if (_state.value.saved) {
+                savedItems.unsave(key)
+            } else {
+                savedItems.save(
+                    key = key,
+                    // The same line the peek sheet shows, so what is stored is
+                    // what the user read when they decided to save it (D-43).
+                    snapshotGloss = entry.senses.firstOrNull()
+                        ?.glosses?.joinToString("; ").orEmpty(),
+                    // Recorded because it cannot be recovered later (D-22's
+                    // rule). A hint only — D-39 uses it to say "merged into X"
+                    // when a saved word stops resolving; nothing looks a word up
+                    // by it (D-11).
+                    entSeq = entry.entSeq,
+                )
+            }
+        }
+    }
+
+    private fun watchSaved() {
+        savedWatchJob?.cancel()
+        val entry = _state.value.saveTarget
+        if (entry == null) {
+            _state.value = _state.value.copy(saved = false)
+            return
+        }
+        savedWatchJob = viewModelScope.launch {
+            savedItems.observeIsSaved(StudyItemKey(entry.text, entry.reading))
+                .collect { isSaved -> _state.value = _state.value.copy(saved = isSaved) }
+        }
     }
 }

@@ -109,6 +109,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-78 | The overlay **reveals** the photograph's own pixels; nothing is retyped | UI |
 | D-79 | Built-in FSRS **and** Anki export; scheduler first, export in Phase 8 | SRS |
 | D-80 | Soft delete is for rows the user deletes; derived children cascade | Migrations |
+| D-81 | Save stores the **top-ranked** entry — the one whose glosses are shown | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1147,6 +1148,22 @@ That second point is the decisive one and it is a *correctness* argument rather 
 *Endorsed by the project owner on 2026-08-26, in the terms that matter for later:* how readable the overlay is depends partly on the photograph, and a bad photograph is the user's to retake. **Do not spend effort compensating for input quality at the cost of honesty** — no sharpening or denoising pass, no "redraw when the photo is poor" fallback, no automatic retake. Those all reintroduce D-77's failure by a side door, because every one of them ends in showing the user something the sign does not say. Retaking a photo is cheap and obvious; being confidently told the wrong word is neither.
 
 *Cost to reverse:* low, and confined to one composable. `ScanLayout` supplies the same rectangles either way.
+
+**D-81 — Save stores the top-ranked entry: the one whose glosses are already on screen. It is a toggle, and it is disabled when the lookup found nothing.**
+
+Wiring Save exposed a genuine collision between two existing decisions. **D-47** says the peek sheet shows the word and its meanings and *never a reading*, because the app cannot tell which reading a photograph meant and a learner who knew it would not be scanning the word. **D-12** says a saved item's identity is (text, reading) and never text alone. So the one button on the sheet has to commit to a reading the sheet deliberately refuses to display.
+
+*Three ways out, and why this one.* Prompting for a reading puts the choice back on the user in the exact place D-47 argues they cannot make it, and adds a step to the app's most common action — D-61 rules that out on its own. Disabling Save on the peek until the word screen is opened makes 上手 behave differently from 先生 for a reason invisible on screen. Saving with the reading left empty violates D-12 and manufactures the unresolvable row D-40 then has to render forever.
+
+**So Save stores the entry whose meaning the user is looking at.** The peek already prints the top-ranked entry's first sense (ordered most-common-first per V-04), so the button saves what was on screen rather than something adjacent to it. A user who wants a different reading opens *Full details*, where readings are sections (D-48) — and the word screen's own Save is the same control on the same entry, so the two never disagree.
+
+*What this accepts:* scanning 上手 on a sign and tapping Save stores じょうず, which is the commonest reading and not necessarily the one on that sign. The learner is not misled about a meaning — the gloss they saved is the gloss they read — but they may have filed the word under the wrong reading. Judged the right trade because the alternative asks a beginner to disambiguate a reading before they have been told what the word means, which is the wrong order for a learning app, and because it is visible and correctable on the word screen rather than silent.
+
+*It is a toggle, not a one-way action.* The button reports saved state, and a control that shows state without undoing it is a trap — the only route back would be finding the word again somewhere else. Tapping again unsaves, which is a soft delete (D-16) and therefore loses nothing: re-saving revives the same row, keeping any review history attached to it.
+
+*Disabled while the lookup is running or after it fails.* Saving a word with no gloss to snapshot (D-43) and no reading to key on produces precisely the row D-40 obliges the app to render forever, with nothing in it.
+
+*Cost to reverse:* near zero. The choice is one expression naming which entry to save, and nothing about the schema assumes it — a later ambiguity chip (artboard 1b) could offer the reading explicitly without touching a table.
 
 ---
 

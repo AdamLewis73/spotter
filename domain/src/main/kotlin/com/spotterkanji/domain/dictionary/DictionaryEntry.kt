@@ -73,6 +73,22 @@ data class DictionaryEntry(
      * already too busy is a question for the UI pass, not for V-21.
      */
     val isGikun: Boolean = false,
+    /**
+     * The JMdict `ent_seq` this entry came from — **a hint, never an identity**
+     * (D-11).
+     *
+     * Carried so that saving a word can record it (D-43's neighbour): it is what
+     * lets D-39's `changes` table later upgrade *"no longer in the dictionary"*
+     * into *"merged into 上手 (じょうず)"*. Nothing may resolve a word by it —
+     * JMdict retires sequence numbers, which is the whole reason identity is
+     * (text, reading).
+     *
+     * Null when the dictionary did not supply one, and captured at save time
+     * rather than derived later, per D-22's rule that cheap metadata is recorded
+     * now because deriving it afterwards means reprocessing that cannot be done
+     * at all once the source has moved on.
+     */
+    val entSeq: Long? = null,
 ) {
     /**
      * Whether the *dictionary* calls this word common — suppressed for anything
