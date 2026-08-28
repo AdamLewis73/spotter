@@ -43,6 +43,33 @@ jobs:
           fi
           echo "No android.* imports outside :app."
 
+      - name: 'fallbackToDestructiveMigration() is banned (D-17)'
+        # This call resolves a missing-migration crash by DELETING THE ENTIRE
+        # USER DATABASE and recreating it empty. It appears in a large fraction
+        # of online Room tutorials because it makes the development-time crash
+        # go away, which is exactly why it needs a machine check rather than a
+        # convention: the moment a schema bump crashes the app on launch, the
+        # first search result says to add this, and it works.
+        #
+        # Banned in EVERY build type including debug (D-17) — the habit is the
+        # hazard, and a debug database is still somebody's saved words.
+        #
+        # The pattern requires the LEADING DOT, which is what distinguishes a
+        # call from a mention. Room's builder is only ever reached as
+        # `.fallbackToDestructiveMigration(...)`, while the four places that
+        # currently name it are prose explaining why it is banned — and a check
+        # that fails on its own documentation gets deleted rather than obeyed.
+        # The trailing wildcard catches the *OnDowngrade and *From variants
+        # Room added later, which destroy data the same way.
+        run: |
+          if grep -rnE '\.fallbackToDestructiveMigration[A-Za-z]*\s*\('                --include='*.kt' --include='*.java'                app/src data/src domain/src 2>/dev/null; then
+            echo "::error::fallbackToDestructiveMigration() is banned in all"
+            echo "build types (D-17). It deletes the user's saved words to make"
+            echo "a migration error go away. Write the migration instead."
+            exit 1
+          fi
+          echo "No destructive migration fallback."
+
       - name: No third-party fixtures in the repository
         # The photographs used to calibrate the scan geometry are other people's
         # and this repository is public, so they are gitignored under a `probe-`

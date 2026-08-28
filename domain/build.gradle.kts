@@ -52,5 +52,17 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    // The one dependency this module has, and the only kind it may have: a
+    // MULTIPLATFORM library. kotlinx-coroutines compiles for iOS as well as the
+    // JVM, so it does not strand the portable layer the way a JVM-only library
+    // would (D-60) — which is exactly why Kuromoji lives in :data instead.
+    //
+    // `api`, not `implementation`: repository interfaces here return `Flow`, so
+    // it is part of this module's public surface and consumers need it to
+    // implement them. Flow rather than plain `suspend` because saved state is
+    // observed — saving a word has to move the Saved tab underneath it without
+    // anything remembering to re-query.
+    api(libs.kotlinx.coroutines.core)
+
     testImplementation(libs.junit)
 }

@@ -43,12 +43,23 @@ androidx-activity = "1.13.0"
 androidx-lifecycle = "2.11.0"
 compose-bom = "2026.06.01"
 
+# Already on :app's runtime classpath transitively (via lifecycle and room-ktx)
+# at exactly this version — verified with `:app:dependencies` on 2026-08-28, not
+# remembered. Declared explicitly so :domain can expose Flow without depending on
+# another module's transitive graph holding still.
+coroutines = "1.9.0"
+
 junit = "4.13.2"
 androidx-test-junit = "1.3.0"
 androidx-test-runner = "1.7.0"
 androidx-espresso = "3.7.0"
 
 [libraries]
+# kotlinx-coroutines is a MULTIPLATFORM library, which is why it may sit in
+# :domain without weakening D-60 — it compiles for iOS too, so it is not the
+# kind of JVM-only dependency that would strand the portable layer.
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }
