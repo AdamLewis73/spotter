@@ -50,6 +50,28 @@ class ScanLayout private constructor(
     fun boxAt(offset: Int): TextBox? = byOffset[offset]?.box
 
     /**
+     * The rectangle covering a range of offsets — the box of a whole word.
+     *
+     * **This is what D-22 asks for.** A saved word records where it sat in the
+     * photograph, so moving to word crops later needs no image reprocessing at
+     * all; without it, the upgrade means re-running OCR across every saved
+     * image. The box costs four integers and is already known here, which is the
+     * whole argument: capture cheap metadata now even when unused.
+     *
+     * Nothing stores it yet — there is no user-data schema until Phase 6 — so
+     * this exists to make sure the Phase 5 side of that bargain is actually
+     * held. Offsets owning no rectangle (separators) are skipped, and a range
+     * covering none returns null.
+     *
+     * *One caveat for the caller:* where V-28 joined two lines into one flow, a
+     * word can span them, and the union is then a rectangle enclosing both plus
+     * the gap. A superset of the word rather than a tight crop — rare, and
+     * harmless for the purpose, but not a promise of tightness.
+     */
+    fun boxFor(offsets: IntRange): TextBox? =
+        TextBox.union(offsets.mapNotNull { byOffset[it]?.box })
+
+    /**
      * Which character was tapped, in image pixel coordinates.
      *
      * Returns null for a tap on bare image — the caller decides whether that

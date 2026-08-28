@@ -21,7 +21,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 2 | Android app, text input only | **Feature-complete** — every `V-##` case this phase owns is met; the user-data checkpoint lands with Save in Phase 6 | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit; overlay is Phase 5 | Raw recognized text into the Phase 2 pipeline |
-| 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78). Save is drawn and disabled; it lands with the Phase 6 checkpoint | The real scan experience |
+| 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save is drawn and disabled; it lands with the Phase 6 checkpoint | The real scan experience |
 | 6 | Saved lists | Not started | Multiple lists, many-to-many |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |
@@ -115,7 +115,7 @@ The project owner has asked to be consulted at these points rather than having a
 | ~~Phase 2, first UI commit~~ | ~~Material 3 plus a design-token layer (D-35)~~ — **done 2026-08-11**: fixed palette, light and dark, plus bundled Noto Sans JP (D-34) | Touches every composable if done later |
 | Phase 2, first user-data write | UUID keys, `updated_at`, soft delete, schema export on, destructive migration off (D-15 – D-18) | Getting this wrong deletes user data in production |
 | Phase 2, first user-data write | `snapshot_gloss` on `study_item` (D-43) | Adding it later is a migration, **and** every word saved before it has a permanently empty snapshot — the gloss cannot be recovered for a word the dictionary has since dropped |
-| Phase 5 | Bounding box stored in the scan record (D-22) | Cheap now; later requires re-running OCR over every saved image |
+| Phase 5 | ~~Bounding box stored in the scan record (D-22)~~ — **discharged 2026-08-26**: `ScanLayout.boxFor` makes the box knowable at save time; the schema field itself is Phase 6's to add | Cheap now; later requires re-running OCR over every saved image |
 | Phase 6 | Study-item identity `(text, reading)` plus the `type` discriminator (D-12, D-27) | All review history is keyed to it |
 | Phase 6 | **Built-in SRS, or export to Anki?** (D-26, D-29) | The schema Phase 6 builds assumes the answer. Serious learners already live in Anki; beginners don't have it. See the open question in `progress/phase-07-srs-review.md` |
 

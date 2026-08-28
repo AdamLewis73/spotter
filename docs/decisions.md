@@ -721,6 +721,8 @@ The payoff: moving to word crops later requires **no image reprocessing at all**
 
 *Generalized principle:* **capture cheap metadata now even when unused.** Bounding boxes, raw OCR text, token character offsets, and the app version that created each record all cost bytes and buy future options. Deriving them later means reprocessing; recording them now is a schema field.
 
+*Checkpoint reviewed and discharged in Phase 5, 2026-08-26.* There is nothing to store yet — the user-data schema does not exist until Phase 6 — so what this checkpoint actually asks of Phase 5 is that the box still be *knowable* when saving arrives. It is: `ScanLayout.boxFor(offsets)` returns the rectangle a word occupied, and is tested. **The obligation that carries into Phase 6 is a schema field**, and the reason it must not be skipped there is unchanged: without it, moving to word crops means re-running OCR across every saved image.
+
 **D-23 — Image format migrations never reprocess old records.**
 Each image row carries an `image_type` discriminator (`FULL_FRAME` | `WORD_CROP`). Old records keep their original type forever; new records use the current one. The UI renders both. Mixed-format data is the normal, expected steady state — not a problem to be cleaned up.
 
