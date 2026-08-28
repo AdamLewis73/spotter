@@ -78,7 +78,7 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **Phase 4 — CameraX + ML Kit: complete.** The app **opens on a live viewfinder**, the shutter freezes a still (D-02), ML Kit reads the Japanese off it, and the text goes into the Phase 2 tokenize-and-look-up path — photograph a sign, tap a word, get its readings and senses. The camera is the launcher destination and the Phase 2 text box is a **debug path**, not a second front door (D-73); `/inspect` is unaffected. The ML Kit model is **bundled** at a measured ~14.8 MB per device (D-74).
 
-**Current phase:** Phase 5 — the tappable overlay, in progress. **This is the core of v1** and the highest-risk work in the project: stage 4's offset-to-pixel bridge, plus vertical text (V-10), tap resolution (V-11) and furigana separation (V-26). `RecognizedText` already carries a box and character offset per element, which is what stage 4 consumes.
+**Phase 5 — the tappable overlay: feature-complete.** **This is the core of v1** and was the highest-risk work in the project: stage 4's offset-to-pixel bridge, plus vertical text (V-10), tap resolution (V-11) and furigana separation (V-26). All three are met, and stage 4 exists as `domain/scan/ScanLayout`.
 
 **The geometry module is built** (`domain/scan/ScanLayout`, D-76): reading order, writing direction, ruby separation and the line-break policy, on a portable box type in `:domain` so a case costs seconds rather than an emulator round trip. Stage 2 now emits a laid-out `ScanLayout` rather than a raw string, so 縦書き columns read right to left (D-75), ruby stays out of the token stream (V-26) and lines join only on evidence (V-28).
 
