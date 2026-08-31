@@ -12,12 +12,34 @@ interface DictionaryDao {
      * `freq_rank IS NULL` sorts first in SQLite, and ~74% of entries are
      * unranked — so without the explicit null-last clause the common words this
      * app exists to explain would appear at the bottom of the list (V-04).
+     *
+     * **`reading_freq_rank` breaks the ties `freq_rank` cannot** (D-84, V-29).
+     * `freq_rank` unions the writing's priority markers into every reading, so
+     * the readings of one written form routinely arrive equal — 一人's ひとり and
+     * いちにん both land at rank 2 — and the sort then fell through to kana order,
+     * which put いちにん first.
+     *
+     * **Only `IS NULL` is consulted, never the number**, and that restraint is
+     * the decision rather than an oversight. *Having* a marker of its own is
+     * JMdict stating this reading is standard for this writing. The band it sits
+     * in is newspaper-corpus frequency, which is register-biased: 明日's
+     * みょうにち bands at 5 against あした's 49 because announcements say
+     * みょうにち and people say あした. Comparing the numbers reverses 明日 and
+     * breaks V-27; comparing only presence leaves it alone.
+     *
+     * Kana order remains the final tiebreak and still decides real cases: 米
+     * (こめ / メートル), 先 (さき / さっき) and 日本 (にっぽん / にほん) all carry
+     * markers on both readings, so nothing here separates them — which is
+     * correct, because nothing should. Half of V-29 is asserting they do not
+     * move, and it is the half every rejected alternative in D-84 fails.
      */
     @Query(
         """
         SELECT * FROM word
         WHERE text = :text
-        ORDER BY freq_rank IS NULL, freq_rank, reading
+        ORDER BY freq_rank IS NULL, freq_rank,
+                 reading_freq_rank IS NULL,
+                 reading
         """
     )
     suspend fun wordsByText(text: String): List<WordRow>

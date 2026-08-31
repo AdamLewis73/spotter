@@ -118,6 +118,36 @@ class TestFrequencyRule(unittest.TestCase):
         self.assertIsNone(ingest_jmdict.freq_rank({"something-unknown"}))
 
 
+class TestReadingLevelRank(unittest.TestCase):
+    """V-29 and D-84 — the same function, applied to a smaller input set.
+
+    The bug was never in `freq_rank` itself. It was in what got passed to it: a
+    word's rank unions the writing's `ke_pri` with the reading's `re_pri`, and
+    that union is what erases the difference between two readings of one written
+    form. These cases are 一人's actual tags.
+    """
+
+    # ke_pri on the writing 一人, and re_pri on each of its two readings.
+    WRITING = {"ichi1", "news1", "nf02"}
+    HITORI = {"ichi1", "news1", "nf02", "nf16", "spec1"}
+    ICHININ: set[str] = set()
+
+    def test_the_union_makes_both_readings_look_equal(self):
+        # The old behaviour, kept as a test so the regression is legible: both
+        # readings rank 2, the sort falls through to kana, いちにん wins.
+        self.assertEqual(ingest_jmdict.freq_rank(self.HITORI | self.WRITING), 2)
+        self.assertEqual(ingest_jmdict.freq_rank(self.ICHININ | self.WRITING), 2)
+
+    def test_the_readings_own_tags_separate_them(self):
+        self.assertEqual(ingest_jmdict.freq_rank(self.HITORI), 2)
+        self.assertIsNone(ingest_jmdict.freq_rank(self.ICHININ))
+
+    def test_an_unmarked_reading_sorts_last_not_first(self):
+        # Same trap as V-04's, one level down: None must sort LAST. A zero here
+        # would promote every unmarked reading to the front of its own word.
+        self.assertIsNone(ingest_jmdict.freq_rank(self.ICHININ))
+
+
 class TestEntryExpansion(unittest.TestCase):
     """V-18. A naive cross-product invents 11,547 words that do not exist."""
 

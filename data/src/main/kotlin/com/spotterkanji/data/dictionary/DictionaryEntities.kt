@@ -31,6 +31,20 @@ data class WordRow(
     @ColumnInfo(name = "ent_seq") val entSeq: Long,
     @ColumnInfo(name = "reading_info") val readingInfo: String?,
     @ColumnInfo(name = "freq_rank") val freqRank: Int?,
+    /**
+     * Rank from the reading's own `re_pri` alone (D-84).
+     *
+     * Only ever a **tiebreak between the readings of one written form**, never a
+     * way to rank words against each other — that stays [freqRank], which unions
+     * the writing's markers in. Doing both with one number is what left 一人
+     * leading with いちにん (V-29).
+     *
+     * **Null-ness is the signal; the magnitude is not.** Queries order by
+     * `reading_freq_rank IS NULL` and stop there — comparing bands between two
+     * readings promotes the formal register over the spoken one and reverses
+     * 明日 (みょうにち bands 5, あした 49). See D-84.
+     */
+    @ColumnInfo(name = "reading_freq_rank") val readingFreqRank: Int?,
     // `defaultValue` must mirror schema.sql's `DEFAULT 0`. Room compares
     // defaults during validation, so omitting it here fails the open with an
     // "invalid schema" error rather than anything about defaults.
