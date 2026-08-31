@@ -273,6 +273,56 @@ def v21(db, out):
             and tagged.get("じょうず") == []),         "no unrecognised re_inf codes; 上手 carries the ok tags the UI marks"
 
 
+@case("V-29", "Frequency ranking separates a word's own readings (D-84, V-04)")
+def v29(db, out):
+    """V-04 checks ranking is applied BETWEEN words. This checks it WITHIN one.
+
+    `freq_rank` unions the writing's `ke_pri` into every reading, which ranks a
+    word correctly and orders the readings inside it wrongly — a strongly-marked
+    writing floods every reading it pairs with. 一人's ひとり and いちにん both
+    land at rank 2, the sort falls through to kana order, and いちにん leads. It
+    renders perfectly: a real reading, correctly spelled, correct meanings,
+    badged common, and the wrong one, for a word in the first hundred a learner
+    meets. `reading_freq_rank` carries the distinction JMdict actually draws.
+
+    The second half matters as much as the first. 米, 先, 明日 and 日本 all carry
+    reading-level markers on more than one reading, so nothing separates them and
+    they must NOT move. Every alternative D-84 rejects passes the first half and
+    fails this one: ordering ties by row id (or by ent_seq then id) promotes 米 to
+    メートル and 先 to さっき, and comparing reading-rank magnitudes promotes 明日
+    to みょうにち and 日本 to にほん. A tiebreak that guesses is worse than one
+    that declines to.
+    """
+    # Exactly the ORDER BY in DictionaryDao.wordsByText. If the two drift, this
+    # case passes while the app still shows いちにん.
+    #
+    # Note it tests reading_freq_rank for NULL and never compares the numbers.
+    # Comparing them promotes the formal register over the spoken one — 明日's
+    # みょうにち bands at 5 against あした's 49 — which reverses 明日 and breaks
+    # V-27. That was caught by V-27's own test, not by this one, which is why
+    # 明日 is now in the unmoved set.
+    order = ("ORDER BY freq_rank IS NULL, freq_rank,"
+             " reading_freq_rank IS NULL, reading")
+    fixed = {"一人": "ひとり", "その他": "そのほか"}
+    unmoved = {"米": "こめ", "先": "さき", "明日": "あした", "日本": "にっぽん"}
+
+    ok = True
+    for label, group in (("fixed by D-84", fixed), ("must not move", unmoved)):
+        for text, want in group.items():
+            got = db.execute(
+                f"SELECT reading FROM word WHERE text=? {order} LIMIT 1", (text,)
+            ).fetchone()[0]
+            hit = got == want
+            ok = ok and hit
+            out(f"{label:<15} {text:<4} leads with {got:<8}"
+                + ("" if hit else f"   <- EXPECTED {want}"))
+
+    ranked = db.execute(
+        "SELECT count(*) FROM word WHERE reading_freq_rank IS NOT NULL").fetchone()[0]
+    out(f"readings carrying their own rank: {ranked:,}")
+    return ok, "reading-level rank orders readings; genuine ties keep kana order"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--db", type=Path, default=HERE / "data" / "build" / "spotter.db")

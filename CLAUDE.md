@@ -70,7 +70,7 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 ## Status
 
-**Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 99.7 MB `spotter.db` (30.3 MB gzipped) from four pinned sources in ~45 seconds, byte-reproducible from identical sources (D-58, D-64). `verify.py` passes 11 of 11 verification cases.
+**Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 99.7 MB `spotter.db` (30.3 MB gzipped) from four pinned sources in ~45 seconds, byte-reproducible from identical sources (D-58, D-64). `verify.py` passes 12 of 12 verification cases.
 
 **Phase 2 — Android app, text input only: feature-complete.** Type Japanese → Kuromoji segments it → tap a word → readings, meanings, example sentences and component boxes → tap one → the kanji screen, whose Examples tab is D-04. Longest-match offers the words the parse hides (東京都 → 京都). The dictionary ships in the APK and refreshes itself when it changes. Every `V-##` case this phase owns is met; the **user-data checkpoint** (D-15–D-18, D-43) is the one item left on its list and lands with Save in Phase 6 by design.
 

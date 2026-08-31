@@ -12,7 +12,10 @@ Four things this file exists to get right:
   * re_restr / re_nokanji  — which readings go with which writings
   * stagk / stagr          — which SENSES apply to which of the expanded rows
   * ke_pri / re_pri        — frequency, which lives on writings and readings
-                             separately rather than on the entry
+                             separately rather than on the entry. Both a combined
+                             rank (for ranking words) and a reading-only rank (for
+                             ordering the readings within one word) are stored;
+                             D-84 and V-29 explain why one number cannot do both
   * colliding keys         — 1,659 merges, where a (text, reading) pair is
                              produced by more than one entry
 """
@@ -130,16 +133,23 @@ def expand(entry: ET.Element, codes: dict[str, str]) -> list[dict]:
         # with kanji — it stands alone rather than pairing with any writing.
         if not writings or r.find("re_nokanji") is not None:
             words.append({"text": reb, "reading": reb, "keb": None,
-                          "ent_seq": ent_seq, "pri": r_pri, "info": r_inf})
+                          "ent_seq": ent_seq, "pri": r_pri,
+                          "reading_pri": r_pri, "info": r_inf})
             continue
 
         # re_restr limits this reading to specific writings. Without it the
         # reading applies to all of them.
         restr = _texts(r, "re_restr")
         for keb in (restr or writings):
+            # `pri` unions the writing's markers in, which is right for ranking
+            # this WORD against other words. `reading_pri` deliberately does not,
+            # because a strongly-marked writing floods every reading it pairs
+            # with and erases the distinction JMdict draws between them — which
+            # is how 一人 ends up leading with いちにん (D-84, V-29).
             words.append({"text": keb, "reading": reb, "keb": keb,
                           "ent_seq": ent_seq,
-                          "pri": r_pri | writings.get(keb, set()), "info": r_inf})
+                          "pri": r_pri | writings.get(keb, set()),
+                          "reading_pri": r_pri, "info": r_inf})
 
     # Senses, each carrying the restrictions that decide which words get it.
     senses = []
@@ -206,6 +216,8 @@ def ingest(db: sqlite3.Connection, path: Path) -> Counter:
         for w in words:
             key = (w["text"], w["reading"])
             rank = freq_rank(w["pri"])
+            # Same function, same scale — only the input set differs (D-84).
+            reading_rank = freq_rank(w["reading_pri"])
 
             if key in seen:
                 stats["merged_into_existing"] += 1
@@ -216,8 +228,14 @@ def ingest(db: sqlite3.Connection, path: Path) -> Counter:
                     "   WHEN freq_rank IS NULL THEN ?"
                     "   WHEN ? IS NULL THEN freq_rank"
                     "   ELSE MIN(freq_rank, ?) END,"
+                    " reading_freq_rank = CASE"
+                    "   WHEN reading_freq_rank IS NULL THEN ?"
+                    "   WHEN ? IS NULL THEN reading_freq_rank"
+                    "   ELSE MIN(reading_freq_rank, ?) END,"
                     " is_common = MAX(is_common, ?) WHERE id = ?",
-                    (rank, rank, rank, 1 if w["pri"] else 0, word_id),
+                    (rank, rank, rank,
+                     reading_rank, reading_rank, reading_rank,
+                     1 if w["pri"] else 0, word_id),
                 )
             else:
                 word_id, sense_no = next_id, 1
@@ -225,10 +243,11 @@ def ingest(db: sqlite3.Connection, path: Path) -> Counter:
                 stats["words"] += 1
                 db.execute(
                     "INSERT INTO word (id, text, reading, ent_seq, reading_info,"
-                    " freq_rank, is_common) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    " freq_rank, reading_freq_rank, is_common)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (word_id, w["text"], w["reading"], w["ent_seq"],
                      json.dumps(w["info"], ensure_ascii=False) if w["info"] else None,
-                     rank, 1 if w["pri"] else 0),
+                     rank, reading_rank, 1 if w["pri"] else 0),
                 )
                 if w["text"] == w["reading"]:
                     stats["kana_only"] += 1

@@ -66,6 +66,21 @@ CREATE TABLE word (
     freq_rank     INTEGER,              -- derived from ke_pri/re_pri; NULL = unranked.
                                         --   NULL must sort LAST, not first (V-04): only
                                         --   ~26% of entries carry any priority tag.
+    reading_freq_rank INTEGER,          -- derived from re_pri ALONE (D-84). Same scale and
+                                        --   the same NULL-sorts-last rule as freq_rank.
+                                        --   Exists because freq_rank unions the WRITING's
+                                        --   markers in, which ranks words correctly and
+                                        --   orders the readings within one word wrongly: a
+                                        --   strongly-marked writing floods every reading it
+                                        --   pairs with. 一人 leads with いちにん instead of
+                                        --   ひとり under freq_rank alone (V-29). Used only as
+                                        --   the tiebreak between readings of one written
+                                        --   form; never for ranking words against each other.
+                                        --   Queries test it for NULL and MUST NOT compare the
+                                        --   magnitudes: the band is newspaper frequency and is
+                                        --   register-biased (明日 みょうにち bands 5, あした 49).
+                                        --   The number is stored because it is the honest
+                                        --   value; presence is the only part that is a signal.
     is_common     INTEGER NOT NULL DEFAULT 0,   -- 1 if the entry had any priority tag
     UNIQUE (text, reading)
 );

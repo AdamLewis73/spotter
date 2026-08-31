@@ -112,7 +112,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-81 | Save stores the **top-ranked** entry — the one whose glosses are shown | UI |
 | D-82 | Re-saving a **deleted** word resets `created_at`; re-saving a live one does not | UI / Data |
 | D-83 | A word's scan history outlives unsaving — photos belong to the word | Images |
-| D-84 | A reading's **own** priority breaks ties between readings of one word | Data |
+| D-84 | Between readings of one word, having a `re_pri` wins; magnitude never compared | Data |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -680,22 +680,25 @@ Three layers, all required:
 
 *Note the asymmetry that made this expensive:* committing the datasets (D-55) was a sound decision, but it combined with an automatic reviewer to produce a cost neither change implied on its own. Any future decision to commit large files should check what reads them automatically.
 
-**D-84 — A reading's own `re_pri` breaks ties between the readings of one word. The combined writing+reading rank still ranks words against each other.**
+**D-84 — Between the readings of one written form, a reading that carries its own `re_pri` sorts before one that carries none. The *magnitude* of that rank is never compared. The combined writing+reading rank still ranks words against each other.**
 
-`freq_rank` collapses JMdict's priority markers into one sortable number, taking the union of the writing's `ke_pri` and the reading's `re_pri` (`ingest_jmdict.py`, and the table in `data-model.md`). That is correct for its original job — ranking whole words for V-04's example lists — and wrong for a job it was later asked to do, which is ordering the readings *within* one written form. A strongly-marked writing floods every reading it pairs with, so readings that JMdict distinguishes clearly arrive equal. V-29 has the measurements; 一人 leads with いちにん rather than ひとり because of it.
+`freq_rank` collapses JMdict's priority markers into one sortable number, taking the union of the writing's `ke_pri` and the reading's `re_pri` (`ingest_jmdict.py`, and the table in `data-model.md`). That is correct for its original job — ranking whole words for V-04's example lists — and wrong for a job it was later asked to do, which is ordering the readings *within* one written form. A strongly-marked writing floods every reading it pairs with, so readings JMdict distinguishes clearly arrive equal, and the sort falls through to kana order. 一人 led with いちにん rather than ひとり for exactly that reason. V-29 holds the measurements.
 
-*The fix is additive:* store a second, **reading-level** rank derived from `re_pri` alone, and consult it as the tiebreak before falling back to kana order. The existing combined rank is unchanged, so nothing that ranks words is affected.
+*The fix is additive:* store a second, reading-level rank derived from `re_pri` alone, and consult it before falling back to kana. The existing combined rank is untouched, so nothing that ranks words is affected. 896 written forms change their leading reading, every one of them a word with a common reading.
 
-*Two alternatives were measured and rejected*, and they are recorded because both look reasonable and neither is:
+**Presence is the signal. The number is not** — and this half was learned the hard way, which is why it is stated so plainly. Having a marker at all is JMdict asserting that a reading is standard for this writing. The *band* it sits in is newspaper-corpus frequency, and that corpus is register-biased: 明日's みょうにち bands at **5** against あした's **49**, because announcements say みょうにち and people say あした. Ordering by magnitude promotes the formal reading of one of the first words a learner meets, and it broke V-27's example-sentence attachment — caught by that case's own test, not by V-29. Queries therefore test `reading_freq_rank IS NULL` and stop.
 
-- **Tiebreak by dictionary row id.** JMdict lists a reading element's primary form first, so row order within one entry really does carry editorial intent — it fixes 一人 and 上手. But it is meaningless *across* entries, and 米 and 先 are exactly that case: it promotes 米 to メートル over こめ, and 先 to さっき over さき. 4,803 written forms change, most of them for no reason.
-- **Tiebreak by `ent_seq` then row id.** Same outcome to the character, for the same reason — entry numbers are not a frequency signal either.
+*Three alternatives were measured and rejected.* All look reasonable, all fix 一人, and each breaks something else — which is the point of writing them down:
 
-*Why reading-level rank is better than both:* it moves only the words where the data actually distinguishes the readings, and leaves the genuinely-tied ones (米, 先) exactly where they are. A tiebreak that guesses is worse than one that declines to.
+- **Tiebreak by dictionary row id.** JMdict lists a reading element's primary form first, so row order within one entry does carry editorial intent. But it is meaningless *across* entries, and 米 and 先 are exactly that case: it promotes 米 to メートル over こめ and 先 to さっき over さき. 6,445 written forms move, most for no reason.
+- **Tiebreak by `ent_seq` then row id.** Identical outcome to the character. Entry numbers are not a frequency signal either.
+- **Compare reading-rank magnitudes.** Fixes 一人 and その他 like the chosen rule, and additionally reverses 明日 to みょうにち and 日本 to にほん. It differs from presence-only on 19 words, and those 19 are the contested ones — 日本 にほん/にっぽん, 四 し/よん, 今日 きょう/こんにち — where no tiebreak has any business holding an opinion.
 
-*Cost:* a column on `word`, a rebuild, and a `DictionaryDatabase.SCHEMA_VERSION` bump — the dictionary is disposable and never migrated (D-38), so the bump is a re-extract rather than a migration. **Not yet implemented**; V-29 is the case that will confirm it.
+*The principle underneath all three rejections:* **a tiebreak that guesses is worse than one that declines to.** Where two readings both carry markers, nothing in the data separates them, and kana order — arbitrary but stable — is the honest answer. Half of V-29 is the assertion that 米, 先, 明日 and 日本 do **not** move, and every rejected alternative fails that half.
 
-*Note this does not touch identity.* Which reading leads a screen is a display and default-selection question. (text, reading) remains the identity (D-12), and D-81 continues to save whichever entry leads — it will simply be leading for a better reason.
+*Cost, paid:* a column on `word`, a rebuild, and `DictionaryDatabase.SCHEMA_VERSION` 5 → 6 — the dictionary is disposable and never migrated (D-38), so the bump is a re-extract rather than a migration.
+
+*Note this does not touch identity.* Which reading leads a screen is display and default-selection. (text, reading) remains the identity (D-12), and D-81 continues to save whichever entry leads — it now leads for a better reason.
 
 ---
 

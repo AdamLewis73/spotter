@@ -163,6 +163,45 @@ class DictionaryReadTest {
     }
 
     /**
+     * V-29 · a word's own readings are ordered by frequency, through the real
+     * repository rather than raw SQL.
+     *
+     * `verify.py` checks the same thing against the built database, and that is
+     * not enough on its own: the app reaches this list through
+     * `DictionaryDao.wordsByText` and then `forDisplay()`, and either could
+     * reorder it. This asserts what the screen actually receives.
+     *
+     * 一人 is the case worth naming. Both readings are ordinary — neither
+     * carries an `re_inf` tag, so V-21's status sort has nothing to act on —
+     * and both inherit the writing's rank of 2. Before D-84 the tie fell to
+     * kana order and the screen led with いちにん, for one of the first hundred
+     * words a learner meets.
+     */
+    @Test
+    fun a_words_readings_lead_with_the_frequent_one() = runBlocking {
+        assertEquals("ひとり", repository.lookup("一人").first().reading)
+        assertEquals("そのほか", repository.lookup("その他").first().reading)
+    }
+
+    /**
+     * The other half of V-29: where nothing separates two readings, nothing
+     * moves them.
+     *
+     * All four carry a reading-level marker on more than one reading, so the
+     * tiebreak must decline and leave kana order alone. Each of the three
+     * alternatives D-84 rejects breaks at least one of these — row-id ordering
+     * takes 米 to メートル and 先 to さっき, and comparing reading-rank
+     * magnitudes takes 明日 to みょうにち and 日本 to にほん.
+     */
+    @Test
+    fun readings_the_data_cannot_separate_keep_kana_order() = runBlocking {
+        assertEquals("こめ", repository.lookup("米").first().reading)
+        assertEquals("さき", repository.lookup("先").first().reading)
+        assertEquals("あした", repository.lookup("明日").first().reading)
+        assertEquals("にっぽん", repository.lookup("日本").first().reading)
+    }
+
+    /**
      * D-51: a sentence appears under the entry's best CURRENT reading, and
      * nowhere else.
      *

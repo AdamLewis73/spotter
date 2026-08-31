@@ -43,7 +43,7 @@ abstract class DictionaryDatabase : RoomDatabase() {
          * Bumped whenever the set of tables or columns **Room knows about**
          * changes — including simply adding an entity for a table the file
          * always had, which is what took this from 1 to 2 when `KanjiRow`
-         * arrived.
+         * arrived. Went to 6 when `word.reading_freq_rank` arrived (D-84).
          *
          * There are no `Migration` objects, and there never will be. Room's own
          * error suggests `fallbackToDestructiveMigration*`, which is banned
@@ -53,7 +53,7 @@ abstract class DictionaryDatabase : RoomDatabase() {
          * asset. `:app` does exactly that by comparing this number against the
          * copy's `PRAGMA user_version`.
          */
-        const val SCHEMA_VERSION: Int = 5
+        const val SCHEMA_VERSION: Int = 6
         /** Matches the file staged into assets by `:app:stageDictionaryAsset`. */
         const val ASSET_NAME: String = "spotter.db"
 

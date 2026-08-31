@@ -75,7 +75,7 @@ Note these live on **writing and reading elements separately** (`ke_pri`, `re_pr
 
 Confirmed against the data: 学校 / 生活 / 生産 land at nf01, 先生 at nf02, 誕生日 at 49. Only **44,311 of 322,323 words** carry any marker, so the NULL case is the common one and must sort last, not first (V-04).
 
-> **Altered by D-84.** Taking the union of `ke_pri` and `re_pri` ranks *words* correctly and orders the readings *within* one word wrongly: a strongly-marked writing floods every reading it pairs with, so readings JMdict separates clearly arrive equal. 一人 leads with いちにん rather than ひとり because of it. D-84 adds a second, reading-level rank from `re_pri` alone as the tiebreak; the combined rank above is unchanged. **Not yet implemented** — V-29 is the case that confirms it.
+> **Altered by D-84.** Taking the union of `ke_pri` and `re_pri` ranks *words* correctly and orders the readings *within* one word wrongly: a strongly-marked writing floods every reading it pairs with, so readings JMdict separates clearly arrive equal. 一人 leads with いちにん rather than ひとり because of it. D-84 adds a second, reading-level rank from `re_pri` alone (`word.reading_freq_rank`) as the tiebreak; the combined rank above is unchanged. Queries test it for **NULL only** and never compare the magnitudes — the band is newspaper frequency and is register-biased, so 明日's みょうにち outranks あした. Implemented 2026-08-29; V-29 is the case that holds it.
 
 **KANJIDIC2 details that affect the schema.** Confirmed by inspection 2026-08-05.
 
