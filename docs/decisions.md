@@ -113,6 +113,11 @@ Scan for the relevant entry rather than reading the whole file.
 | D-82 | Re-saving a **deleted** word resets `created_at`; re-saving a live one does not | UI / Data |
 | D-83 | A word's scan history outlives unsaving — photos belong to the word | Images |
 | D-84 | Between readings of one word, having a `re_pri` wins; magnitude never compared | Data |
+| D-85 | The bottom nav appears on Saved and Review, never over the camera | UI |
+| D-86 | Text input leaves the camera screen; it belongs with Saved | UI |
+| D-87 | First run explains, then asks for the camera. Placeholder design | UI |
+| D-88 | Every saved word is filed in at least one list | SRS |
+| D-89 | Unfiling keeps the word and its history, and hides it until re-filed | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -816,6 +821,37 @@ The question was whether to build a scheduler at all (D-26, D-29) or hand saved 
 
 *What Phase 6 must therefore do:* shape `study_item` as `data-model.md` draws it. `srs_state` and `review_log` may arrive in Phase 7 as new tables — Room's `AutoMigration` handles an added table — but nothing built in Phase 6 may assume they will never exist.
 
+**D-88 — Every saved word is filed in at least one list. Saving opens a list picker that can create a list without leaving it.**
+
+D-28 introduced lists as organisational tags over a many-to-many join, which left filing optional: a saved word could belong to no list at all, and the schema still permits that row to exist. This makes filing **required**. Tapping save opens a centred overlay listing every list, scrollable, **multi-select**, with *create a new list* at the top; choosing one or several and confirming files the word into all of them at once.
+
+*Why require it:* the alternative is an undifferentiated pile that grows with every scan and is never revisited, which is the failure mode of every save-for-later feature ever built. Requiring a destination at the moment of saving is the one point where the user actually knows why they are keeping the word.
+
+*What it costs, stated plainly:* a step on the app's most common action, which D-61 normally forbids. Accepted because the step is where the value is, and because multi-select means filing into three lists costs the same as filing into one.
+
+**The first save is the hardest one, and the design has to carry it.** A new user's picker is empty — they have no lists — so *create a new list* is not a convenience at the top of that overlay, it is the only available action the first time it opens. That empty state is a first-run screen in disguise and should read as an invitation rather than as an empty box.
+
+*Implementation note:* the repository already supports this exactly. `addToList` is per-list and idempotent, so a multi-select is N calls that cannot duplicate, and `createList` needs no uniqueness check because list names are deliberately not unique (D-28, D-15).
+
+*Cost to reverse:* low in the permissive direction — dropping the requirement later just means allowing what the schema already allows. Adding it later would be worse, because existing users would have unfiled words needing somewhere to go.
+
+**D-89 — Removing a word from its last list keeps the word and its review history. It is hidden from lists and from review until it is filed again.**
+
+D-88 requires every saved word to be filed, and the obvious reading — that unfiling deletes the word — is wrong. Swiping a word out of its only list is an organisational gesture, and it must not silently destroy review history behind a swipe.
+
+So the row stays live, its history intact, and it simply stops appearing: not in any list, not in the Saved counts, and **not in review**. Filing it again brings it back exactly as it was.
+
+*The schema already expresses this and needs no new column.* A `study_item` with no live `list_membership` rows **is** the unfiled state. It is distinct from a tombstoned item (D-16), which is a deletion, and from an item the dictionary can no longer resolve (D-40), which still renders.
+
+*Two consequences that are easy to miss:*
+
+- **"Is this word saved?" changes meaning.** It stops being *the row exists* and becomes *the row exists and has at least one live membership*. Every such query has to join membership, or an unfiled word reports itself as saved and shows a filled button with nothing behind it.
+- **Review eligibility now depends on membership**, which sharpens D-29 rather than contradicting it. Lists still never own scheduling — one word, one schedule, however many lists — but an unfiled word is out of scope for a session even when its card is due.
+
+*An unfiled word is not browsable, by design.* There is no "unfiled" bin to visit, because adding one would reintroduce the pile D-88 exists to prevent. The way back is to meet the word again — scan it, file it, and its history is waiting.
+
+*Cost to reverse:* low. Nothing is destroyed under this rule, so a later decision to surface unfiled words has all the data it needs.
+
 ---
 
 ## UI
@@ -1211,6 +1247,44 @@ Unsaving 先生 tombstones the study item and its list memberships. It does **no
 *What this does not license:* it is not a reason to keep images forever regardless of cost. D-25's auto-purge of unsaved casual scans still applies, and the storage screen it requires is still owed. The claim here is narrow — unsaving is not itself a deletion of history.
 
 *Cost to reverse:* low while `scan_word` does not exist, which is why it was settled now. Once photographs are attached to words in the field, changing the rule means deciding what to do with records already kept under it.
+
+**D-85 — The bottom nav appears on Saved and Review. It is never drawn over the camera. Clarifies D-36 against D-61 and D-73.**
+
+D-36 specified three destinations — Scan · Saved · Review — and was written before the camera existed. D-73 then made the live viewfinder the launcher destination with no chrome on it. Neither entry said whether the nav bar is drawn *on* the scanner, and the wireflow forced the question by drawing it both ways.
+
+**It is not.** The camera is full-bleed: shutter, flash, and the import affordance, nothing else. The bar appears once you leave, on Saved and on Review, and it is how you move between those and back to Scan.
+
+*This is what `ux.md` already said*, in a line that predates the argument and settles it: **"The bottom nav is how you leave the scanner, never something you pass through to reach it."** A permanent bar contradicts that sentence; this does not. D-36's three destinations survive intact, and so does D-61's uncluttered first screen.
+
+*You leave the scanner by swiping left, or by the control in the top-left corner.*
+
+*The open sub-question, recorded rather than guessed:* **what the system back gesture does on the camera.** Hiding the bar on one top-level destination makes this a non-standard pattern, and Android users read a back chevron as "go back", while back from a start destination normally exits the app. If the corner control goes to Saved while system back exits, the two disagree in the same place; if system back also goes to Saved, back never leaves the app. This must be settled before the nav is built, and the glyph probably wants reconsidering with it — a chevron says *backwards*, not *there is a screen over there*.
+
+*Cost to reverse:* low. It is where one composable is drawn.
+
+**D-86 — Text input leaves the camera screen. It belongs with Saved. It remains available as recovery when the camera cannot be used. Refines D-73.**
+
+D-73 kept the Phase 2 text box alive as a debug path behind an affordance on the scan screen, and was explicit that it is not a second front door. The wireflow promoted it to a permanent camera control labelled TYPE, which is that front door by another name — two ways to start a lookup, one of them on the screen D-61 exists to keep clean.
+
+So it moves. Typing a word belongs on the study side of the app, with Saved, where looking something up deliberately is already what you are doing. Exact placement is deliberately not settled here.
+
+*This also lands where `roadmap.md` expected it.* The deferred **user-facing search** entry says the question was never whether to build the screen — it exists and works — but *where it lives*, and that this was a D-61 question to answer once the camera path worked. It has worked since Phase 4. This is that answer.
+
+*What stays:* lane F's *Type a word* as the recovery path when camera permission is denied or the lens is blocked. That is not a front door; it is the only door left, and offering it there is the difference between a dead end and a way through.
+
+*Cost to reverse:* near zero. The screen exists; this is an entry point.
+
+**D-87 — First run explains the app, then asks for the camera. The current design is a placeholder.**
+
+The app has no first-run sequence today: it opens on the viewfinder and the permission dialog is the first thing a new user sees. The wireflow adds a short lane before it — what the app does, and that the frame freezes so you can read at your own pace — and asks for the camera **after** that rather than before.
+
+*The reason to ask last is the only part worth defending:* a permission prompt is answered on the strength of what the user already believes the app is for. Asking before showing anything spends the one prompt Android gives you on a stranger. A denial is expensive — it drops the user into lane F's recovery path permanently, and Android will not ask again.
+
+*Recorded as a placeholder, deliberately.* The screens are a first pass and will likely be redrawn. What is settled is the shape: **explain, then ask**, and that the camera permission is requested during first run rather than on the first shutter press.
+
+*One node from that lane is dropped:* a dictionary download step. The dictionary ships inside the app and is unpacked on first launch (Phase 2) — there is no download, no hosting, and no network on first run. Nothing in D-46 is engaged.
+
+*Cost to reverse:* low, and it is additive — first run is a one-time surface with nothing else depending on it.
 
 ---
 

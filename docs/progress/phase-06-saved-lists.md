@@ -54,14 +54,17 @@ than obeyed.
 
 ## Next action
 
-**The Saved tab (D-36) — and it needs asking about before it is built.** Words
-can now be saved and there is nowhere to see them, which is the gap to close
-next. But D-36 specifies three bottom-nav destinations (Scan · Saved · Review)
-and the app currently has none: D-73 made the camera the launcher destination
-with no chrome around it, and `roadmap.md`'s deferred entry on user-facing
-search says in as many words that *what the second screen of a scanner-first app
-should be* is a D-61 question to ask rather than answer. Adding a nav bar is the
-same question. Raise it before drawing one.
+**Make saved-ness mean what D-89 says it means**, before anything is drawn on top
+of the old meaning: join `list_membership` in `observeIsSaved` and
+`observeSaved`, and add instrumented cases for an unfiled word — it must report
+itself unsaved, stay out of the Saved list, and come back with its history when
+re-filed.
+
+**Then the Saved screen and the list picker**, which D-85 and D-88 now specify
+well enough to build: the nav bar on Saved and Review only, and a centred
+multi-select picker with *create a new list* at the top. Note the picker's empty
+state is a first-run screen in disguise — on a new install it is the only way to
+save anything at all.
 
 After that, in order:
 
@@ -115,12 +118,43 @@ values and **D-84** with the fix and two rejected alternatives. Not fixed on thi
 branch: it needs a dictionary rebuild and a `SCHEMA_VERSION` bump, which do not
 belong beside a user-data schema.
 
+## Settled from the wireflow, 2026-09-01
+
+The project owner built a six-lane wireflow in Claude Design and it was read
+against the record. Five decisions came out of it, and one piece of built code
+now needs changing.
+
+- **D-85** — the bottom nav is drawn on Saved and Review, **never over the
+  camera**. This is `ux.md`'s own sentence taken literally, and it keeps both
+  D-36's three destinations and D-61's uncluttered first screen. You leave the
+  scanner by swiping left or by the top-left control.
+- **D-86** — typing a word moves off the camera and over to Saved, which is also
+  where `roadmap.md`'s deferred *user-facing search* entry expected it to land.
+  It stays as recovery in the camera-blocked path.
+- **D-87** — a first-run sequence: explain, then ask for the camera. Placeholder
+  design. The wireflow's dictionary-download node is dropped; the dictionary
+  ships inside the app and there is no network on first run.
+- **D-88** — **every saved word must be filed in at least one list.** Save opens
+  a centred multi-select picker that can create a list inline.
+- **D-89** — unfiling a word keeps it and its review history, and hides it from
+  lists and review until it is filed again.
+
+**D-88 and D-89 change code that is already written and merged.** `observeIsSaved`
+and `observeSaved` currently mean *the `study_item` row exists*; they must come
+to mean *the row exists and has at least one live `list_membership`*. Left as is,
+an unfiled word reports itself as saved and shows a filled button with nothing
+behind it. This is the first thing to do on the Saved screen, before any of it is
+drawn against the old meaning.
+
+Handwriting-in-review is left to Phase 7 (D-72 untouched), and a Profile screen
+will eventually host storage, attribution and export — neither is settled here.
+
 ## Open questions
 
-- **Does the app get a bottom nav bar, and is Saved the second destination?**
-  D-36 says three destinations; D-73 gave the camera the screen with no chrome;
-  D-61 says simplicity outranks features. Saved words are now unreachable, so
-  this needs answering — see Next action.
+- **What does the system back gesture do on the camera?** D-85 hides the nav bar
+  there, which makes this a non-standard pattern: a back chevron on a start
+  destination is ambiguous, and system back normally exits. Must be settled
+  before the nav is built — recorded in D-85.
 - **Should the kanji screen's Save work?** D-01 scopes v1 to words, and a lone
   scanned kanji lands there (D-49). The button is drawn and inert.
 

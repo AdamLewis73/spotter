@@ -18,9 +18,14 @@ The app's core interaction — tapping one specific word on a photograph — has
 
 **Scan is the start destination.** The app launches straight into the live camera preview — there is no home screen, dashboard, or shortcut grid in front of it (D-61). The bottom nav is how you leave the scanner, never something you pass through to reach it.
 
+> **D-85 takes that sentence literally: the nav bar is not drawn over the camera at all.** It appears on Saved and on Review. You leave the scanner by swiping left or by the top-left control. D-36's three destinations are unchanged. What the *system back* gesture does on the camera is still open — see D-85.
+
+> **D-86 moves text input off the camera** and over to Saved. It also stays as recovery when the camera is unusable. **D-87** adds a first-run sequence before the viewfinder: explain, then ask for the camera permission.
+
 ```
 Bottom nav: Scan · Saved · Review          (three — resist a fourth, D-36)
              ▲ start destination (D-61)
+               └─ the bar is NOT drawn here (D-85)
 
 Scan
  └─ live preview + "text detected" indicator + large shutter

@@ -154,6 +154,9 @@ The pipeline is built in reverse (see `roadmap.md`). Phases 1–3 construct and 
 
 ```
 Bottom nav: Scan · Saved · Review          (D-36)
+  shown on Saved and Review only — never over the camera (D-85)
+  first run: explain → camera permission → Scan            (D-87)
+  typing a word lives with Saved, not on the camera         (D-86)
 
 Scan → shutter → frozen image + overlay
   → tap word  → PEEK SHEET (ModalBottomSheet, partially expanded)
