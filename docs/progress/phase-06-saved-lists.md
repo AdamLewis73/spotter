@@ -60,11 +60,16 @@ of the old meaning: join `list_membership` in `observeIsSaved` and
 itself unsaved, stay out of the Saved list, and come back with its history when
 re-filed.
 
-**Then the Saved screen and the list picker**, which D-85 and D-88 now specify
-well enough to build: the nav bar on Saved and Review only, and a centred
-multi-select picker with *create a new list* at the top. Note the picker's empty
-state is a first-run screen in disguise — on a new install it is the only way to
-save anything at all.
+**Then the Saved screen and the list picker**, which D-88, D-90 and D-91 now
+specify well enough to build: the nav bar on all three destinations, and a
+centred multi-select picker that stages its choices, writes only on *Add*, and
+offers *create a new list* at the top. Note the picker's empty state is a
+first-run screen in disguise — on a new install it is the only way to save
+anything at all.
+
+**And D-92 turns on the kanji screen's Save**, which routes through the same
+picker. `StudyItemKey` already accepts `(character, "", KANJI)`, so this is
+wiring rather than schema work.
 
 After that, in order:
 
@@ -124,10 +129,13 @@ The project owner built a six-lane wireflow in Claude Design and it was read
 against the record. Five decisions came out of it, and one piece of built code
 now needs changing.
 
-- **D-85** — the bottom nav is drawn on Saved and Review, **never over the
-  camera**. This is `ux.md`'s own sentence taken literally, and it keeps both
-  D-36's three destinations and D-61's uncluttered first screen. You leave the
-  scanner by swiping left or by the top-left control.
+- ~~**D-85**~~ — **superseded within the day by D-90**: the bottom nav is drawn on
+  **all three** destinations, camera included, with no back control on the
+  camera and system back exiting the app. D-85 had kept the bar off the
+  viewfinder, and it fell to two things: a left-edge swipe *is* the system back
+  gesture on gesture navigation, so its exit gesture would have lost to the OS;
+  and its central argument was a sentence in `ux.md` that no decision had ever
+  ratified. Worth remembering — **prose in a reference doc is not a decision.**
 - **D-86** — typing a word moves off the camera and over to Saved, which is also
   where `roadmap.md`'s deferred *user-facing search* entry expected it to land.
   It stays as recovery in the camera-blocked path.
@@ -146,19 +154,29 @@ an unfiled word reports itself as saved and shows a filled button with nothing
 behind it. This is the first thing to do on the Saved screen, before any of it is
 drawn against the old meaning.
 
+Three more followed once the wireflow had been read twice:
+
+- **D-90** — the nav bar is on all three destinations; system back exits the app.
+- **D-91** — the list picker **stages** its choices: nothing is written until
+  *Add*, it only ever adds, and re-adding to a list that already holds the word
+  attaches the current scan's photo. This supersedes D-81's toggle — the button
+  no longer reports saved state at all, because a word can be in some lists and
+  not others and there is no single truth to show.
+- **D-92** — **kanji are study items in v1**, superseding D-01. D-49 sends a
+  scanned lone kanji straight to the kanji screen, so deferring this meant a
+  Save button that could never work. Near-free: D-27's `type` discriminator has
+  been in the schema since version 1 for exactly this.
+
 Handwriting-in-review is left to Phase 7 (D-72 untouched), and a Profile screen
 will eventually host storage, attribution and export — neither is settled here.
 
 ## Open questions
 
-- **What does the system back gesture do on the camera?** D-85 hides the nav bar
-  there, which makes this a non-standard pattern: a back chevron on a start
-  destination is ambiguous, and system back normally exits. Must be settled
-  before the nav is built — recorded in D-85.
-- **Should the kanji screen's Save work?** D-01 scopes v1 to words, and a lone
-  scanned kanji lands there (D-49). The button is drawn and inert.
+None outstanding. Both that were open yesterday are now decided: the system back
+gesture exits the app (D-90), and the kanji screen's Save works, because kanji
+are study items in v1 (D-92).
 
-The two that *gated* this phase are settled (D-79, D-80).
+The two that *gated* this phase remain settled (D-79, D-80).
 
 ## Notes
 
