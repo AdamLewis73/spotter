@@ -154,7 +154,7 @@ The pipeline is built in reverse (see `roadmap.md`). Phases 1–3 construct and 
 
 ```
 Bottom nav: Scan · Saved · Review          (D-36)
-  drawn on all three, camera included                       (D-90)
+  the APP's own bar, drawn on all three, camera included    (D-90)
   system back exits the app; no back control on the camera  (D-90)
   first run: explain → camera permission → Scan            (D-87)
   typing a word lives with Saved, not on the camera         (D-86)

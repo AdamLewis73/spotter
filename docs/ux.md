@@ -20,7 +20,7 @@ The app's core interaction — tapping one specific word on a photograph — has
 
 > This paragraph used to end with *"the bottom nav is how you leave the scanner, never something you pass through to reach it."* **That sentence is retired.** It was written here rather than in `decisions.md`, was never ratified, and read as settled intent for long enough to steer a decision — see D-90, which supersedes D-85 and says plainly what the nav does. *Prose in this file is description; only `decisions.md` decides.*
 
-> **D-90** — the bottom nav is drawn on **all three** destinations, the camera included. There is no back control on the camera; system back exits the app, as on any Android start destination.
+> **D-90** — the app's own bottom navigation (Scan · Saved · Review, as icons) is drawn on **all three** destinations, the camera included. Not to be confused with Android's *system* navigation bar, which sits below it and belongs to the platform. There is no back control on the camera; system back exits the app, as on any Android start destination.
 
 > **D-86** moves text input off the camera and over to Saved, and keeps it as recovery when the camera is unusable. **D-87** adds a first-run sequence before the viewfinder: explain, then ask for the camera permission. **D-88** requires every saved word to be filed in at least one list, through the picker **D-91** specifies. **D-92** makes kanji saveable too.
 

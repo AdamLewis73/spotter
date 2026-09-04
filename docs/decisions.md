@@ -118,7 +118,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-87 | First run explains, then asks for the camera. Placeholder design | UI |
 | D-88 | Every saved word is filed in at least one list | SRS |
 | D-89 | Unfiling keeps the word and its history, and hides it until re-filed | SRS |
-| D-90 | The bottom nav is on all three destinations, the camera included | UI |
+| D-90 | The app's own Scan · Saved · Review bar is on all three, camera included | UI |
 | D-91 | The list picker stages its choices; nothing is written until **Add** | UI |
 | D-92 | Kanji are study items in v1 | Product |
 
@@ -1301,7 +1301,9 @@ The app has no first-run sequence today: it opens on the viewfinder and the perm
 
 *Cost to reverse:* low, and it is additive — first run is a one-time surface with nothing else depending on it.
 
-**D-90 — The bottom nav is drawn on all three destinations, the camera included. There is no back control on the camera, and the system back gesture exits the app. Supersedes D-85.**
+**D-90 — The app's own bottom navigation — Scan · Saved · Review, as icons — is drawn on all three destinations, the camera included. There is no back control on the camera, and the system back gesture exits the app. Supersedes D-85.**
+
+> **Two different things get called "the nav bar", and this entry means one of them.** Android's **system navigation bar** is the OS strip at the very bottom carrying back, home and recents (or the gesture pill); it belongs to the platform and is not ours to place. A **bottom navigation bar** is the app's own row of destinations, sitting above it. This decision is about the second: the same Scan · Saved · Review control already drawn on Saved and Review, now also on the camera.
 
 D-85 kept the bar off the viewfinder and put a `‹` in the corner instead. Two problems killed it.
 
@@ -1309,9 +1311,9 @@ D-85 kept the bar off the viewfinder and put a `‹` in the corner instead. Two 
 
 *The one that mattered more:* D-85's central argument was a sentence in `ux.md` — *"the bottom nav is how you leave the scanner, never something you pass through to reach it"* — treated as settled intent. It is not. It was written by an earlier session in commit `4e95ad0` while writing up D-61, lives in `ux.md` rather than here, and **no decision ever recorded it**. The project owner had not said it and did not hold it. A line that reads as authoritative had been steering a decision without ever being agreed, which is worth remembering as a failure mode: prose in a reference document is not a decision, and only `decisions.md` carries that weight.
 
-**So the bar is on all three, Scan included, and it is the standard Android pattern.** Back on the camera exits the app, as it does on any start destination. Nothing in the corner competes with it, and the swipe is gone.
+**So the app's bottom navigation is on all three, Scan included.** That is the conventional arrangement — an app's own destination bar is normally visible on every top-level destination, rather than appearing and disappearing as you move between them. Back on the camera exits the app, as it does on any start destination. Nothing in the corner competes with it, and the swipe is gone.
 
-*The cost, accepted knowingly:* a permanent strip of chrome across the bottom of the viewfinder, which is a real charge against D-61's uncluttered first screen. Weighed against a non-standard exit that fights the OS and needs teaching, the bar wins — it is the pattern every Android user already knows, and D-36 has specified three destinations since long before the camera existed.
+*The cost, accepted knowingly:* a permanent strip of chrome across the bottom of the viewfinder, which is a real charge against D-61's uncluttered first screen. Weighed against an exit gesture that fights the OS and needs teaching, the bar wins — a visible destination row is the pattern every Android user already knows, and D-36 has specified three destinations since long before the camera existed.
 
 *Cost to reverse:* low. It is where one composable is drawn.
 
