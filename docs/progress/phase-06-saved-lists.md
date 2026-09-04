@@ -28,17 +28,22 @@ assumed: UUID keys (D-15), `updated_at` and soft delete (D-16), no
 
 **The user database exists and Save works.** `UserDatabase` v1 holds
 `study_item`, `saved_list` and `list_membership`; its schema JSON is committed
-(D-18). Eleven instrumented cases pass against real SQLite, and the flow was
+(D-18). Thirteen instrumented cases pass against real SQLite, and the flow was
 driven on the emulator end to end: saving 先生 writes one row with a UUID key,
 the full (text, reading) identity, the gloss that was on screen and the
 `ent_seq` hint; unsaving leaves a tombstone with the row intact; re-saving
-revives **that same id** with `created_at` untouched, still one row.
+revives **that same id**, still one row. *(That paragraph described the
+behaviour on the day it was written; **D-82** later made a revive reset
+`created_at`, so a re-saved word returns to the top of a newest-first list.)*
 
 **D-81 came out of wiring the button**, and it is worth knowing about before
 touching that screen. The peek deliberately shows no reading (D-47) while
 identity requires one (D-12), so Save stores the top-ranked entry — the one
-whose glosses are printed above the button. It is a toggle, and it is disabled
-while the lookup is running or after it fails.
+whose glosses are printed above the button. That part still stands.
+
+*Its toggle behaviour does not* — **D-91** replaced it. The button no longer
+reports saved state at all: it always offers to add, and opens the list picker.
+The code still implements the toggle and has not caught up yet.
 
 `ent_seq` had to be plumbed through `DictionaryEntry` to get there: the column
 existed on the dictionary row but was never exposed to `:domain`, so nothing
@@ -80,10 +85,10 @@ After that, in order:
    are a Room `AutoMigration`, and that bump is the moment to write the first
    `MigrationTestHelper` **chain** test — not before, because there is nothing
    yet to migrate from.
-3. Whether the kanji screen's Save should work. It is drawn, and a lone kanji
-   scanned on a beer tap goes straight there (D-49), so it is reachable — but
-   D-01 scopes v1 study items to words. Decided, not overlooked; worth
-   re-confirming rather than silently leaving a live-looking button inert.
+3. ~~Whether the kanji screen's Save should work.~~ **Settled: it does (D-92).**
+   Kanji are study items in v1, superseding D-01 — D-49 sends a scanned lone
+   kanji straight to that screen, so deferring it meant shipping a button that
+   could never work.
 
 ## Done
 
@@ -93,8 +98,10 @@ After that, in order:
 - [x] Checkpoint: which tables carry tombstones (D-80)
 - [x] `:domain` models and repository interfaces
 - [x] `UserDatabase` v1 in `:data`, schema JSON committed
-- [x] Save writes a row — from the peek sheet and the word screen, as a
-      toggle over the top-ranked entry (D-81); verified on the emulator
+- [x] Save writes a row — from the peek sheet and the word screen, over the
+      top-ranked entry (D-81); verified on the emulator. *Built as a toggle;
+      D-91 has since replaced that with an always-add button and a picker, and
+      the code has not caught up*
 - [x] CI enforces the `fallbackToDestructiveMigration()` ban (D-17)
 - [ ] Multiple user-named lists in the UI — the schema and repository are done
       (D-28), nothing calls them
