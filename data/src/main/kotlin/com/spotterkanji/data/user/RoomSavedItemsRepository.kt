@@ -33,11 +33,17 @@ class RoomSavedItemsRepository(
         dao.observeByKey(key.text, key.reading, key.type.name).map { it != null }
 
     override suspend fun find(key: StudyItemKey): StudyItem? =
-        dao.findLive(key.text, key.reading, key.type.name)?.toModel()
+        dao.findFiled(key.text, key.reading, key.type.name)?.toModel()
 
     /**
      * Idempotent save (see the interface for why it revives rather than
      * inserts).
+     *
+     * **This creates the word; it does not file it** (D-88). A word is only
+     * *saved* in the sense the rest of the app means once it belongs to a list,
+     * so a caller that stops here has produced a row nothing will show. The
+     * list picker is what completes the action, and until it exists this method
+     * leaves the word unfiled and therefore invisible.
      *
      * The lookup and the write are one transaction because they are otherwise a
      * check-then-act race: two rapid taps on Save, or a save arriving while a
@@ -91,6 +97,17 @@ class RoomSavedItemsRepository(
         }
     }
 
+    /**
+     * Delete the word outright — distinct from taking it out of a list.
+     *
+     * Uses `findLive` rather than `findFiled` because an **unfiled** word must
+     * still be deletable: D-89 keeps its row alive and invisible, and without
+     * this the only rows that could ever be deleted would be the visible ones.
+     *
+     * Removing a word from a list is `SavedListRepository.removeFromList`, and
+     * it deliberately does *not* come here — emptying a word out of its last
+     * list leaves the row and its review history intact (D-89).
+     */
     override suspend fun unsave(key: StudyItemKey) {
         db.withTransaction {
             val row = dao.findLive(key.text, key.reading, key.type.name) ?: return@withTransaction

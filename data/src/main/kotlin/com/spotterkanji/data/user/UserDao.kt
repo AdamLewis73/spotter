@@ -21,31 +21,80 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface StudyItemDao {
 
+    /**
+     * Every **filed** word, newest first.
+     *
+     * "Saved" means the row is live **and** it has at least one live list
+     * membership (D-88, D-89). A word that has been taken out of its last list
+     * keeps its row and its whole review history, and simply stops appearing
+     * anywhere until it is filed again — so the `EXISTS` clause is not an
+     * optimisation, it is the definition.
+     *
+     * `EXISTS` rather than a join, deliberately: a join against a table where
+     * one word can hold several memberships returns that word once per list,
+     * and the Saved screen would show 先生 three times because the user happened
+     * to file it in three places. `EXISTS` stops at the first match and cannot
+     * duplicate a row.
+     */
     @Query(
         """
-        SELECT * FROM study_item
-        WHERE deleted_at IS NULL
-        ORDER BY created_at DESC
+        SELECT * FROM study_item AS i
+        WHERE i.deleted_at IS NULL
+          AND EXISTS (
+              SELECT 1 FROM list_membership AS m
+              WHERE m.study_item_id = i.id AND m.deleted_at IS NULL
+          )
+        ORDER BY i.created_at DESC
         """
     )
     fun observeAll(): Flow<List<StudyItemRow>>
 
     /**
-     * The live row for a natural key, or null.
+     * The **filed** row for a natural key, or null.
      *
-     * A `Flow` because it drives the Save button's saved/unsaved state, which
-     * must follow a write made anywhere — including an unsave performed on the
-     * Saved tab while the peek sheet is still open beneath it.
+     * A `Flow` because it drives the save control, which must follow a write
+     * made anywhere — including the word being taken out of its last list on
+     * the Saved tab while the peek sheet is still open over the photograph.
+     *
+     * Null covers three different situations that the caller does not need to
+     * tell apart: never saved, deleted, or saved once and since unfiled. All
+     * three mean the same thing on screen — offer to file it.
      */
     @Query(
         """
-        SELECT * FROM study_item
-        WHERE text = :text AND reading = :reading AND type = :type
-          AND deleted_at IS NULL
+        SELECT * FROM study_item AS i
+        WHERE i.text = :text AND i.reading = :reading AND i.type = :type
+          AND i.deleted_at IS NULL
+          AND EXISTS (
+              SELECT 1 FROM list_membership AS m
+              WHERE m.study_item_id = i.id AND m.deleted_at IS NULL
+          )
         """
     )
     fun observeByKey(text: String, reading: String, type: String): Flow<StudyItemRow?>
 
+    /** As [observeByKey], for a caller that wants the answer once. */
+    @Query(
+        """
+        SELECT * FROM study_item AS i
+        WHERE i.text = :text AND i.reading = :reading AND i.type = :type
+          AND i.deleted_at IS NULL
+          AND EXISTS (
+              SELECT 1 FROM list_membership AS m
+              WHERE m.study_item_id = i.id AND m.deleted_at IS NULL
+          )
+        """
+    )
+    suspend fun findFiled(text: String, reading: String, type: String): StudyItemRow?
+
+    /**
+     * The live row for a natural key **whether or not it is filed**.
+     *
+     * The one query that still means the old thing, and it has exactly one
+     * caller: deleting a word outright, which must be able to find an unfiled
+     * row in order to tombstone it. Everything the user sees goes through
+     * [findFiled] or [observeByKey] instead.
+     */
     @Query(
         """
         SELECT * FROM study_item
