@@ -274,6 +274,8 @@ scan_word            links a scanned word to where it appeared
   char_offset, char_length
 ```
 
+> **Filing is required, and "unfiled" is a real state (D-88, D-89).** Every saved word must belong to at least one list. A `study_item` with **no live `list_membership` rows** is a word that has been unfiled: the row and its review history are kept, and it is hidden from lists, from the Saved counts and from review until it is filed again. No column expresses this — the absence of live membership rows *is* the state. Two consequences: "is this word saved?" must join membership rather than test for the row, and review eligibility depends on membership.
+
 **`srs_state` hangs off `study_item`, not off `list_membership`.** That is D-29, and it is the difference between a correct scheduler and one that reviews the same word twice because it lives in two lists.
 
 ## The two identity rules

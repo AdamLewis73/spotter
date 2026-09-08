@@ -28,17 +28,22 @@ assumed: UUID keys (D-15), `updated_at` and soft delete (D-16), no
 
 **The user database exists and Save works.** `UserDatabase` v1 holds
 `study_item`, `saved_list` and `list_membership`; its schema JSON is committed
-(D-18). Eleven instrumented cases pass against real SQLite, and the flow was
+(D-18). Thirteen instrumented cases pass against real SQLite, and the flow was
 driven on the emulator end to end: saving 先生 writes one row with a UUID key,
 the full (text, reading) identity, the gloss that was on screen and the
 `ent_seq` hint; unsaving leaves a tombstone with the row intact; re-saving
-revives **that same id** with `created_at` untouched, still one row.
+revives **that same id**, still one row. *(That paragraph described the
+behaviour on the day it was written; **D-82** later made a revive reset
+`created_at`, so a re-saved word returns to the top of a newest-first list.)*
 
 **D-81 came out of wiring the button**, and it is worth knowing about before
 touching that screen. The peek deliberately shows no reading (D-47) while
 identity requires one (D-12), so Save stores the top-ranked entry — the one
-whose glosses are printed above the button. It is a toggle, and it is disabled
-while the lookup is running or after it fails.
+whose glosses are printed above the button. That part still stands.
+
+*Its toggle behaviour does not* — **D-91** replaced it. The button no longer
+reports saved state at all: it always offers to add, and opens the list picker.
+The code still implements the toggle and has not caught up yet.
 
 `ent_seq` had to be plumbed through `DictionaryEntry` to get there: the column
 existed on the dictionary row but was never exposed to `:domain`, so nothing
@@ -54,14 +59,22 @@ than obeyed.
 
 ## Next action
 
-**The Saved tab (D-36) — and it needs asking about before it is built.** Words
-can now be saved and there is nowhere to see them, which is the gap to close
-next. But D-36 specifies three bottom-nav destinations (Scan · Saved · Review)
-and the app currently has none: D-73 made the camera the launcher destination
-with no chrome around it, and `roadmap.md`'s deferred entry on user-facing
-search says in as many words that *what the second screen of a scanner-first app
-should be* is a D-61 question to ask rather than answer. Adding a nav bar is the
-same question. Raise it before drawing one.
+**Make saved-ness mean what D-89 says it means**, before anything is drawn on top
+of the old meaning: join `list_membership` in `observeIsSaved` and
+`observeSaved`, and add instrumented cases for an unfiled word — it must report
+itself unsaved, stay out of the Saved list, and come back with its history when
+re-filed.
+
+**Then the Saved screen and the list picker**, which D-88, D-90 and D-91 now
+specify well enough to build: the nav bar on all three destinations, and a
+centred multi-select picker that stages its choices, writes only on *Add*, and
+offers *create a new list* at the top. Note the picker's empty state is a
+first-run screen in disguise — on a new install it is the only way to save
+anything at all.
+
+**And D-92 turns on the kanji screen's Save**, which routes through the same
+picker. `StudyItemKey` already accepts `(character, "", KANJI)`, so this is
+wiring rather than schema work.
 
 After that, in order:
 
@@ -72,10 +85,10 @@ After that, in order:
    are a Room `AutoMigration`, and that bump is the moment to write the first
    `MigrationTestHelper` **chain** test — not before, because there is nothing
    yet to migrate from.
-3. Whether the kanji screen's Save should work. It is drawn, and a lone kanji
-   scanned on a beer tap goes straight there (D-49), so it is reachable — but
-   D-01 scopes v1 study items to words. Decided, not overlooked; worth
-   re-confirming rather than silently leaving a live-looking button inert.
+3. ~~Whether the kanji screen's Save should work.~~ **Settled: it does (D-92).**
+   Kanji are study items in v1, superseding D-01 — D-49 sends a scanned lone
+   kanji straight to that screen, so deferring it meant shipping a button that
+   could never work.
 
 ## Done
 
@@ -85,8 +98,10 @@ After that, in order:
 - [x] Checkpoint: which tables carry tombstones (D-80)
 - [x] `:domain` models and repository interfaces
 - [x] `UserDatabase` v1 in `:data`, schema JSON committed
-- [x] Save writes a row — from the peek sheet and the word screen, as a
-      toggle over the top-ranked entry (D-81); verified on the emulator
+- [x] Save writes a row — from the peek sheet and the word screen, over the
+      top-ranked entry (D-81); verified on the emulator. *Built as a toggle;
+      D-91 has since replaced that with an always-add button and a picker, and
+      the code has not caught up*
 - [x] CI enforces the `fallbackToDestructiveMigration()` ban (D-17)
 - [ ] Multiple user-named lists in the UI — the schema and repository are done
       (D-28), nothing calls them
@@ -115,16 +130,60 @@ values and **D-84** with the fix and two rejected alternatives. Not fixed on thi
 branch: it needs a dictionary rebuild and a `SCHEMA_VERSION` bump, which do not
 belong beside a user-data schema.
 
+## Settled from the wireflow, 2026-09-01
+
+The project owner built a six-lane wireflow in Claude Design and it was read
+against the record. Five decisions came out of it, and one piece of built code
+now needs changing.
+
+- ~~**D-85**~~ — **superseded within the day by D-90**: the bottom nav is drawn on
+  **all three** destinations, camera included, with no back control on the
+  camera and system back exiting the app. D-85 had kept the bar off the
+  viewfinder, and it fell to two things: a left-edge swipe *is* the system back
+  gesture on gesture navigation, so its exit gesture would have lost to the OS;
+  and its central argument was a sentence in `ux.md` that no decision had ever
+  ratified. Worth remembering — **prose in a reference doc is not a decision.**
+- **D-86** — typing a word moves off the camera and over to Saved, which is also
+  where `roadmap.md`'s deferred *user-facing search* entry expected it to land.
+  It stays as recovery in the camera-blocked path.
+- **D-87** — a first-run sequence: explain, then ask for the camera. Placeholder
+  design. The wireflow's dictionary-download node is dropped; the dictionary
+  ships inside the app and there is no network on first run.
+- **D-88** — **every saved word must be filed in at least one list.** Save opens
+  a centred multi-select picker that can create a list inline.
+- **D-89** — unfiling a word keeps it and its review history, and hides it from
+  lists and review until it is filed again.
+
+**D-88 and D-89 change code that is already written and merged.** `observeIsSaved`
+and `observeSaved` currently mean *the `study_item` row exists*; they must come
+to mean *the row exists and has at least one live `list_membership`*. Left as is,
+an unfiled word reports itself as saved and shows a filled button with nothing
+behind it. This is the first thing to do on the Saved screen, before any of it is
+drawn against the old meaning.
+
+Three more followed once the wireflow had been read twice:
+
+- **D-90** — the nav bar is on all three destinations; system back exits the app.
+- **D-91** — the list picker **stages** its choices: nothing is written until
+  *Add*, it only ever adds, and re-adding to a list that already holds the word
+  attaches the current scan's photo. This supersedes D-81's toggle — the button
+  no longer reports saved state at all, because a word can be in some lists and
+  not others and there is no single truth to show.
+- **D-92** — **kanji are study items in v1**, superseding D-01. D-49 sends a
+  scanned lone kanji straight to the kanji screen, so deferring this meant a
+  Save button that could never work. Near-free: D-27's `type` discriminator has
+  been in the schema since version 1 for exactly this.
+
+Handwriting-in-review is left to Phase 7 (D-72 untouched), and a Profile screen
+will eventually host storage, attribution and export — neither is settled here.
+
 ## Open questions
 
-- **Does the app get a bottom nav bar, and is Saved the second destination?**
-  D-36 says three destinations; D-73 gave the camera the screen with no chrome;
-  D-61 says simplicity outranks features. Saved words are now unreachable, so
-  this needs answering — see Next action.
-- **Should the kanji screen's Save work?** D-01 scopes v1 to words, and a lone
-  scanned kanji lands there (D-49). The button is drawn and inert.
+None outstanding. Both that were open yesterday are now decided: the system back
+gesture exits the app (D-90), and the kanji screen's Save works, because kanji
+are study items in v1 (D-92).
 
-The two that *gated* this phase are settled (D-79, D-80).
+The two that *gated* this phase remain settled (D-79, D-80).
 
 ## Notes
 

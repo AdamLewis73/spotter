@@ -217,6 +217,9 @@ private fun WordHeader(
             // than the colour: the accent border is this button's identity on
             // the screen, and dropping it to signal "already saved" would read
             // as the control being disabled. Tapping again unsaves (D-81).
+            //
+            // STALE: D-91 removed the toggle — the button always adds and opens
+            // the list picker. Not yet rebuilt.
             OutlinedGlyphButton(
                 glyph = if (saved) "✓" else "✚",
                 contentDescription = if (saved) "Saved" else "Save",

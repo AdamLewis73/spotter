@@ -276,6 +276,11 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      * and a control that shows state and does not undo it is a trap — the only
      * way back would be to find the word again on a different screen.
      *
+     * **Superseded by D-91 and not yet rebuilt.** Saving must open the list
+     * picker (D-88) and only ever add; unfiling happens on the list screen.
+     * The toggle went because D-89 removed what it displayed — a word filed in
+     * one list and not another has no single saved state to show.
+     *
      * Does nothing when the lookup failed. There is no gloss to snapshot (D-43)
      * and no reading to key on (D-12), and a saved item with neither is exactly
      * the unresolvable row D-40 has to render forever.

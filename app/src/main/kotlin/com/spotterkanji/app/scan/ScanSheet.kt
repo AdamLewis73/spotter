@@ -205,6 +205,13 @@ internal fun PeekContents(
             // A toggle, not a one-way action: it reports state, and a control
             // that shows state without undoing it strands the user.
             //
+            // STALE, and knowingly so: D-91 replaced the toggle. The button is
+            // always "add" and opens a list picker, because D-89 means a word
+            // can be filed in some lists and not others — there is no single
+            // saved/unsaved truth left for it to report. This code has not
+            // caught up; it is accurate about what it does today, not about
+            // what it should do.
+            //
             // Disabled only when there is nothing to save — while the lookup is
             // still running, or when it found nothing. Saving a word with no
             // gloss and no reading creates exactly the unresolvable row D-40

@@ -23,6 +23,16 @@ interface SavedItemsRepository {
     /**
      * Whether [key] is saved right now.
      *
+     * **This does not yet mean what D-89 says it must.** It currently answers
+     * *does a live row exist*; it has to answer *does a live row exist **and**
+     * does it have at least one live list membership*, because D-88 requires
+     * every saved word to be filed and D-89 keeps an unfiled word's row and
+     * history while hiding it everywhere. Until this is fixed, an unfiled word
+     * reports itself saved with nothing behind it.
+     *
+     * Not reachable by a user today — nothing can add a word to a list or take
+     * it out yet — so it is latent until the Saved screen ships. Fix it first.
+     *
      * A `Flow` rather than a `suspend` call because this drives the Save button
      * on the peek sheet, which must change the moment the write lands — and
      * must equally change back when the same word is unsaved from the Saved tab
