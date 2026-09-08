@@ -35,9 +35,27 @@ export ANDROID_HOME="/c/Users/sword/AppData/Local/Android/Sdk"
    "$ANDROID_HOME/emulator/emulator.exe" -avd Pixel_9 -no-boot-anim
    ```
 
-   Then wait for `getprop sys.boot_completed` to return `1`, and send
-   `input keyevent KEYCODE_WAKEUP` — a freshly booted emulator sleeps, and a
-   screenshot of a sleeping device is solid black rather than an error.
+   **`sys.boot_completed` is not enough on a cold boot.** It flips to `1` while
+   the package manager is still starting, and anything that installs then fails
+   with `Can't find service: package`. Gradle reports that as
+   `Finished 0 tests` or *"Could not load test results"* — neither of which
+   mentions installing, so it reads as a broken test rather than a device that
+   was not ready. Poll for the service itself:
+
+   ```
+   until adb shell pm path android | grep -q '^package:'; do :; done
+   ```
+
+   On this machine that took ~45 polls after `boot_completed` already said `1`.
+
+   Then send `input keyevent KEYCODE_WAKEUP` — a freshly booted emulator sleeps,
+   and a screenshot of a sleeping device is solid black rather than an error.
+   (`input` is unavailable for the same reason until the services are up, so
+   wake it *after* the poll above.)
+
+   If an install has already failed this way, the device can be left with
+   nothing installed while later Gradle runs still fail. `adb install -r` the
+   app and androidTest APKs by hand once, and it recovers.
 
 2. **Build and install:** `./gradlew :app:installDebug`.
 

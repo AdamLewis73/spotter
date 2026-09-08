@@ -59,13 +59,12 @@ than obeyed.
 
 ## Next action
 
-**Make saved-ness mean what D-89 says it means**, before anything is drawn on top
-of the old meaning: join `list_membership` in `observeIsSaved` and
-`observeSaved`, and add instrumented cases for an unfiled word — it must report
-itself unsaved, stay out of the Saved list, and come back with its history when
-re-filed.
+~~Make saved-ness mean what D-89 says it means.~~ **Done — 18 instrumented
+cases, including an unfiled word reporting itself unsaved, a word in two lists
+appearing once, and a refiled word coming back with the same id and
+`created_at`.**
 
-**Then the Saved screen and the list picker**, which D-88, D-90 and D-91 now
+**The Saved screen and the list picker**, which D-88, D-90 and D-91 now
 specify well enough to build: the nav bar on all three destinations, and a
 centred multi-select picker that stages its choices, writes only on *Add*, and
 offers *create a new list* at the top. Note the picker's empty state is a
@@ -103,6 +102,8 @@ After that, in order:
       D-91 has since replaced that with an always-add button and a picker, and
       the code has not caught up*
 - [x] CI enforces the `fallbackToDestructiveMigration()` ban (D-17)
+- [x] Saved means **filed** — `observeIsSaved`, `observeSaved` and `find`
+      require a live list membership (D-88, D-89); 18 instrumented cases
 - [ ] Multiple user-named lists in the UI — the schema and repository are done
       (D-28), nothing calls them
 - [ ] Scan image saved alongside the word (D-21, D-24, D-25)
@@ -154,12 +155,21 @@ now needs changing.
 - **D-89** — unfiling a word keeps it and its review history, and hides it from
   lists and review until it is filed again.
 
-**D-88 and D-89 change code that is already written and merged.** `observeIsSaved`
-and `observeSaved` currently mean *the `study_item` row exists*; they must come
-to mean *the row exists and has at least one live `list_membership`*. Left as is,
-an unfiled word reports itself as saved and shows a filled button with nothing
-behind it. This is the first thing to do on the Saved screen, before any of it is
-drawn against the old meaning.
+~~**D-88 and D-89 change code that is already written and merged.**~~ **Done.**
+`observeIsSaved`, `observeSaved` and `find` now require a live
+`list_membership`, so a word that has been taken out of its last list keeps its
+row and its whole review history and simply stops appearing. `unsave` is the one
+query that still ignores filing, deliberately — an unfiled word is invisible,
+not absent, and must stay deletable.
+
+The saved-list query uses `EXISTS` rather than a join: a join returns one row per
+membership, so a word filed in three lists would be drawn three times on the
+Saved screen, looking like duplicated data rather than a duplicated row.
+
+**Interim consequence, and it is correct rather than broken:** `save` alone
+creates the word without filing it, so until the picker exists the save control
+does nothing visible. The button used to flip to a tick while the word appeared
+in no list anywhere; it now honestly reports that the word is unfiled.
 
 Three more followed once the wireflow had been read twice:
 
