@@ -29,6 +29,8 @@ class RoomSavedItemsRepository(
     override fun observeSaved(): Flow<List<StudyItem>> =
         dao.observeAll().map { rows -> rows.map { it.toModel() } }
 
+    override fun observeSavedCount(): Flow<Int> = dao.observeFiledCount()
+
     override fun observeIsSaved(key: StudyItemKey): Flow<Boolean> =
         dao.observeByKey(key.text, key.reading, key.type.name).map { it != null }
 

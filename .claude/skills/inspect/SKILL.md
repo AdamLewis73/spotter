@@ -35,18 +35,31 @@ export ANDROID_HOME="/c/Users/sword/AppData/Local/Android/Sdk"
    "$ANDROID_HOME/emulator/emulator.exe" -avd Pixel_9 -no-boot-anim
    ```
 
-   **`sys.boot_completed` is not enough on a cold boot.** It flips to `1` while
-   the package manager is still starting, and anything that installs then fails
-   with `Can't find service: package`. Gradle reports that as
-   `Finished 0 tests` or *"Could not load test results"* — neither of which
-   mentions installing, so it reads as a broken test rather than a device that
-   was not ready. Poll for the service itself:
+   Run it as a **background task**, with no trailing `&`. Adding one
+   backgrounds the emulator inside a wrapper shell that then exits and
+   takes the emulator with it — which looks like the emulator refusing to
+   start, and `adb devices` shows nothing.
+
+   **Waiting for one readiness signal is not enough.** There are two, they come
+   up in either order, and missing either one fails an install:
+
+   - `sys.boot_completed` can be `1` while the package manager is still
+     starting — installs then fail with `Can't find service: package`.
+   - The package manager can answer while the device still reports itself
+     booting — installs then fail with `Error: device is still booting`.
+
+   Gradle surfaces the first as `Finished 0 tests` or *"Could not load test
+   results"*, neither of which mentions installing, so it reads as a broken test
+   rather than a device that was not ready. **Poll for both:**
 
    ```
-   until adb shell pm path android | grep -q '^package:'; do :; done
+   until [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] \
+      && adb shell pm path android | grep -q '^package:'; do :; done
    ```
 
-   On this machine that took ~45 polls after `boot_completed` already said `1`.
+   Both have been observed taking well over a minute on a cold boot, and the
+   `input` service comes up later still — wake the device *after* this loop, not
+   before.
 
    Then send `input keyevent KEYCODE_WAKEUP` — a freshly booted emulator sleeps,
    and a screenshot of a sleeping device is solid black rather than an error.

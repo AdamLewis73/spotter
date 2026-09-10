@@ -79,7 +79,6 @@ fun WordScreen(
     onKanjiSelected: (String) -> Unit,
     onAlternateSelected: (WordMatch) -> Unit,
     onSave: () -> Unit,
-    saved: Boolean = false,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     /**
@@ -128,7 +127,7 @@ fun WordScreen(
 
             else -> LazyColumn(contentPadding = PaddingValues(bottom = tokens.spaceLg)) {
                 if (state.entries.isNotEmpty()) {
-                    item { WordHeader(state.entries, onSave, saved, onDismiss, showHandle = standalone) }
+                    item { WordHeader(state.entries, onSave, onDismiss, showHandle = standalone) }
                 }
                 // One section per reading. 上手 produces five, and the app does
                 // not choose between them — it cannot know which one a
@@ -161,7 +160,6 @@ fun WordScreen(
 private fun WordHeader(
     entries: List<DictionaryEntry>,
     onSave: () -> Unit,
-    saved: Boolean,
     onDismiss: () -> Unit,
     showHandle: Boolean,
 ) {
@@ -213,16 +211,13 @@ private fun WordHeader(
             // Accent-outlined, unlike back. Saving is the one thing this screen
             // asks you to do, and it is the only accent-bordered control on it.
             //
-            // The glyph carries the saved state, which is why it changes rather
-            // than the colour: the accent border is this button's identity on
-            // the screen, and dropping it to signal "already saved" would read
-            // as the control being disabled. Tapping again unsaves (D-81).
-            //
-            // STALE: D-91 removed the toggle — the button always adds and opens
-            // the list picker. Not yet rebuilt.
+            // Always a plus, never a tick (D-91). The button no longer reports
+            // saved state, because there is none to report: a word can be filed
+            // in some lists and not others (D-89). It opens the picker, which
+            // shows which lists already hold this word.
             OutlinedGlyphButton(
-                glyph = if (saved) "✓" else "✚",
-                contentDescription = if (saved) "Saved" else "Save",
+                glyph = "✚",
+                contentDescription = "Save",
                 tint = MaterialTheme.colorScheme.primary,
                 border = MaterialTheme.colorScheme.primary,
                 onClick = onSave,

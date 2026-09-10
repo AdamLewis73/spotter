@@ -59,6 +59,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -97,6 +98,16 @@ internal fun ScanScreen(
     selection: IntRange?,
     onOpenLookup: (() -> Unit)?,
     sheet: @Composable BoxScope.() -> Unit,
+    /**
+     * How far the app's own bottom navigation reaches up the screen (D-90).
+     *
+     * The viewfinder still fills the whole frame — the photograph should not be
+     * letterboxed by chrome — but the shutter has to clear the bar, or the two
+     * overlap at the bottom of the screen. So the image ignores this and the
+     * controls do not, which is the same split D-33 already makes for the system
+     * bars.
+     */
+    bottomBarHeight: Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val permission = rememberCameraPermissionState()
@@ -122,6 +133,7 @@ internal fun ScanScreen(
                 onOffsetTapped = onOffsetTapped,
                 selection = selection,
                 sheet = sheet,
+                bottomBarHeight = bottomBarHeight,
             )
 
             CameraPermissionState.Askable -> PermissionPanel(
@@ -172,6 +184,7 @@ private fun CameraStage(
     onOffsetTapped: (Int?) -> Unit,
     selection: IntRange?,
     sheet: @Composable BoxScope.() -> Unit,
+    bottomBarHeight: Dp,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -334,6 +347,7 @@ private fun CameraStage(
                 )
             },
             onRetake = onRetake,
+            bottomBarHeight = bottomBarHeight,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
 
@@ -365,12 +379,18 @@ private fun ScanControls(
     capturing: Boolean,
     onShutter: () -> Unit,
     onRetake: () -> Unit,
+    bottomBarHeight: Dp,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
+            // System bars first, then the app's own bar on top of them (D-90),
+            // then the breathing room the shutter wants. Both insets are needed:
+            // navigationBarsPadding alone puts the shutter behind the nav bar,
+            // and the app bar alone puts it behind the gesture pill.
             .navigationBarsPadding()
+            .padding(bottom = bottomBarHeight)
             .padding(bottom = SpotterTheme.tokens.spaceXl),
         contentAlignment = Alignment.Center,
     ) {

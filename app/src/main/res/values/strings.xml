@@ -40,4 +40,53 @@
     <string name="scan_no_camera">This device has no camera Spotter can use.</string>
     <string name="scan_camera_failed">The camera could not be started.</string>
     <string name="scan_capture_failed">That photo could not be taken. Try again.</string>
+
+    <!-- Bottom navigation (D-36, D-90). Three destinations; resist a fourth. -->
+    <string name="destination_scan">Scan</string>
+    <string name="destination_saved">Saved</string>
+    <string name="destination_review">Review</string>
+
+    <!-- Saved destination (artboard 2d) -->
+    <plurals name="saved_word_count">
+        <item quantity="one">%1$d word</item>
+        <item quantity="other">%1$d words</item>
+    </plurals>
+    <plurals name="saved_list_count">
+        <item quantity="one">%1$d list</item>
+        <item quantity="other">%1$d lists</item>
+    </plurals>
+    <!-- Points back at the camera rather than at the New list button: an empty
+         list is not what a new user needs, a scanned word is. -->
+    <string name="saved_empty_title">Nothing saved yet</string>
+    <string name="saved_empty_body">Scan a word and tap the plus to keep it. You will pick a list to put it in.</string>
+    <string name="saved_new_list_action">＋  New list</string>
+    <string name="saved_new_list">New list</string>
+    <string name="saved_rename_list">Rename list</string>
+    <string name="saved_delete_list">Delete list</string>
+    <string name="saved_list_name">Name</string>
+    <string name="saved_create">Create</string>
+    <string name="saved_rename">Rename</string>
+    <string name="saved_cancel">Cancel</string>
+
+    <!-- List detail (artboard 2e) -->
+    <string name="list_back">Back to Saved</string>
+    <string name="list_empty_title">This list is empty</string>
+    <string name="list_empty_body">Words you file into it will appear here, with the photo you found them in.</string>
+
+    <!-- Review destination. Says review is unbuilt rather than showing an empty
+         queue — they look identical and mean opposite things (Phase 7, D-79). -->
+    <string name="review_not_yet_title">Review is not built yet</string>
+    <string name="review_not_yet_body">Saved words will start coming back for review once the scheduler lands. Nothing you file now will be lost.</string>
+
+    <!-- The list picker (D-88, D-91). No artboard: the wireflow marks it
+         "NOT DESIGNED", so this follows the owner's spec. -->
+    <string name="picker_title">Save to a word list</string>
+    <string name="picker_create_list">＋  Create a new list</string>
+    <string name="picker_stage_list">Create</string>
+    <!-- Sits beside the NAME, not in the subtitle: the subtitle says how the
+         word relates to the list, and this says what the list is. -->
+    <string name="picker_new_list_suffix">(new)</string>
+    <string name="picker_already_in">already in this list</string>
+    <string name="picker_no_lists">You have no lists yet. Make one to keep this word in.</string>
+    <string name="picker_add">Add</string>
 </resources>

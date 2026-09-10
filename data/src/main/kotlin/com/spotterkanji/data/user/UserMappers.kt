@@ -2,6 +2,7 @@ package com.spotterkanji.data.user
 
 import com.spotterkanji.domain.user.SavedList
 import com.spotterkanji.domain.user.SavedListId
+import com.spotterkanji.domain.user.SavedListSummary
 import com.spotterkanji.domain.user.StudyItem
 import com.spotterkanji.domain.user.StudyItemId
 import com.spotterkanji.domain.user.StudyItemKey
@@ -36,6 +37,11 @@ internal fun StudyItemRow.toModel() = StudyItem(
     createdAt = createdAt.toInstant(),
     updatedAt = updatedAt.toInstant(),
     deletedAt = deletedAt?.toInstant(),
+)
+
+internal fun SavedListWithCount.toModel() = SavedListSummary(
+    list = list.toModel(),
+    wordCount = wordCount,
 )
 
 internal fun SavedListRow.toModel() = SavedList(

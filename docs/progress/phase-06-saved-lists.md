@@ -64,30 +64,34 @@ cases, including an unfiled word reporting itself unsaved, a word in two lists
 appearing once, and a refiled word coming back with the same id and
 `created_at`.**
 
-**The Saved screen and the list picker**, which D-88, D-90 and D-91 now
-specify well enough to build: the nav bar on all three destinations, and a
-centred multi-select picker that stages its choices, writes only on *Add*, and
-offers *create a new list* at the top. Note the picker's empty state is a
-first-run screen in disguise — on a new install it is the only way to save
-anything at all.
+~~The Saved screen~~ **Done.** The app shell is built: Navigation Compose,
+three destinations, and the app's own bar on all of them including the camera
+(D-90). Saved lists the user's lists with word counts and creates, renames and
+deletes them; tapping one opens its words. Review is an honest placeholder
+saying it is not built yet, because an empty queue and an unbuilt one look
+identical and mean opposite things.
 
-**And D-92 turns on the kanji screen's Save**, which routes through the same
-picker. `StudyItemKey` already accepts `(character, "", KANJI)`, so this is
-wiring rather than schema work.
+~~The list picker is next~~ **Done, and the loop closes.** Saving now opens a
+centred overlay that stages its choices and writes nothing until *Add* (D-91),
+with *create a new list* at the top — which on a new install is the only route
+to saving anything at all. Lists already holding the word say so and are not
+offered as a way to take it back out. Driven end to end on the emulator:
+save 先生 → create "Street Signs" inline → Add → one list, one `study_item`
+with the right identity and gloss, one membership, and the word visible in
+Saved.
 
-After that, in order:
+**D-92 is live too** — the kanji screen's Save opens the same picker, filing
+`(character, "", KANJI)`.
 
-1. Lists in the UI — create, rename, add a word to one. The repository and the
-   join table already do all of it (D-28); nothing calls them yet.
-2. The scan image saved alongside the word (D-21, D-24, D-25), which brings the
-   `scan` and `scan_word` tables and D-22's bounding box with it. Added tables
-   are a Room `AutoMigration`, and that bump is the moment to write the first
-   `MigrationTestHelper` **chain** test — not before, because there is nothing
-   yet to migrate from.
-3. ~~Whether the kanji screen's Save should work.~~ **Settled: it does (D-92).**
-   Kanji are study items in v1, superseding D-01 — D-49 sends a scanned lone
-   kanji straight to that screen, so deferring it meant shipping a button that
-   could never work.
+**The picker has no artboard.** The wireflow marks C2 *"NOT DESIGNED — which
+list, or a new one. Not on the canvas yet."*, so it follows the project owner's
+spec from conversation rather than a drawing. Worth knowing before redesigning
+it: nothing was inferred from an artboard, because there is none.
+
+Still owed: **swipe-to-remove** on the list screen, which is the only path that
+unfiles a word (D-89); **D-86**, moving typing a word off the camera into
+Saved; and the scan image work (D-21, D-22, D-24, D-25), which brings the
+`scan` and `scan_word` tables and the first real migration.
 
 ## Done
 
@@ -104,8 +108,16 @@ After that, in order:
 - [x] CI enforces the `fallbackToDestructiveMigration()` ban (D-17)
 - [x] Saved means **filed** — `observeIsSaved`, `observeSaved` and `find`
       require a live list membership (D-88, D-89); 18 instrumented cases
-- [ ] Multiple user-named lists in the UI — the schema and repository are done
-      (D-28), nothing calls them
+- [x] The app shell — Navigation Compose, three destinations, the bar on all
+      of them including the camera (D-36, D-90); back exits from Scan
+- [x] Multiple user-named lists in the UI — create, rename, delete, and open
+      one to see its words (D-28)
+- [x] Review placeholder, so the third tab says something true until Phase 7
+- [x] The list picker (D-88, D-91) — staged, multi-select, creates a list
+      inline, writes only on *Add*
+- [x] The kanji screen's Save, through the same picker (D-92)
+- [ ] Swipe to remove a word from a list — the only path that unfiles (D-89)
+- [ ] Typing a word moves off the camera into Saved (D-86)
 - [ ] Scan image saved alongside the word (D-21, D-24, D-25)
 - [ ] Bounding box stored on the scan record — D-22's obligation lands here,
       as a schema field; `ScanLayout.boxFor` already supplies the rectangle

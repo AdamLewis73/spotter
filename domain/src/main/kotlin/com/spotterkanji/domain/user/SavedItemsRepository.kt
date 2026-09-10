@@ -42,6 +42,14 @@ interface SavedItemsRepository {
     fun observeIsSaved(key: StudyItemKey): Flow<Boolean>
 
     /**
+     * How many distinct filed words the user has.
+     *
+     * Not the sum of the per-list counts — a word in three lists is one word,
+     * and adding the counts would report three.
+     */
+    fun observeSavedCount(): Flow<Int>
+
+    /**
      * The saved item for [key], or null if it is not **filed**.
      *
      * Null covers three cases the caller does not need to separate: never
