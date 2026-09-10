@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.spotterkanji.app.data.UserDataProvider
 import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.StudyItem
+import com.spotterkanji.domain.user.StudyItemId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,6 +56,31 @@ class ListDetailViewModel(application: Application) : AndroidViewModel(applicati
                 )
             }.collect { _state.value = it }
         }
+    }
+
+    /**
+     * Take [itemId] out of this list (D-93).
+     *
+     * A membership change only. The word, its review history and its photos are
+     * untouched (D-89, D-83) — if this was its last list it stops appearing
+     * anywhere until it is filed again, and it comes back exactly as it was.
+     * Nothing is reset, because FSRS already accounts for the time that passes
+     * while a word is unfiled; see D-93 for why a reset was considered and
+     * rejected.
+     */
+    fun onRemove(itemId: StudyItemId) {
+        val listId = openId ?: return
+        viewModelScope.launch { lists.removeFromList(listId, itemId) }
+    }
+
+    /**
+     * Put it back. `addToList` revives the tombstoned membership in place rather
+     * than inserting a new one, so undo restores the *same* row — and since
+     * removal destroyed nothing, there is nothing else to restore.
+     */
+    fun onUndoRemove(itemId: StudyItemId) {
+        val listId = openId ?: return
+        viewModelScope.launch { lists.addToList(listId, itemId) }
     }
 }
 

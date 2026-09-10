@@ -116,6 +116,8 @@ internal fun SpotterApp(
                     listName = state.name.orEmpty(),
                     words = state.words,
                     onBack = { navController.popBackStack() },
+                    onRemove = viewModel::onRemove,
+                    onUndoRemove = viewModel::onUndoRemove,
                     contentPadding = innerPadding.withSystemBars(),
                 )
             }

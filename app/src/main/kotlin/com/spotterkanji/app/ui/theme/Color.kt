@@ -79,6 +79,17 @@ private val JadeLight = Color(0xFF007E57)
 private val JadeContainerLight = Color(0xFFB8EBD4)
 private val OnJadeContainerLight = Color(0xFF00291B)
 
+// The destructive red, for removal only — never as an accent. The design draws
+// it as oklch(0.63 0.19 25) = #E54C4A behind the white "REMOVE" label on the
+// list screen, and white on that is 3.84:1: fine as a fill, short of the 4.5:1
+// a 10px label needs. Held at the same hue and chroma and dropped to L 0.58 —
+// the smallest step that clears it, at 4.73:1 — which is the same move JadeLight
+// makes for the accent above, and for the same reason.
+//
+// One value serves both schemes: it is always a filled panel carrying white
+// text, so the contrast that matters is with its own label, not with the ground.
+private val Remove = Color(0xFFD33A3C)
+
 internal val SpotterLightColors = lightColorScheme(
     primary = JadeLight,
     onPrimary = Color(0xFFFFFFFF),
@@ -98,6 +109,15 @@ internal val SpotterLightColors = lightColorScheme(
     surfaceVariant = SurfaceVariantLight,
     onSurfaceVariant = OnSurfaceVariantLight,
     outline = OutlineLight,
+    error = Remove,
+    onError = Color(0xFFFFFFFF),
+    // The inverse roles are what a snackbar is drawn in. Left undefined, Material
+    // fills them from its own baseline — a lavender surface with a purple action
+    // — which is a second accent hue D-67 does not allow, arriving through a
+    // default nobody chose. Each scheme inverts to the other's own neutrals.
+    inverseSurface = SurfaceDark,
+    inverseOnSurface = OnSurfaceDark,
+    inversePrimary = JadeDark,
 )
 
 internal val SpotterDarkColors = darkColorScheme(
@@ -118,4 +138,11 @@ internal val SpotterDarkColors = darkColorScheme(
     surfaceVariant = SurfaceVariantDark,
     onSurfaceVariant = OnSurfaceVariantDark,
     outline = OutlineDark,
+    error = Remove,
+    onError = Color(0xFFFFFFFF),
+    // JadeLight, not JadeDark: the action sits on a LIGHT inverse surface, where
+    // #2DC08E is 2.2:1 and #007E57 is 4.8:1 — the same trap noted for the accent.
+    inverseSurface = SurfaceLight,
+    inverseOnSurface = OnSurfaceLight,
+    inversePrimary = JadeLight,
 )

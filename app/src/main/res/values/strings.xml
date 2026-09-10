@@ -89,4 +89,12 @@
     <string name="picker_already_in">already in this list</string>
     <string name="picker_no_lists">You have no lists yet. Make one to keep this word in.</string>
     <string name="picker_add">Add</string>
+
+    <!-- Removing a word from a list (D-93). -->
+    <string name="list_remove_panel">REMOVE</string>
+    <string name="list_remove_title">Remove from list?</string>
+    <string name="list_remove_body">%1$s will be taken out of %2$s. Its review history is kept.</string>
+    <string name="list_remove_confirm">Remove</string>
+    <string name="list_removed_from">%1$s removed from %2$s</string>
+    <string name="list_undo">Undo</string>
 </resources>
