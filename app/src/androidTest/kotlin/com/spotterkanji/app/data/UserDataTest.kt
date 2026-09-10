@@ -486,7 +486,16 @@ class UserDataTest {
         assertEquals(before, clocked.observeItemsIn(signs.id).first().map { it.key.text })
     }
 
-    /** Filing a word already live in a list leaves it where it is, rather than bumping it. */
+    /**
+     * Filing a word already live in a list leaves it where it is, rather than
+     * bumping it.
+     *
+     * **Not reachable through the app**: the picker locks lists that already hold
+     * the word (D-91), so no user action files into one. This pins the
+     * repository's contract for other callers — chiefly Phase 8's import (D-20),
+     * which replays memberships that may already exist and must not reorder or
+     * duplicate them.
+     */
     @Test
     fun filing_a_word_already_in_the_list_does_not_move_it() = runBlocking {
         val clocked = RoomSavedListRepository(db, clock = SteppingClock())

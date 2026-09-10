@@ -70,6 +70,11 @@ interface SavedListRepository {
      * File [itemId] into [listId] — what the picker does (D-88, D-91).
      *
      * Idempotent: a word already live in the list is left exactly where it is.
+     * **The app never reaches that case** — the picker locks lists that already
+     * hold the word (D-91) — so it is a guarantee to other callers, not a user
+     * path. The one expected is Phase 8's import (D-20), which replays
+     * memberships that may already exist on the device.
+     *
      * A word that was **once** in the list and removed comes back as a fresh
      * addition, at the top, because re-filing is a new decision to keep it here
      * (D-93, following D-82's reasoning for the Saved list).
