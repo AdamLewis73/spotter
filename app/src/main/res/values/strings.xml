@@ -83,7 +83,9 @@
     <string name="picker_title">Save to a word list</string>
     <string name="picker_create_list">＋  Create a new list</string>
     <string name="picker_stage_list">Create</string>
-    <string name="picker_will_be_created">will be created</string>
+    <!-- Sits beside the NAME, not in the subtitle: the subtitle says how the
+         word relates to the list, and this says what the list is. -->
+    <string name="picker_new_list_suffix">(new)</string>
     <string name="picker_already_in">already in this list</string>
     <string name="picker_no_lists">You have no lists yet. Make one to keep this word in.</string>
     <string name="picker_add">Add</string>

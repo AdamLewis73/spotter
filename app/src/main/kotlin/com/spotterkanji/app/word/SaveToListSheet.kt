@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.spotterkanji.app.R
@@ -157,7 +158,8 @@ internal fun SaveToListSheet(
                         PickerRow(
                             name = name,
                             checked = true,
-                            subtitle = stringResource(R.string.picker_will_be_created),
+                            isNew = true,
+                            subtitle = null,
                             locked = false,
                             onClick = { onNewListRemoved(name) },
                         )
@@ -167,6 +169,7 @@ internal fun SaveToListSheet(
                         PickerRow(
                             name = list.name,
                             checked = holding || list.id in state.staged,
+                            isNew = false,
                             subtitle = if (holding) {
                                 stringResource(R.string.picker_already_in)
                             } else {
@@ -243,6 +246,15 @@ private fun NewListField(
  * the overlay matches the nav bar instead of importing a second visual
  * language.
  *
+ * ### The two lines say different kinds of thing
+ *
+ * The name line describes the **list** — including `(new)` for one that does not
+ * exist yet. The line under it describes the **word's relationship to that
+ * list**, which today is only *already in this list*. They were briefly mixed:
+ * *"will be created"* sat where *"already in this list"* sits, so one slot
+ * carried statements about two different subjects and the reader had to work out
+ * which each time.
+ *
  * A row for a list that **already holds** the word is drawn locked: muted fill
  * instead of the accent, dimmed name, and no tap. Refusing the tap alone would
  * leave it looking exactly like a list the user had just chosen.
@@ -257,6 +269,7 @@ private fun NewListField(
 private fun PickerRow(
     name: String,
     checked: Boolean,
+    isNew: Boolean,
     subtitle: String?,
     locked: Boolean,
     onClick: (() -> Unit)?,
@@ -300,11 +313,27 @@ private fun PickerRow(
                 ),
         )
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.bodyLarge,
-                color = nameColor,
-            )
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = nameColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    // Yields to the suffix rather than pushing it off: a long
+                    // name should be clipped, but "(new)" must survive, because
+                    // it is the difference between an existing list and one that
+                    // does not exist yet.
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (isNew) {
+                    Text(
+                        text = " " + stringResource(R.string.picker_new_list_suffix),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             if (subtitle != null) {
                 Text(
                     text = subtitle,
