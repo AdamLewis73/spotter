@@ -35,6 +35,17 @@ interface SavedListRepository {
     fun observeListsContaining(itemId: StudyItemId): Flow<List<SavedList>>
 
     /**
+     * Which lists hold the word [key], by natural key rather than by row id.
+     *
+     * The picker needs this before the word necessarily exists: a word being
+     * saved for the first time has no id to ask about, and one saved earlier may
+     * be **unfiled**, which `find` deliberately reports as not saved (D-89). Both
+     * cases have to answer "which lists already hold this", and the natural key
+     * is the only handle that works in both — which is D-12's point.
+     */
+    fun observeListsHolding(key: StudyItemKey): Flow<List<SavedList>>
+
+    /**
      * Create a list called [name].
      *
      * Names are **not** unique. Two lists called "Food" are the user's business:

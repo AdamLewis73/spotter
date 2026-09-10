@@ -154,7 +154,6 @@ internal fun PeekContents(
     word: String,
     glosses: String?,
     loading: Boolean,
-    saved: Boolean,
     canSave: Boolean,
     onSave: () -> Unit,
     onFullDetails: () -> Unit,
@@ -202,15 +201,10 @@ internal fun PeekContents(
             // looking at rather than asking them to choose a reading they were
             // deliberately not shown.
             //
-            // A toggle, not a one-way action: it reports state, and a control
-            // that shows state without undoing it strands the user.
-            //
-            // STALE, and knowingly so: D-91 replaced the toggle. The button is
-            // always "add" and opens a list picker, because D-89 means a word
-            // can be filed in some lists and not others — there is no single
-            // saved/unsaved truth left for it to report. This code has not
-            // caught up; it is accurate about what it does today, not about
-            // what it should do.
+            // Always "add", never a toggle (D-91). A word can be filed in some
+            // lists and not others (D-89), so there is no single saved/unsaved
+            // truth for this button to report — it opens the picker, and the
+            // picker says which lists already hold the word.
             //
             // Disabled only when there is nothing to save — while the lookup is
             // still running, or when it found nothing. Saving a word with no
@@ -225,13 +219,7 @@ internal fun PeekContents(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
-            ) {
-                Text(
-                    stringResource(
-                        if (saved) R.string.scan_peek_saved else R.string.scan_peek_save
-                    )
-                )
-            }
+            ) { Text(stringResource(R.string.scan_peek_save)) }
 
             OutlinedButton(
                 onClick = onFullDetails,

@@ -71,20 +71,27 @@ deletes them; tapping one opens its words. Review is an honest placeholder
 saying it is not built yet, because an empty queue and an unbuilt one look
 identical and mean opposite things.
 
-**The list picker is next**, and it is what makes any of the above reachable —
-until it exists nothing can be filed, so every screen shows its empty state.
-D-88 and D-91 specify it: a centred multi-select overlay that stages its
-choices, writes only on *Add*, and offers *create a new list* at the top. Its
-empty state is a first-run screen in disguise — on a new install it is the only
-way to save anything at all.
+~~The list picker is next~~ **Done, and the loop closes.** Saving now opens a
+centred overlay that stages its choices and writes nothing until *Add* (D-91),
+with *create a new list* at the top — which on a new install is the only route
+to saving anything at all. Lists already holding the word say so and are not
+offered as a way to take it back out. Driven end to end on the emulator:
+save 先生 → create "Street Signs" inline → Add → one list, one `study_item`
+with the right identity and gloss, one membership, and the word visible in
+Saved.
 
-**Then D-92 turns on the kanji screen's Save**, through the same picker.
-`StudyItemKey` already accepts `(character, "", KANJI)`, so that is wiring
-rather than schema work.
+**D-92 is live too** — the kanji screen's Save opens the same picker, filing
+`(character, "", KANJI)`.
 
-Still owed after those: **swipe-to-remove** on the list screen, which is the
-only path that unfiles a word (D-89) and belongs beside the picker that files
-them; and **D-86**, moving typing a word off the camera and into Saved.
+**The picker has no artboard.** The wireflow marks C2 *"NOT DESIGNED — which
+list, or a new one. Not on the canvas yet."*, so it follows the project owner's
+spec from conversation rather than a drawing. Worth knowing before redesigning
+it: nothing was inferred from an artboard, because there is none.
+
+Still owed: **swipe-to-remove** on the list screen, which is the only path that
+unfiles a word (D-89); **D-86**, moving typing a word off the camera into
+Saved; and the scan image work (D-21, D-22, D-24, D-25), which brings the
+`scan` and `scan_word` tables and the first real migration.
 
 ## Done
 
@@ -106,9 +113,10 @@ them; and **D-86**, moving typing a word off the camera and into Saved.
 - [x] Multiple user-named lists in the UI — create, rename, delete, and open
       one to see its words (D-28)
 - [x] Review placeholder, so the third tab says something true until Phase 7
-- [ ] The list picker (D-88, D-91) — **nothing can be filed until this exists**
+- [x] The list picker (D-88, D-91) — staged, multi-select, creates a list
+      inline, writes only on *Add*
+- [x] The kanji screen's Save, through the same picker (D-92)
 - [ ] Swipe to remove a word from a list — the only path that unfiles (D-89)
-- [ ] The kanji screen's Save, through the same picker (D-92)
 - [ ] Typing a word moves off the camera into Saved (D-86)
 - [ ] Scan image saved alongside the word (D-21, D-24, D-25)
 - [ ] Bounding box stored on the scan record — D-22's obligation lands here,

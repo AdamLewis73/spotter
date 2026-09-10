@@ -264,6 +264,28 @@ interface SavedListDao {
     )
     fun observeListsContaining(studyItemId: String): Flow<List<SavedListRow>>
 
+    /**
+     * Which live lists hold the word with this natural key.
+     *
+     * Keyed on (text, reading, type) rather than a row id because the picker
+     * asks before the word may exist, and because an unfiled word still has
+     * memberships worth knowing about — they are all tombstoned, so this
+     * correctly returns nothing, but the query has to be able to look.
+     */
+    @Query(
+        """
+        SELECT l.* FROM saved_list AS l
+        JOIN list_membership AS m ON m.list_id = l.id
+        JOIN study_item AS i ON i.id = m.study_item_id
+        WHERE i.text = :text AND i.reading = :reading AND i.type = :type
+          AND i.deleted_at IS NULL
+          AND m.deleted_at IS NULL
+          AND l.deleted_at IS NULL
+        ORDER BY l.created_at ASC
+        """
+    )
+    fun observeListsHolding(text: String, reading: String, type: String): Flow<List<SavedListRow>>
+
     @Insert
     suspend fun insertList(row: SavedListRow)
 

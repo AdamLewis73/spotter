@@ -7,6 +7,7 @@ import com.spotterkanji.domain.user.SavedListRepository
 import com.spotterkanji.domain.user.SavedListSummary
 import com.spotterkanji.domain.user.StudyItem
 import com.spotterkanji.domain.user.StudyItemId
+import com.spotterkanji.domain.user.StudyItemKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
@@ -35,6 +36,10 @@ class RoomSavedListRepository(
 
     override fun observeListsContaining(itemId: StudyItemId): Flow<List<SavedList>> =
         dao.observeListsContaining(itemId.value).map { rows -> rows.map { it.toModel() } }
+
+    override fun observeListsHolding(key: StudyItemKey): Flow<List<SavedList>> =
+        dao.observeListsHolding(key.text, key.reading, key.type.name)
+            .map { rows -> rows.map { it.toModel() } }
 
     override suspend fun createList(name: String): SavedList {
         require(name.isNotBlank()) { "a list needs a name" }

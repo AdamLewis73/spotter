@@ -13,10 +13,14 @@ import com.spotterkanji.domain.text.isKanji
 import com.spotterkanji.domain.tokenize.LongestMatch
 import com.spotterkanji.domain.tokenize.Token
 import com.spotterkanji.domain.tokenize.WordMatch
+import com.spotterkanji.domain.user.SavedList
+import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.StudyItemKey
+import com.spotterkanji.domain.user.StudyItemType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -81,6 +85,7 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
 
     private val repository = DictionaryProvider.repository(application)
     private val savedItems = UserDataProvider.savedItems(application)
+    private val savedLists = UserDataProvider.savedLists(application)
     private val tokenizer = KuromojiTokenizer()
 
     private val _state = MutableStateFlow(WordLookupState())
@@ -96,6 +101,12 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      * somewhere else.
      */
     private var savedWatchJob: Job? = null
+
+    /** Follows the lists while the picker is open, so a list made elsewhere appears. */
+    private var pickerJob: Job? = null
+
+    private val _picker = MutableStateFlow(PickerState())
+    val picker: StateFlow<PickerState> = _picker.asStateFlow()
 
     /**
      * Every dictionary word in the current query, from the longest-match pass.
@@ -270,41 +281,136 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /**
-     * Toggle the word on screen in and out of the user's saved words.
+     * Open the list picker for the word on screen (D-88, D-91).
      *
-     * A toggle rather than a one-way Save because the button shows saved state,
-     * and a control that shows state and does not undo it is a trap — the only
-     * way back would be to find the word again on a different screen.
-     *
-     * **Superseded by D-91 and not yet rebuilt.** Saving must open the list
-     * picker (D-88) and only ever add; unfiling happens on the list screen.
-     * The toggle went because D-89 removed what it displayed — a word filed in
-     * one list and not another has no single saved state to show.
+     * Saving is always *add*, never a toggle: a word can be filed in some lists
+     * and not others, so there is no single saved state for a button to report
+     * and nothing to toggle off (D-89, which retired D-81's toggle). Unfiling
+     * happens on the list screen, where the user can see what they are emptying.
      *
      * Does nothing when the lookup failed. There is no gloss to snapshot (D-43)
      * and no reading to key on (D-12), and a saved item with neither is exactly
      * the unresolvable row D-40 has to render forever.
      */
-    fun onSaveToggled() {
+    fun onSaveRequested() {
         val entry = _state.value.saveTarget ?: return
-        val key = StudyItemKey(entry.text, entry.reading)
-        viewModelScope.launch {
-            if (_state.value.saved) {
-                savedItems.unsave(key)
-            } else {
-                savedItems.save(
-                    key = key,
-                    // The same line the peek sheet shows, so what is stored is
-                    // what the user read when they decided to save it (D-43).
-                    snapshotGloss = entry.senses.firstOrNull()
-                        ?.glosses?.joinToString("; ").orEmpty(),
-                    // Recorded because it cannot be recovered later (D-22's
-                    // rule). A hint only — D-39 uses it to say "merged into X"
-                    // when a saved word stops resolving; nothing looks a word up
-                    // by it (D-11).
-                    entSeq = entry.entSeq,
+        openPicker(
+            PickerTarget(
+                key = StudyItemKey(entry.text, entry.reading),
+                // The same line the peek sheet shows, so what is stored is what
+                // the user read when they decided to keep it (D-43).
+                snapshotGloss = entry.senses.firstOrNull()
+                    ?.glosses?.joinToString("; ").orEmpty(),
+                // Recorded because it cannot be recovered later (D-22's rule). A
+                // hint only — D-39 uses it to say "merged into X" when a saved
+                // word stops resolving; nothing looks a word up by it (D-11).
+                entSeq = entry.entSeq,
+            )
+        )
+    }
+
+    /**
+     * Save the kanji on screen (D-92).
+     *
+     * Kanji are study items in v1, which is what makes this button work at all:
+     * D-49 sends a scanned lone character straight to the kanji screen, so
+     * without it that user could not keep what they had just scanned.
+     *
+     * Identity is `(character, "", KANJI)` — a kanji's written form is the whole
+     * of it, so the reading half of D-12 is deliberately empty, and the `type`
+     * discriminator is what keeps 生-the-kanji distinct from 生-the-word.
+     */
+    fun onSaveKanjiRequested() {
+        val kanji = _state.value.openKanji ?: return
+        openPicker(
+            PickerTarget(
+                key = StudyItemKey(kanji.character, "", StudyItemType.KANJI),
+                snapshotGloss = kanji.meanings.joinToString(", "),
+                entSeq = null,
+            )
+        )
+    }
+
+    private fun openPicker(target: PickerTarget) {
+        val key = target.key
+        pickerJob?.cancel()
+        pickerJob = viewModelScope.launch {
+            combine(
+                savedLists.observeLists(),
+                savedLists.observeListsHolding(key),
+            ) { all, holding ->
+                all to holding.map { it.id }.toSet()
+            }.collect { (all, holding) ->
+                _picker.value = _picker.value.copy(
+                    open = true,
+                    target = target,
+                    lists = all,
+                    alreadyHolding = holding,
                 )
             }
+        }
+    }
+
+    fun onPickerDismissed() {
+        pickerJob?.cancel()
+        pickerJob = null
+        _picker.value = PickerState()
+    }
+
+    /** Staged only. Nothing reaches the database until [onPickerConfirmed] (D-91). */
+    fun onPickerListToggled(id: SavedListId) {
+        val staged = _picker.value.staged
+        _picker.value = _picker.value.copy(
+            staged = if (id in staged) staged - id else staged + id,
+        )
+    }
+
+    /**
+     * Stages a **new** list by name rather than creating it.
+     *
+     * D-91 says nothing is written until *Add*, and a list is a write. Creating
+     * it here would leave an empty list behind when the user changes their mind
+     * and dismisses — the overlay is one transaction or it is not one at all.
+     */
+    fun onPickerNewListStaged(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        _picker.value = _picker.value.copy(
+            stagedNewLists = _picker.value.stagedNewLists + trimmed,
+        )
+    }
+
+    fun onPickerNewListRemoved(name: String) {
+        _picker.value = _picker.value.copy(
+            stagedNewLists = _picker.value.stagedNewLists - name,
+        )
+    }
+
+    /**
+     * Commit: create the word, create any staged lists, file it into all of them.
+     *
+     * Not one database transaction, because it spans two repositories and this
+     * project has no unit-of-work abstraction yet. The failure mode is benign
+     * and worth naming: if it stops half way the word exists **unfiled**, which
+     * D-89 makes invisible rather than half-saved. Trying again files it, and
+     * every step is idempotent — `save` revives rather than duplicates, and
+     * `addToList` cannot add twice.
+     */
+    fun onPickerConfirmed() {
+        val picker = _picker.value
+        val target = picker.target ?: return
+        if (picker.nothingChosen) return
+        onPickerDismissed()
+        viewModelScope.launch {
+            val item = savedItems.save(
+                key = target.key,
+                snapshotGloss = target.snapshotGloss,
+                entSeq = target.entSeq,
+            )
+            picker.stagedNewLists.forEach { name ->
+                savedLists.addToList(savedLists.createList(name).id, item.id)
+            }
+            picker.staged.forEach { listId -> savedLists.addToList(listId, item.id) }
         }
     }
 
@@ -320,4 +426,44 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
                 .collect { isSaved -> _state.value = _state.value.copy(saved = isSaved) }
         }
     }
+}
+
+/**
+ * The list picker's staged state (D-91).
+ *
+ * [staged] and [stagedNewLists] are choices the user has made and not yet
+ * committed; nothing in them has touched the database. Dismissing throws them
+ * away, which is the point — the overlay is somewhere to think.
+ *
+ * [alreadyHolding] is the opposite: lists that genuinely hold this word today.
+ * They are shown as such and are **not** offered as a way to take the word back
+ * out. Removal lives on the list screen, where the user can see what they are
+ * emptying.
+ */
+/** What the picker is about to file: a word, or a kanji (D-92). */
+data class PickerTarget(
+    val key: StudyItemKey,
+    val snapshotGloss: String,
+    val entSeq: Long?,
+)
+
+data class PickerState(
+    val open: Boolean = false,
+    val target: PickerTarget? = null,
+    val lists: List<SavedList> = emptyList(),
+    val alreadyHolding: Set<SavedListId> = emptySet(),
+    val staged: Set<SavedListId> = emptySet(),
+    val stagedNewLists: List<String> = emptyList(),
+) {
+    /** Add does nothing without a destination, so it is disabled rather than a no-op. */
+    val nothingChosen: Boolean get() = staged.isEmpty() && stagedNewLists.isEmpty()
+
+    /**
+     * True when the user has no lists at all and none staged.
+     *
+     * The picker's empty state is a first-run screen in disguise: on a new
+     * install this is the only route to saving anything, so *create a list* has
+     * to read as the invitation rather than as a secondary action.
+     */
+    val noListsYet: Boolean get() = lists.isEmpty() && stagedNewLists.isEmpty()
 }

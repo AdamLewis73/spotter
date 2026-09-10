@@ -28,6 +28,7 @@ import com.spotterkanji.app.scan.ScanViewModel
 import com.spotterkanji.app.scan.SheetStage
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.app.word.KanjiScreen
+import com.spotterkanji.app.word.SaveToListSheet
 import com.spotterkanji.app.word.WordLookupViewModel
 import com.spotterkanji.app.word.WordScreen
 
@@ -152,6 +153,7 @@ private fun ScanRoute(
     // shown smaller.
     val words: WordLookupViewModel = viewModel()
     val wordState by words.state.collectAsStateWithLifecycle()
+    val picker by words.picker.collectAsStateWithLifecycle()
 
     var stage by rememberSaveable { mutableStateOf(SheetStage.Peek) }
 
@@ -225,18 +227,19 @@ private fun ScanRoute(
                             glosses = wordState.saveTarget
                                 ?.senses?.firstOrNull()?.glosses?.joinToString("; "),
                             loading = wordState.searching,
-                            saved = wordState.saved,
                             // Nothing to save while the lookup runs or when it
                             // found nothing (D-81).
                             canSave = wordState.saveTarget != null,
-                            onSave = words::onSaveToggled,
+                            onSave = words::onSaveRequested,
                             onFullDetails = { stage = SheetStage.Full },
                         )
 
                         openKanji != null -> KanjiScreen(
                             detail = openKanji,
                             onBack = words::onKanjiClosed,
-                            onSave = {},
+                            // Live as of D-92: kanji are study items in v1, and
+                            // a lone scanned character lands here (D-49).
+                            onSave = words::onSaveKanjiRequested,
                         )
 
                         else -> WordScreen(
@@ -245,8 +248,7 @@ private fun ScanRoute(
                             onTokenSelected = words::onTokenSelected,
                             onKanjiSelected = words::onKanjiSelected,
                             onAlternateSelected = words::onAlternateSelected,
-                            onSave = words::onSaveToggled,
-                            saved = wordState.saved,
+                            onSave = words::onSaveRequested,
                             onDismiss = { stage = SheetStage.Peek },
                             standalone = false,
                         )
@@ -254,6 +256,19 @@ private fun ScanRoute(
                 }
             }
         },
+    )
+
+    // Rendered outside the sheet on purpose. A Dialog draws in its own window,
+    // so the picker sits above the peek sheet AND the frozen photograph rather
+    // than being clipped to whichever one is on top.
+    SaveToListSheet(
+        word = picker.target?.key?.text.orEmpty(),
+        state = picker,
+        onDismiss = words::onPickerDismissed,
+        onToggle = words::onPickerListToggled,
+        onNewListStaged = words::onPickerNewListStaged,
+        onNewListRemoved = words::onPickerNewListRemoved,
+        onConfirm = words::onPickerConfirmed,
     )
 }
 
@@ -267,6 +282,7 @@ private fun LookupRoute(seed: String?) {
         seed?.let(viewModel::onQueryChanged)
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val picker by viewModel.picker.collectAsStateWithLifecycle()
     val openKanji = state.openKanji
 
     // The kanji screen replaces the word screen rather than stacking beside it
@@ -279,7 +295,7 @@ private fun LookupRoute(seed: String?) {
         KanjiScreen(
             detail = openKanji,
             onBack = viewModel::onKanjiClosed,
-            onSave = {},
+            onSave = viewModel::onSaveKanjiRequested,
             modifier = Modifier.safeDrawingPadding(),
         )
     } else {
@@ -289,10 +305,19 @@ private fun LookupRoute(seed: String?) {
             onTokenSelected = viewModel::onTokenSelected,
             onKanjiSelected = viewModel::onKanjiSelected,
             onAlternateSelected = viewModel::onAlternateSelected,
-            onSave = viewModel::onSaveToggled,
-            saved = state.saved,
+            onSave = viewModel::onSaveRequested,
             onDismiss = viewModel::onResultDismissed,
             modifier = Modifier.safeDrawingPadding(),
         )
     }
+
+    SaveToListSheet(
+        word = picker.target?.key?.text.orEmpty(),
+        state = picker,
+        onDismiss = viewModel::onPickerDismissed,
+        onToggle = viewModel::onPickerListToggled,
+        onNewListStaged = viewModel::onPickerNewListStaged,
+        onNewListRemoved = viewModel::onPickerNewListRemoved,
+        onConfirm = viewModel::onPickerConfirmed,
+    )
 }
