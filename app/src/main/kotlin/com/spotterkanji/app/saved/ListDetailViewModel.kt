@@ -74,13 +74,16 @@ class ListDetailViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /**
-     * Put it back. `addToList` revives the tombstoned membership in place rather
-     * than inserting a new one, so undo restores the *same* row — and since
+     * Put it back exactly where it was (D-93).
+     *
+     * `restoreToList`, not `addToList`: Undo cancels the removal, so the word
+     * returns to its original place in the list rather than jumping to the top
+     * as a fresh addition would. The same membership row is revived, and since
      * removal destroyed nothing, there is nothing else to restore.
      */
     fun onUndoRemove(itemId: StudyItemId) {
         val listId = openId ?: return
-        viewModelScope.launch { lists.addToList(listId, itemId) }
+        viewModelScope.launch { lists.restoreToList(listId, itemId) }
     }
 }
 

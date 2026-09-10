@@ -19,6 +19,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 /**
  * The user database, against real SQLite.
@@ -434,6 +438,70 @@ class UserDataTest {
         assertEquals(0, lists.observeListSummaries().first().first().wordCount)
     }
 
+    /**
+     * Re-filing a word through the picker puts it at the **top** of the list (D-93).
+     *
+     * Asserted through the order the list screen shows, not through `added_at`,
+     * because the order is what the user sees. The clock steps a second per
+     * reading: with the real clock, adds made in the same millisecond tie, and an
+     * ordering test would pass or fail by luck.
+     */
+    @Test
+    fun refiling_through_the_picker_moves_the_word_to_the_top() = runBlocking {
+        val clocked = RoomSavedListRepository(db, clock = SteppingClock())
+        val signs = clocked.createList("Street Signs")
+        val sensei = items.save(StudyItemKey("先生", "せんせい"), "teacher")
+        val deguchi = items.save(StudyItemKey("出口", "でぐち"), "exit")
+        clocked.addToList(signs.id, sensei.id)
+        clocked.addToList(signs.id, deguchi.id)
+        // Newest first: 出口 was filed last.
+        assertEquals(listOf("出口", "先生"), clocked.observeItemsIn(signs.id).first().map { it.key.text })
+
+        clocked.removeFromList(signs.id, sensei.id)
+        clocked.addToList(signs.id, sensei.id)
+
+        assertEquals(listOf("先生", "出口"), clocked.observeItemsIn(signs.id).first().map { it.key.text })
+    }
+
+    /**
+     * ...whereas Undo puts it back **exactly where it was** (D-93).
+     *
+     * Undo cancels a removal rather than making a new addition, so a word
+     * restored this way must not jump to the top. This is the whole reason
+     * `restoreToList` exists beside `addToList`.
+     */
+    @Test
+    fun undo_restores_the_word_to_its_original_place() = runBlocking {
+        val clocked = RoomSavedListRepository(db, clock = SteppingClock())
+        val signs = clocked.createList("Street Signs")
+        val sensei = items.save(StudyItemKey("先生", "せんせい"), "teacher")
+        val deguchi = items.save(StudyItemKey("出口", "でぐち"), "exit")
+        clocked.addToList(signs.id, sensei.id)
+        clocked.addToList(signs.id, deguchi.id)
+        val before = clocked.observeItemsIn(signs.id).first().map { it.key.text }
+
+        clocked.removeFromList(signs.id, sensei.id)
+        clocked.restoreToList(signs.id, sensei.id)
+
+        assertEquals(before, clocked.observeItemsIn(signs.id).first().map { it.key.text })
+    }
+
+    /** Filing a word already live in a list leaves it where it is, rather than bumping it. */
+    @Test
+    fun filing_a_word_already_in_the_list_does_not_move_it() = runBlocking {
+        val clocked = RoomSavedListRepository(db, clock = SteppingClock())
+        val signs = clocked.createList("Street Signs")
+        val sensei = items.save(StudyItemKey("先生", "せんせい"), "teacher")
+        val deguchi = items.save(StudyItemKey("出口", "でぐち"), "exit")
+        clocked.addToList(signs.id, sensei.id)
+        clocked.addToList(signs.id, deguchi.id)
+        val before = clocked.observeItemsIn(signs.id).first().map { it.key.text }
+
+        clocked.addToList(signs.id, sensei.id)
+
+        assertEquals(before, clocked.observeItemsIn(signs.id).first().map { it.key.text })
+    }
+
     /** Two lists may share a name; identity is the UUID (D-15). */
     @Test
     fun two_lists_may_share_a_name() = runBlocking {
@@ -443,4 +511,19 @@ class UserDataTest {
         assertNotEquals(a.id, b.id)
         assertEquals(2, lists.observeLists().first().size)
     }
+}
+
+/**
+ * A clock that moves forward one second every time it is read.
+ *
+ * Ordering tests need distinct timestamps, and real operations inside one test
+ * routinely land in the same millisecond — which makes a newest-first
+ * assertion depend on scheduling rather than on the code under test.
+ */
+private class SteppingClock(
+    private var now: Instant = Instant.parse("2026-01-01T00:00:00Z"),
+) : Clock() {
+    override fun instant(): Instant = now.also { now = now.plusSeconds(1) }
+    override fun getZone(): ZoneId = ZoneOffset.UTC
+    override fun withZone(zone: ZoneId?): Clock = this
 }

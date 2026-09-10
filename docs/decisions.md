@@ -892,6 +892,13 @@ So the staleness problem needs no mechanism, and what is left is a choice about 
 
 *Cost to reverse:* low, and only in one direction. Adding a reset later means deciding what to do with the history kept until then, which is all still there to decide about.
 
+**Where a word goes when it comes back.** Two ways of returning a word to a list it left, and they are deliberately different:
+
+- **Undo puts it back exactly where it was.** It cancels a removal, so the word returns to its original place in the list.
+- **Re-filing through the picker puts it at the top.** That is a new decision to keep the word here, made later, and the user will look for it where the newest things are — the same reasoning D-82 applied to the Saved list.
+
+Both revive the same membership row, so the unique index is satisfied and nothing is orphaned; they differ only in whether `added_at` moves. In code they are two methods, `restoreToList` and `addToList`, rather than one method and a flag, so every call site says which of the two it means. Settled by the project owner.
+
 ---
 
 ## UI

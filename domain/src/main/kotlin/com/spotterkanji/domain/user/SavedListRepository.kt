@@ -66,8 +66,28 @@ interface SavedListRepository {
      */
     suspend fun deleteList(id: SavedListId)
 
-    /** Add [itemId] to [listId]. Idempotent, and revives a tombstoned membership in place. */
+    /**
+     * File [itemId] into [listId] — what the picker does (D-88, D-91).
+     *
+     * Idempotent: a word already live in the list is left exactly where it is.
+     * A word that was **once** in the list and removed comes back as a fresh
+     * addition, at the top, because re-filing is a new decision to keep it here
+     * (D-93, following D-82's reasoning for the Saved list).
+     *
+     * Not for Undo — see [restoreToList], which puts a word back where it was.
+     */
     suspend fun addToList(listId: SavedListId, itemId: StudyItemId)
+
+    /**
+     * Put [itemId] back into [listId] exactly as it was before it was removed —
+     * what Undo does (D-93).
+     *
+     * The difference from [addToList] is the word's position. Undo cancels a
+     * removal, so the word returns to its original place in the list; re-filing
+     * later is a new addition and goes to the top. Two methods rather than a flag,
+     * so each call site says which of the two it means.
+     */
+    suspend fun restoreToList(listId: SavedListId, itemId: StudyItemId)
 
     /** Soft-delete the membership, leaving the word saved (D-80). A no-op if it is not a member. */
     suspend fun removeFromList(listId: SavedListId, itemId: StudyItemId)

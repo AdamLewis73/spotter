@@ -107,11 +107,13 @@ Still owed: **D-86**, moving typing a word off the camera into Saved; and the
 scan image work (D-21, D-22, D-24, D-25), which brings the `scan` and
 `scan_word` tables and the first real migration.
 
-**One ordering question is open**, found while testing removal: re-filing a word
-into a list it was once in revives its old membership, which keeps the old
-`added_at` — so it reappears at its *original* position rather than at the
-top. That is exactly right for Undo, and arguably wrong for re-filing through
-the picker later, by the same reasoning D-82 applied to the Saved list.
+**Where a returning word goes, settled (D-93):** Undo puts it back exactly where
+it was; re-filing through the picker puts it at the top, by the reasoning D-82
+applied to the Saved list. Two methods, `restoreToList` and `addToList`, so each
+call site says which it means. The ordering tests use a clock that steps a
+second per reading — with the real clock, adds in the same millisecond tie and
+the test passes or fails by luck — and the re-filing test was confirmed to fail
+when the old behaviour was put back.
 
 ## Done
 

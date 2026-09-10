@@ -307,8 +307,25 @@ interface SavedListDao {
     @Insert
     suspend fun insertMembership(row: ListMembershipRow)
 
+    /**
+     * Revives a tombstoned membership **keeping its original `added_at`**, so the
+     * word returns to exactly the place in the list it left. This is Undo.
+     */
     @Query("UPDATE list_membership SET deleted_at = NULL, updated_at = :now WHERE id = :id")
     suspend fun reviveMembership(id: String, now: Long)
+
+    /**
+     * Revives a tombstoned membership **as if newly added** — `added_at` moves to
+     * now, so the word goes to the top of a newest-first list.
+     *
+     * This is re-filing through the picker, which is a fresh decision to keep the
+     * word here rather than a reversal of the removal. The same reasoning D-82
+     * applies to the Saved list: the user just filed it, and will look for it at
+     * the top. The row id is still reused, so the unique index is satisfied and
+     * nothing that points at the membership is orphaned.
+     */
+    @Query("UPDATE list_membership SET deleted_at = NULL, added_at = :now, updated_at = :now WHERE id = :id")
+    suspend fun reviveMembershipAsNew(id: String, now: Long)
 
     @Query("UPDATE list_membership SET deleted_at = :now, updated_at = :now WHERE id = :id")
     suspend fun softDeleteMembership(id: String, now: Long)
