@@ -72,13 +72,24 @@ class RoomSavedListRepository(
         }
     }
 
-    /** Idempotent, and revives a tombstoned membership — the unique index leaves nowhere to put a second one. */
-    override suspend fun addToList(listId: SavedListId, itemId: StudyItemId) {
+    /**
+     * Idempotent, and revives a tombstoned membership rather than inserting — the
+     * unique index leaves nowhere to put a second one. A revived membership is
+     * treated as a fresh addition and goes to the top (D-93).
+     */
+    override suspend fun addToList(listId: SavedListId, itemId: StudyItemId) =
+        file(listId, itemId, asNew = true)
+
+    /** As [addToList], but a revived membership keeps its original place (D-93). */
+    override suspend fun restoreToList(listId: SavedListId, itemId: StudyItemId) =
+        file(listId, itemId, asNew = false)
+
+    private suspend fun file(listId: SavedListId, itemId: StudyItemId, asNew: Boolean) {
         db.withTransaction {
             val now = now()
             val existing = dao.findMembershipIncludingDeleted(listId.value, itemId.value)
-            if (existing == null) {
-                dao.insertMembership(
+            when {
+                existing == null -> dao.insertMembership(
                     ListMembershipRow(
                         id = newId(),
                         listId = listId.value,
@@ -88,8 +99,11 @@ class RoomSavedListRepository(
                         deletedAt = null,
                     )
                 )
-            } else if (existing.deletedAt != null) {
-                dao.reviveMembership(existing.id, now)
+                // Already live: leave it exactly where it is. Only a removed
+                // membership has a position question to answer.
+                existing.deletedAt == null -> Unit
+                asNew -> dao.reviveMembershipAsNew(existing.id, now)
+                else -> dao.reviveMembership(existing.id, now)
             }
         }
     }

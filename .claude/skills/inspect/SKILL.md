@@ -40,6 +40,22 @@ export ANDROID_HOME="/c/Users/sword/AppData/Local/Android/Sdk"
    takes the emulator with it — which looks like the emulator refusing to
    start, and `adb devices` shows nothing.
 
+   **If it crashes on start** — the log ends *"Showing crashdialog to get
+   consent"*, `adb devices` shows `offline` or nothing, and a crash-report
+   dialog is waiting on the desktop — the host GPU path has failed (the line
+   before it reads *"Failed to load opengl32sw"*). It is not the snapshot:
+   `-no-snapshot-load` alone does not fix it. Kill the stuck `emulator`,
+   `qemu-system-x86_64` and `crashpad_handler` processes, then boot with
+   software rendering:
+
+   ```
+   "$ANDROID_HOME/emulator/emulator.exe" -avd Pixel_9 -no-boot-anim -no-snapshot-load -gpu swiftshader_indirect
+   ```
+
+   It boots in about 30 seconds but runs slower, and Android's own *System UI
+   isn't responding* dialog can appear — tap *Wait*; it is the emulator, not
+   the app.
+
    **Waiting for one readiness signal is not enough.** There are two, they come
    up in either order, and missing either one fails an install:
 

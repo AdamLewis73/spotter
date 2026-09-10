@@ -121,6 +121,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-90 | The app's own Scan · Saved · Review bar is on all three, camera included | UI |
 | D-91 | The list picker stages its choices; nothing is written until **Add** | UI |
 | D-92 | Kanji are study items in v1 | Product |
+| D-93 | Removing from a list: hold, confirm, undo — and it never resets progress | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -866,6 +867,37 @@ So the row stays live, its history intact, and it simply stops appearing: not in
 *An unfiled word is not browsable, by design.* There is no "unfiled" bin to visit, because adding one would reintroduce the pile D-88 exists to prevent. The way back is to meet the word again — scan it, file it, and its history is waiting.
 
 *Cost to reverse:* low. Nothing is destroyed under this rule, so a later decision to surface unfiled words has all the data it needs.
+
+**D-93 — A word is removed from a list by holding its row, confirming, and then having three seconds to undo. Removal never resets review progress, even from a word's last list.**
+
+This is the only destructive action on the study side of the app, and D-89 makes it the only way a word becomes unfiled. It was settled by the project owner in two parts.
+
+**The interaction.** Hold a row and a red *Remove* panel appears over its right edge (artboard 2e draws the panel; the gesture is the owner's). Tapping anywhere else — another row, the back gesture, or starting to scroll — hides it. Tapping *Remove* asks *Are you sure?*; confirming removes the word from that one list and shows a message for three seconds with **Undo**.
+
+- *A hold, not a swipe.* The artboard captions it "swipe left", but a swipe is one fast gesture that a scroll can trigger by accident, and holding is something you mean. The panel is the same either way; only the gesture that uncovers it changed.
+- *Both a confirmation and an undo.* Most apps use one. Here they catch different mistakes — the confirmation catches a tap you did not mean, the undo catches a decision regretted a second later — and on the only destructive action in the study flow, both are worth their cost.
+- *The row does not move; the panel overlays it.* Sliding the row aside to reveal the panel was built first and pushed the word itself off the screen, leaving only the tail of its gloss — the one thing a user needs to see before removing something, which word it is, was what disappeared.
+- *The message is the same whether or not it was the word's last list.* The owner's call, explicitly open to revisiting once it has been used: a word leaving its last list disappears from the whole app, where a word leaving one of several lists does not, and that difference is not currently said aloud.
+
+**Removal never resets progress.** Considered and rejected, in this order:
+
+- *Reset a word's progress when it leaves its last list.* The intuition is sound — a word deleted and re-added a year later should not come back marked as known.
+- *Decay it instead*: if a word would have come due while unfiled, downgrade it by how overdue it became.
+
+Both rest on a premise that turned out false: that keeping history keeps a word looking mastered. **FSRS does not store "you know this"; it stores how stable a memory was and when it was last reviewed, and predicts recall from the time since.** Re-add a word after a year and FSRS sees a year's gap, predicts it has largely been forgotten, and schedules it almost at once. The decay proposed above is what FSRS already does, and does properly, for free — which is part of why D-26 chose it.
+
+So the staleness problem needs no mechanism, and what is left is a choice about what removal means. Keeping history wins it: a word the user once knew well comes back weighted correctly by how long it has been, and a removal that was a mistake nobody caught inside three seconds costs nothing. A reset would be the one irreversible thing in the flow, triggered by an organisational gesture.
+
+*Consequences, all already true:* the word's row survives with its id (D-89), its photos survive (D-83), re-filing it restores the same row rather than minting a new one, and Undo is simply re-adding the membership — because nothing was destroyed, there is nothing else to restore.
+
+*Cost to reverse:* low, and only in one direction. Adding a reset later means deciding what to do with the history kept until then, which is all still there to decide about.
+
+**Where a word goes when it comes back.** Two ways of returning a word to a list it left, and they are deliberately different:
+
+- **Undo puts it back exactly where it was.** It cancels a removal, so the word returns to its original place in the list.
+- **Re-filing through the picker puts it at the top.** That is a new decision to keep the word here, made later, and the user will look for it where the newest things are — the same reasoning D-82 applied to the Saved list.
+
+Both revive the same membership row, so the unique index is satisfied and nothing is orphaned; they differ only in whether `added_at` moves. In code they are two methods, `restoreToList` and `addToList`, rather than one method and a flag, so every call site says which of the two it means. Settled by the project owner.
 
 ---
 

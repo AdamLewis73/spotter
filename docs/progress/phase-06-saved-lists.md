@@ -88,10 +88,32 @@ list, or a new one. Not on the canvas yet."*, so it follows the project owner's
 spec from conversation rather than a drawing. Worth knowing before redesigning
 it: nothing was inferred from an artboard, because there is none.
 
-Still owed: **swipe-to-remove** on the list screen, which is the only path that
-unfiles a word (D-89); **D-86**, moving typing a word off the camera into
-Saved; and the scan image work (D-21, D-22, D-24, D-25), which brings the
-`scan` and `scan_word` tables and the first real migration.
+**Removing a word from a list is built (D-93).** Hold a row, a red panel
+overlays its right edge, confirm, then three seconds to undo. Removal never
+resets progress: FSRS already weights a returning word by the time elapsed, so
+the owner's instinct to reset or decay progress is something FSRS does properly
+for free. Driven on the emulator both ways — 先生 removed from its only list
+stays live with the same id and becomes unfiled; 出口 removed and undone comes
+back with its *Street Signs* membership revived and its *Food Menu* one
+untouched.
+
+Two off-design defaults surfaced and were fixed, both the same failure: Material
+filling a colour role this project never set. The removal red needed a defined
+`error` role (the design's #E54C4A was darkened to #D33A3C so its white label
+passes AA, following the `JadeLight` precedent), and the undo message was
+Material's lavender and purple until the `inverse*` roles were defined.
+
+Still owed: **D-86**, moving typing a word off the camera into Saved; and the
+scan image work (D-21, D-22, D-24, D-25), which brings the `scan` and
+`scan_word` tables and the first real migration.
+
+**Where a returning word goes, settled (D-93):** Undo puts it back exactly where
+it was; re-filing through the picker puts it at the top, by the reasoning D-82
+applied to the Saved list. Two methods, `restoreToList` and `addToList`, so each
+call site says which it means. The ordering tests use a clock that steps a
+second per reading — with the real clock, adds in the same millisecond tie and
+the test passes or fails by luck — and the re-filing test was confirmed to fail
+when the old behaviour was put back.
 
 ## Done
 
@@ -116,7 +138,8 @@ Saved; and the scan image work (D-21, D-22, D-24, D-25), which brings the
 - [x] The list picker (D-88, D-91) — staged, multi-select, creates a list
       inline, writes only on *Add*
 - [x] The kanji screen's Save, through the same picker (D-92)
-- [ ] Swipe to remove a word from a list — the only path that unfiles (D-89)
+- [x] Remove a word from a list — hold, confirm, three-second undo (D-93);
+      never resets progress
 - [ ] Typing a word moves off the camera into Saved (D-86)
 - [ ] Scan image saved alongside the word (D-21, D-24, D-25)
 - [ ] Bounding box stored on the scan record — D-22's obligation lands here,
