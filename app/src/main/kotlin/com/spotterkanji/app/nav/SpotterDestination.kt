@@ -24,10 +24,11 @@ import com.spotterkanji.app.R
 enum class SpotterDestination(
     val route: String,
     @StringRes val label: Int,
+    val glyph: NavGlyph,
 ) {
-    Scan("scan", R.string.destination_scan),
-    Saved("saved", R.string.destination_saved),
-    Review("review", R.string.destination_review),
+    Scan("scan", R.string.destination_scan, NavGlyph.Circle),
+    Saved("saved", R.string.destination_saved, NavGlyph.RoundedSquare),
+    Review("review", R.string.destination_review, NavGlyph.Diamond),
     ;
 
     companion object {
@@ -38,3 +39,13 @@ enum class SpotterDestination(
             entries.firstOrNull { it.route == route }
     }
 }
+
+/**
+ * The shape a destination is drawn as in the bar, taken from the wireflow.
+ *
+ * The design uses **geometry rather than pictograms** — a 19px circle, rounded
+ * square and diamond — which is why there is no icon set here and no dependency
+ * on one. Selection is carried by fill against outline, not by swapping shapes,
+ * so each destination keeps the same silhouette whether or not it is current.
+ */
+enum class NavGlyph { Circle, RoundedSquare, Diamond }
