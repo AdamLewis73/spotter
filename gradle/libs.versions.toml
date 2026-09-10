@@ -42,6 +42,10 @@ androidx-core = "1.19.0"
 androidx-activity = "1.13.0"
 androidx-lifecycle = "2.11.0"
 compose-bom = "2026.06.01"
+# Navigation Compose is NOT in the Compose BOM — it versions independently
+# and must be pinned here. 2.10.1 is the newest stable; verified against
+# Google Maven on 2026-09-09 rather than remembered.
+androidx-navigation = "2.10.1"
 
 # Already on :app's runtime classpath transitively (via lifecycle and room-ktx)
 # at exactly this version — verified with `:app:dependencies` on 2026-08-28, not
@@ -59,6 +63,11 @@ androidx-espresso = "3.7.0"
 # :domain without weakening D-60 — it compiles for iOS too, so it is not the
 # kind of JVM-only dependency that would strand the portable layer.
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+
+# The navigation host and the type-safe route helpers. `architecture.md`
+# named Navigation Compose as the choice before any of it was built; D-90
+# is the point at which there are three real destinations to host.
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "androidx-navigation" }
 
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }

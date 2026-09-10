@@ -1,6 +1,7 @@
 package com.spotterkanji.data.user
 
 import androidx.room.ColumnInfo
+import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -99,6 +100,18 @@ data class SavedListRow(
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
     @ColumnInfo(name = "deleted_at") val deletedAt: Long?,
+)
+
+/**
+ * A [SavedListRow] and its filed-word count, for the Saved screen.
+ *
+ * Not a table — a query result. `@Embedded` lets Room fill the list's own
+ * columns from the same row as the computed count, so one query answers the
+ * whole screen.
+ */
+data class SavedListWithCount(
+    @Embedded val list: SavedListRow,
+    @ColumnInfo(name = "word_count") val wordCount: Int,
 )
 
 /**

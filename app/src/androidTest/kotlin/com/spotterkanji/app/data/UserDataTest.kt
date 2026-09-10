@@ -370,6 +370,70 @@ class UserDataTest {
         assertEquals("先生", items.observeSaved().first().first().key.text)
     }
 
+    /**
+     * The Saved screen's per-list counts.
+     *
+     * A word in two lists counts in **both** — it really is in both — which is
+     * what makes the header total a separate question rather than a sum.
+     */
+    @Test
+    fun list_summaries_count_the_words_in_each_list() = runBlocking {
+        val signs = lists.createList("Street Signs")
+        val menu = lists.createList("Food Menu")
+        val word = fileInto(signs, sensei)
+        lists.addToList(menu.id, word.id)
+        fileInto(menu, seisan, "production")
+
+        val summaries = lists.observeListSummaries().first().associateBy { it.list.name }
+        assertEquals(1, summaries.getValue("Street Signs").wordCount)
+        assertEquals(2, summaries.getValue("Food Menu").wordCount)
+    }
+
+    /**
+     * ...and the header total counts each word **once**, however many lists hold
+     * it.
+     *
+     * Summing the per-list counts would report 3 for the two words filed here,
+     * because 先生 is in both lists. That is wrong in a way that looks plausible
+     * and grows with how carefully the user organises — which is why the total
+     * is its own query rather than a sum.
+     */
+    @Test
+    fun the_saved_total_counts_a_word_once_however_many_lists_hold_it() = runBlocking {
+        val signs = lists.createList("Street Signs")
+        val menu = lists.createList("Food Menu")
+        val word = fileInto(signs, sensei)
+        lists.addToList(menu.id, word.id)
+        fileInto(menu, seisan, "production")
+
+        val perList = lists.observeListSummaries().first().sumOf { it.wordCount }
+        assertEquals("the sum over lists double-counts on purpose", 3, perList)
+        assertEquals(2, items.observeSavedCount().first())
+    }
+
+    /** An empty list still appears, counting zero rather than vanishing. */
+    @Test
+    fun an_empty_list_appears_with_a_zero_count() = runBlocking {
+        lists.createList("Street Signs")
+
+        val summaries = lists.observeListSummaries().first()
+        assertEquals(1, summaries.size)
+        assertEquals(0, summaries.first().wordCount)
+    }
+
+    /** Unfiled words are outside the total, on the same terms as everywhere else (D-89). */
+    @Test
+    fun the_saved_total_ignores_unfiled_words() = runBlocking {
+        val signs = lists.createList("Street Signs")
+        val word = fileInto(signs, sensei)
+        assertEquals(1, items.observeSavedCount().first())
+
+        lists.removeFromList(signs.id, word.id)
+
+        assertEquals(0, items.observeSavedCount().first())
+        assertEquals(0, lists.observeListSummaries().first().first().wordCount)
+    }
+
     /** Two lists may share a name; identity is the UUID (D-15). */
     @Test
     fun two_lists_may_share_a_name() = runBlocking {

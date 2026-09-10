@@ -73,6 +73,26 @@ interface StudyItemDao {
     )
     fun observeByKey(text: String, reading: String, type: String): Flow<StudyItemRow?>
 
+    /**
+     * How many **distinct** filed words there are — the Saved screen's total.
+     *
+     * Deliberately its own query rather than summing the per-list counts. A word
+     * filed in three lists contributes to three of those counts, so adding them
+     * up reports a library three times its real size — wrong in a way that
+     * looks plausible and grows with how carefully the user organises.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM study_item AS i
+        WHERE i.deleted_at IS NULL
+          AND EXISTS (
+              SELECT 1 FROM list_membership AS m
+              WHERE m.study_item_id = i.id AND m.deleted_at IS NULL
+          )
+        """
+    )
+    fun observeFiledCount(): Flow<Int>
+
     /** As [observeByKey], for a caller that wants the answer once. */
     @Query(
         """
@@ -182,6 +202,34 @@ interface SavedListDao {
 
     @Query("SELECT * FROM saved_list WHERE deleted_at IS NULL ORDER BY created_at ASC")
     fun observeLists(): Flow<List<SavedListRow>>
+
+    /**
+     * Every live list with the number of **filed, live** words in it.
+     *
+     * Both sides are filtered, for the reason [observeItemsIn] gives: a
+     * membership can outlive the word it points at, and a count that trusted
+     * the join alone would include words the user has deleted.
+     *
+     * A correlated subquery rather than `GROUP BY`, so a list with no words
+     * still appears — with `LEFT JOIN ... GROUP BY` it would too, but only if
+     * the join condition carried both `deleted_at` tests, which is easy to get
+     * subtly wrong. Here an empty list simply counts zero.
+     */
+    @Query(
+        """
+        SELECT l.*, (
+            SELECT COUNT(*) FROM list_membership AS m
+            JOIN study_item AS i ON i.id = m.study_item_id
+            WHERE m.list_id = l.id
+              AND m.deleted_at IS NULL
+              AND i.deleted_at IS NULL
+        ) AS word_count
+        FROM saved_list AS l
+        WHERE l.deleted_at IS NULL
+        ORDER BY l.created_at ASC
+        """
+    )
+    fun observeListsWithCounts(): Flow<List<SavedListWithCount>>
 
     /**
      * The words in a list.

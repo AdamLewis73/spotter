@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.spotterkanji.domain.user.SavedList
 import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.SavedListRepository
+import com.spotterkanji.domain.user.SavedListSummary
 import com.spotterkanji.domain.user.StudyItem
 import com.spotterkanji.domain.user.StudyItemId
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +26,9 @@ class RoomSavedListRepository(
 
     override fun observeLists(): Flow<List<SavedList>> =
         dao.observeLists().map { rows -> rows.map { it.toModel() } }
+
+    override fun observeListSummaries(): Flow<List<SavedListSummary>> =
+        dao.observeListsWithCounts().map { rows -> rows.map { it.toModel() } }
 
     override fun observeItemsIn(listId: SavedListId): Flow<List<StudyItem>> =
         dao.observeItemsIn(listId.value).map { rows -> rows.map { it.toModel() } }

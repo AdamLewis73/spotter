@@ -16,6 +16,15 @@ interface SavedListRepository {
     /** Every live list, in creation order. */
     fun observeLists(): Flow<List<SavedList>>
 
+    /**
+     * Every live list with its filed-word count — what the Saved screen shows.
+     *
+     * Counted in SQL rather than by loading each list's words and taking
+     * `size`, which would be one query per list and would pull every saved word
+     * into memory to display a number.
+     */
+    fun observeListSummaries(): Flow<List<SavedListSummary>>
+
     /** The words in [listId], newest addition first. Empty for an unknown or deleted list. */
     fun observeItemsIn(listId: SavedListId): Flow<List<StudyItem>>
 
