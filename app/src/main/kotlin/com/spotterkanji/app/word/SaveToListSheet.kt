@@ -87,11 +87,10 @@ internal fun SaveToListSheet(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(modifier = Modifier.padding(tokens.spaceMd)) {
-                Text(
-                    text = stringResource(R.string.picker_title),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // The word comes FIRST and the instruction second. With the
+                // label above it, "Save to" and 先生 read as one line — save to
+                // 先生 — which is the opposite of what the overlay does. The word
+                // is the object being filed, not the destination.
                 Text(
                     text = word,
                     fontFamily = SpotterJapanese,
@@ -99,6 +98,11 @@ internal fun SaveToListSheet(
                         fontWeight = FontWeight.Bold,
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.picker_title),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = tokens.spaceXs),
                 )
 
@@ -154,6 +158,7 @@ internal fun SaveToListSheet(
                             name = name,
                             checked = true,
                             subtitle = stringResource(R.string.picker_will_be_created),
+                            locked = false,
                             onClick = { onNewListRemoved(name) },
                         )
                     }
@@ -168,8 +173,9 @@ internal fun SaveToListSheet(
                                 null
                             },
                             // A list that already holds the word is not a way to
-                            // remove it. Tapping does nothing rather than
-                            // pretending to unfile (D-91).
+                            // remove it (D-91), so it is drawn as locked rather
+                            // than merely refusing the tap.
+                            locked = holding,
                             onClick = if (holding) null else ({ onToggle(list.id) }),
                         )
                     }
@@ -237,6 +243,10 @@ private fun NewListField(
  * the overlay matches the nav bar instead of importing a second visual
  * language.
  *
+ * A row for a list that **already holds** the word is drawn locked: muted fill
+ * instead of the accent, dimmed name, and no tap. Refusing the tap alone would
+ * leave it looking exactly like a list the user had just chosen.
+ *
  * **Fill carries the state, with no tick inside it.** A "✓" was tried and drawn
  * by whatever font had it, which rendered as a lowercase v — the silent
  * fallback D-34 exists to prevent, in miniature. A filled jade square already
@@ -248,9 +258,24 @@ private fun PickerRow(
     name: String,
     checked: Boolean,
     subtitle: String?,
+    locked: Boolean,
     onClick: (() -> Unit)?,
 ) {
     val tokens = SpotterTheme.tokens
+    // A locked row is filled in the MUTED colour rather than the accent, and its
+    // text is dimmed. Refusing the tap is not enough on its own: a locked row
+    // drawn identically to a selected one is a control that looks interactive,
+    // does nothing, and gives the user no way to tell why.
+    val fill = if (locked) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val nameColor = if (locked) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -264,10 +289,7 @@ private fun PickerRow(
                 .size(20.dp)
                 .then(
                     if (checked) {
-                        Modifier.background(
-                            MaterialTheme.colorScheme.primary,
-                            RoundedCornerShape(5.dp),
-                        )
+                        Modifier.background(fill, RoundedCornerShape(5.dp))
                     } else {
                         Modifier.border(
                             2.dp,
@@ -281,7 +303,7 @@ private fun PickerRow(
             Text(
                 text = name,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = nameColor,
             )
             if (subtitle != null) {
                 Text(

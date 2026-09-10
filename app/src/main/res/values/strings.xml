@@ -80,9 +80,9 @@
 
     <!-- The list picker (D-88, D-91). No artboard: the wireflow marks it
          "NOT DESIGNED", so this follows the owner's spec. -->
-    <string name="picker_title">Save to</string>
+    <string name="picker_title">Save to a word list</string>
     <string name="picker_create_list">＋  Create a new list</string>
-    <string name="picker_stage_list">Add list</string>
+    <string name="picker_stage_list">Create</string>
     <string name="picker_will_be_created">will be created</string>
     <string name="picker_already_in">already in this list</string>
     <string name="picker_no_lists">You have no lists yet. Make one to keep this word in.</string>
