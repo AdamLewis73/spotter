@@ -528,8 +528,9 @@ class UserDataTest {
  * Ordering tests need distinct timestamps, and real operations inside one test
  * routinely land in the same millisecond — which makes a newest-first
  * assertion depend on scheduling rather than on the code under test.
+ * Shared with [ScanPhotoTest].
  */
-private class SteppingClock(
+internal class SteppingClock(
     private var now: Instant = Instant.parse("2026-01-01T00:00:00Z"),
 ) : Clock() {
     override fun instant(): Instant = now.also { now = now.plusSeconds(1) }

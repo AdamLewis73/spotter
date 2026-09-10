@@ -1,5 +1,6 @@
 package com.spotterkanji.data.user
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 
@@ -34,10 +35,12 @@ import androidx.room.RoomDatabase
  * as **chains** — a user on v1 installing v4 runs 1→2→3→4 — so
  * `MigrationTestHelper` must exercise the chain, never a single hop.
  *
- * Version 1 holds saved words and lists. `srs_state` and `review_log` are Phase
- * 7's (D-79) and arrive as added tables, which Room can express as an
- * `AutoMigration`; `scan` and `scan_word` follow with the image work, carrying
- * D-22's bounding box.
+ * - **v1** — saved words and lists.
+ * - **v2** — adds `scan` and `scan_word`: the photos words were filed from and
+ *   where each word sat on them (D-22, D-94). Added tables only, so it is an
+ *   `AutoMigration`, proven against a real v1 database in `UserMigrationTest`.
+ *
+ * `srs_state` and `review_log` are Phase 7's (D-79) and will arrive the same way.
  *
  * Note this class takes no `Context` and imports nothing from `android.*`. The
  * construction that needs one lives in `:app` (D-60).
@@ -47,16 +50,29 @@ import androidx.room.RoomDatabase
         StudyItemRow::class,
         SavedListRow::class,
         ListMembershipRow::class,
+        ScanRow::class,
+        ScanWordRow::class,
     ],
     version = UserDatabase.SCHEMA_VERSION,
     exportSchema = true,
+    // Every step must stay listed forever. A user can arrive from ANY earlier
+    // version — a phone left un-updated for a year, or an old Auto Backup
+    // restored into a new install — and Room walks the chain one step at a
+    // time. Deleting an old step breaks exactly those users, and only them.
+    autoMigrations = [
+        // v1 → v2 adds `scan` and `scan_word` (D-94) and touches nothing that
+        // already exists, which is the case Room can write by itself. Anything
+        // that changes an existing column is hand-written instead.
+        AutoMigration(from = 1, to = 2),
+    ],
 )
 abstract class UserDatabase : RoomDatabase() {
     abstract fun studyItemDao(): StudyItemDao
     abstract fun savedListDao(): SavedListDao
+    abstract fun scanDao(): ScanDao
 
     companion object {
-        const val SCHEMA_VERSION: Int = 1
+        const val SCHEMA_VERSION: Int = 2
 
         /**
          * The file name under the app's database directory.

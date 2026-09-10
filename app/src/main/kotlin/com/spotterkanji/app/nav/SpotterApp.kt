@@ -115,6 +115,7 @@ internal fun SpotterApp(
                     // list has been deleted from under this screen.
                     listName = state.name.orEmpty(),
                     words = state.words,
+                    thumbnails = state.thumbnails,
                     onBack = { navController.popBackStack() },
                     onRemove = viewModel::onRemove,
                     onUndoRemove = viewModel::onUndoRemove,

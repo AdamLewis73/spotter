@@ -1,7 +1,7 @@
 # Phase 6 — Saved lists
 
-**Status:** in progress. Checkpoints settled, schema built, Save works.
-**Updated:** 2026-08-28
+**Status:** in progress. Checkpoints settled, schema v2 built, Save, lists and scan photos work.
+**Updated:** 2026-09-10
 
 ## Current state
 
@@ -103,9 +103,8 @@ filling a colour role this project never set. The removal red needed a defined
 passes AA, following the `JadeLight` precedent), and the undo message was
 Material's lavender and purple until the `inverse*` roles were defined.
 
-Still owed: **D-86**, moving typing a word off the camera into Saved; and the
-scan image work (D-21, D-22, D-24, D-25), which brings the `scan` and
-`scan_word` tables and the first real migration.
+Still owed: **D-86**, moving typing a word off the camera into Saved.
+~~The scan image work~~ **Done — see below.**
 
 **Where a returning word goes, settled (D-93):** Undo puts it back exactly where
 it was; re-filing through the picker puts it at the top, by the reasoning D-82
@@ -114,6 +113,56 @@ call site says which it means. The ordering tests use a clock that steps a
 second per reading — with the real clock, adds in the same millisecond tie and
 the test passes or fails by luck — and the re-filing test was confirmed to fail
 when the old behaviour was put back.
+
+**Scan photos are built (D-94, D-95), with the first real migration.** Filing a
+word from a scan keeps the photo it came from. The owner's rules, which
+superseded D-21's resizing and D-25's scan history:
+
+- **A photo is kept only when a word from it is filed** — not at the shutter,
+  not temporarily. Nothing touches the disk until *Add*.
+- **One photo per shutter press**, shared by every word filed from it. The
+  second word from the same frame links to the first word's `scan` row.
+- **Stored at the size it was taken, WebP q80, never resized.** The word boxes
+  are measured on that photo, so they stay right for the file on disk only if
+  nothing changes its pixel grid. Its width and height are not stored; the file
+  header has them.
+- **The thumbnail is drawn, not stored.** The list decodes only the square
+  around the word from the one file. There is never a second image.
+- **Photos are never backed up** — only the database is. A restored phone has
+  every word and list without their photos, which draws exactly like a typed
+  word with none. A word without a photo is always a normal state.
+
+`UserDatabase` is at **v2**: `scan` and `scan_word` arrive by `AutoMigration`,
+and the generated migration was read to confirm it only creates — two tables,
+three indexes, nothing touching v1's rows. `MigrationTestHelper` proves a v1
+database with a filed word, a list and a tombstone comes through intact, and a
+second case opens every past version in the real app build without a fallback.
+Both fail when the migration is removed.
+
+D-23's `image_type` column was **not built**: `WORD_CROP` never exists under
+D-95, and the column can be added later if a second kind of image ever does.
+
+**The camera itself could not be driven on the emulator** — its virtual scene
+has no Japanese in it, so recognition has nothing to read. Everything after the
+shutter is tested on the device instead, from a synthetic photo: grey, with one
+red block where the "word" is, so "did the thumbnail land on the word?" is a
+pixel check rather than a judgement. Nine cases, and the two that matter were
+confirmed to fail when the save step was made to halve the photo — the size
+check directly, and the thumbnail check because the crop then lands on grey.
+The decoder's fallback path was run on its own and crops correctly too. **Still
+worth one real sign on a real phone** before calling it seen.
+
+**A word already in every list cannot take a new photo.** Photos attach when
+*Add* files the word somewhere, and lists already holding it are locked in the
+picker, so a second sighting of a word filed everywhere has no route to its
+photo except filing it into a new list. Consistent with the picker as decided;
+flagged in case a second photo of a known word turns out to matter.
+
+**Gotcha for the next migration test:** `room-testing` needs
+kotlinx-serialization 1.8, and the app's own libraries pinned the test
+classpath to 1.7.3, failing at runtime with an `AbstractMethodError` rather than
+at build time. A dependency constraint in `app/build.gradle.kts` holds it at
+1.8.1; the comment in `libs.versions.toml` explains why it is a floor.
 
 ## Done
 
@@ -141,10 +190,15 @@ when the old behaviour was put back.
 - [x] Remove a word from a list — hold, confirm, three-second undo (D-93);
       never resets progress
 - [ ] Typing a word moves off the camera into Saved (D-86)
-- [ ] Scan image saved alongside the word (D-21, D-24, D-25)
-- [ ] Bounding box stored on the scan record — D-22's obligation lands here,
-      as a schema field; `ScanLayout.boxFor` already supplies the rectangle
-- [ ] Saved tab in the bottom nav (D-36)
+- [x] Scan image saved alongside the word (D-24, D-94) — once per shutter
+      press, only when a word is filed, never resized; D-94 superseded D-21's
+      resizing and D-25's scan history
+- [x] Bounding box stored on the scan record (D-22) — `scan_word.bbox_*`, in
+      the saved photo's own pixels, from `ScanLayout.boxFor`
+- [x] Thumbnails in the list, drawn from the one photo (D-95)
+- [x] `UserDatabase` v2 by `AutoMigration`, with `MigrationTestHelper` cases
+- [x] Backup covers the database only (D-94)
+- [x] Saved tab in the bottom nav (D-36) — landed with the app shell
 - [ ] Relevant `V-##` cases from `verification.md` added to this list
 
 ## Settled while wiring Save, 2026-08-28
@@ -238,7 +292,9 @@ The two that *gated* this phase remain settled (D-79, D-80).
 - Never store dictionary row IDs in user data (D-11). Rebuilds reassign them and
   corrupt saved words with no error.
 - Images are files on disk with **relative** paths in the DB (D-24), never BLOBs.
-- Scan history and saved-word images have separate lifecycles (D-25).
+- ~~Scan history and saved-word images have separate lifecycles (D-25).~~ There
+  is no scan history: a photo exists only because a word was filed from it
+  (D-94), and then stays with that word even if it is later unfiled (D-83).
 - Smart/auto lists (by JLPT level, shared kanji, scan date) are deferred but
   fall out of D-28's join table cheaply.
 - `srs_state` and `review_log` are **Phase 7 tables**, not Phase 6 ones — an

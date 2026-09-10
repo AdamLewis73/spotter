@@ -49,11 +49,11 @@ Scan for the relevant entry rather than reading the whole file.
 | D-18 | Room schema export on; JSON committed to git | Migrations |
 | D-19 | Design for sync now; build accounts later | Migrations |
 | D-20 | Manual export/import ships before any sync | Migrations |
-| D-21 | v1 saves downscaled full frames; word crops deferred | Images |
+| D-21 | ~~v1 saves downscaled full frames; word crops deferred~~ — SUPERSEDED by D-94, D-95 | Images |
 | D-22 | Store the word's bounding box from v1 regardless | Images |
-| D-23 | Image format migrations never reprocess old records | Images |
+| D-23 | Image format migrations never reprocess old records *(its `image_type` column not built — see entry)* | Images |
 | D-24 | Images are files on disk; DB stores relative paths | Images |
-| D-25 | Scan history and saved-word images have separate lifecycles | Images |
+| D-25 | ~~Scan history and saved-word images have separate lifecycles~~ — *scan history* SUPERSEDED by D-94 | Images |
 | D-26 | FSRS, not SM-2 or a custom algorithm | SRS |
 | D-27 | Study items polymorphic (`type`) from day one | SRS |
 | D-28 | Saved lists are many-to-many via a join table | SRS |
@@ -122,6 +122,8 @@ Scan for the relevant entry rather than reading the whole file.
 | D-91 | The list picker stages its choices; nothing is written until **Add** | UI |
 | D-92 | Kanji are study items in v1 | Product |
 | D-93 | Removing from a list: hold, confirm, undo — and it never resets progress | SRS |
+| D-94 | A photo is kept only when a word is filed from it: at full size, never backed up | Images |
+| D-95 | Thumbnails draw a crop of the photo; no second image is ever saved | Images |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -774,7 +776,7 @@ Read literally, D-16 covers all six tables in the Phase 6 schema. Read as reason
 
 ## Images
 
-**D-21 — v1 saves the downscaled full camera frame; word crops are deferred.**
+**D-21 — SUPERSEDED by D-94 and D-95.** ~~v1 saves the downscaled full camera frame; word crops are deferred.~~ *The full frame is still what is saved; the resizing is gone (D-94), and crops are drawn at display time rather than deferred (D-95).*
 Roughly 1600px on the long edge, WebP lossy quality 80, giving about 250–400 KB per image. Cropping to the specific word would be smaller and a better memory hook, but getting crop geometry right (coordinates, padding, edge cases at image boundaries) is fiddly work that shouldn't block v1.
 
 **D-22 — Store the word's bounding box from v1 regardless.**
@@ -786,7 +788,7 @@ The payoff: moving to word crops later requires **no image reprocessing at all**
 
 *Checkpoint reviewed and discharged in Phase 5, 2026-08-26.* There is nothing to store yet — the user-data schema does not exist until Phase 6 — so what this checkpoint actually asks of Phase 5 is that the box still be *knowable* when saving arrives. It is: `ScanLayout.boxFor(offsets)` returns the rectangle a word occupied, and is tested. **The obligation that carries into Phase 6 is a schema field**, and the reason it must not be skipped there is unchanged: without it, moving to word crops means re-running OCR across every saved image.
 
-**D-23 — Image format migrations never reprocess old records.**
+**D-23 — Image format migrations never reprocess old records.** *The `image_type` column below was not built (2026-09-10, project owner's call): D-95 draws crops rather than saving them, so `WORD_CROP` has nothing to describe, and each file's extension already records its format. The principle — old records are never reprocessed — stands.*
 Each image row carries an `image_type` discriminator (`FULL_FRAME` | `WORD_CROP`). Old records keep their original type forever; new records use the current one. The UI renders both. Mixed-format data is the normal, expected steady state — not a problem to be cleaned up.
 
 **D-24 — Images are files on disk; the database stores relative paths.**
@@ -794,10 +796,36 @@ Filenames are UUIDs — never sequential, never derived from content — so coll
 
 Storing images as SQLite BLOBs would bloat the database file and slow every query that touches those rows, including queries that don't need the image.
 
-**D-25 — Scan history and saved-word images have separate lifecycles.**
+**D-25 — Scan history and saved-word images have separate lifecycles.** *The scan-history half is SUPERSEDED by D-94: a photo nothing is filed from is never kept, so there is no second lifecycle. The storage screen survives, but its "save scan images" toggle was about that history and needs rethinking when the screen is built.*
 Images attached to saved study items persist indefinitely. Images from casual scans that were never saved auto-purge after N days. Without this split, ordinary browsing quietly fills the device.
 
 Ship a storage screen showing usage, a clear action, and a "save scan images" toggle.
+
+**D-94 — A photo is kept only when a word is filed from it. It is saved once per shutter press, at the size it was taken, compressed, and never backed up. Supersedes D-21's resizing and D-25's scan history.**
+
+Both superseded parts came from the original planning commit (`14298db`, D-01 to D-37 written together) and the project owner did not recognise either as something they had decided. Weighed on their own, neither survived.
+
+**Nothing is kept unless something is filed from it — not even briefly.** D-25 planned a scan history: every shutter press writes a photo, and ones nothing was saved from are purged after some days. That is a ~300 KB write on every scan, a purge job, and a storage screen to explain it all, to hold photos nothing in the app ever shows — the wireflow has no scan-history screen. So the photo is written at the moment a word from it is filed, and not before.
+
+**One photo per shutter press, shared.** Filing 先生 and 生産 from the same sign writes one file and two `scan_word` rows.
+
+**Saved at the size it was taken, never resized.** D-21 asked for "~1600 px on the long edge". Resizing is what forces the word's position to be converted: the rectangle is measured on the photo as captured, and a resized copy has different pixels, so every crop drawn from it lands slightly wrong with no error. The captured size is not even fixed — CameraX aims for 1920×1080 but falls back to whatever a given phone offers, and a portrait photo comes out 1080 wide and 1920 tall once it is turned upright. **Not resizing makes the rectangle correct for the file on disk by construction**, on every phone and in either orientation, and leaves no conversion to get wrong.
+
+*Compression is separate, and kept:* WebP at quality 80, as D-21 specified. Compression shrinks the file, not its dimensions — which is exactly why it is safe where resizing was not.
+
+*The cost is larger files* than D-21 budgeted, roughly a third more pixels. That was a real concern when every scan was kept; with photos written only on filing it is a small one.
+
+**Never backed up.** Android Auto Backup is limited to 25 MB per app, so it includes only the user database — not the dictionary (about 100 MB, which alone makes the backup fail) and not photos. After a restore to a new phone, words and lists return and their photos do not. That is acceptable because **a word without a photo is a normal state**, not an error: a word saved from a typed lookup has none, and so will a word added by hand once user-facing search exists (D-86). The app shows a word whose photo is missing exactly as it shows one that never had a photo.
+
+*Cost to reverse:* low. Resizing could be added later for new photos only; D-23's rule that old records are never reprocessed covers exactly that.
+
+**D-95 — A list's thumbnail draws the part of the photo around the word. No cropped copy is ever saved.**
+
+The design shows a small thumbnail beside each saved word. A whole wide photo shrunk to that size is mostly background; the patch around the word is recognisable at a glance. So the thumbnail is the saved photo, drawn scaled and offset so that only the word's rectangle (D-22) shows — **one file on disk, displayed as a crop**.
+
+This is the project owner's explicit requirement — no second version of the same image — and it is what D-22 anticipated when it asked for the rectangle to be stored "so cropping can happen at display time". D-21 had deferred *saving* crop files as fiddly; drawing a crop needs no files and nothing is deferred. D-23's `WORD_CROP` value therefore has nothing to describe.
+
+*Cost to reverse:* none. It is a drawing decision; the stored data is the same either way.
 
 ---
 
@@ -1291,7 +1319,7 @@ Unsaving 先生 tombstones the study item and its list memberships. It does **no
 
 *Why it is right rather than merely convenient:* `overview.md` makes real-world capture a product principle — *that sign outside the ramen shop* is a stronger memory hook than a bare flashcard — and a word accumulating the places it has been met is that principle compounding rather than resetting. It also matches D-25's split, where scan history and saved-word images already have separate lifecycles: history is a record of what the camera saw, and the user unsaving a word is not a claim that they never saw it.
 
-*What this does not license:* it is not a reason to keep images forever regardless of cost. D-25's auto-purge of unsaved casual scans still applies, and the storage screen it requires is still owed. The claim here is narrow — unsaving is not itself a deletion of history.
+*What this does not license:* it is not a reason to keep images forever regardless of cost. The storage screen D-25 requires is still owed. *(This entry originally added that D-25's auto-purge of unsaved casual scans still applied; D-94 has since removed casual scans entirely — nothing unfiled is ever kept — so there is nothing left to purge.)* The claim here is narrow — unsaving is not itself a deletion of history.
 
 *Cost to reverse:* low while `scan_word` does not exist, which is why it was settled now. Once photographs are attached to words in the field, changing the rule means deciding what to do with records already kept under it.
 

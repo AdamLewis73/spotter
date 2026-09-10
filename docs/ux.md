@@ -176,6 +176,8 @@ So a line in onboarding does not discharge it. Placing the screen inside Saved o
 
 **Storage screen (D-25).** Usage breakdown, a clear action, and a "save scan images" toggle. Users who discover an app consuming 500 MB uninstall it.
 
+> **D-94 changes what this screen is for.** There is no scan history — a photo is kept only when a word is filed from it — so the "save scan images" toggle no longer has the history it was written for. Usage and clearing still apply, to the photos attached to saved words. Rethink the toggle when the screen is built.
+
 **Content settings (D-54).** Two toggles, living wherever Settings lands — not in the bottom nav (D-36):
 
 | Toggle | Default |
