@@ -1,6 +1,14 @@
 package com.spotterkanji.app.word
 
 import android.app.Application
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Mutex
+import com.spotterkanji.domain.user.StudyItemId
+import com.spotterkanji.domain.user.ScanId
+import com.spotterkanji.domain.scan.ScanLayout
+import com.spotterkanji.app.data.ScanImageStore
+import com.spotterkanji.app.BuildConfig
+import android.graphics.Bitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.spotterkanji.app.data.DictionaryProvider
@@ -86,6 +94,31 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
     private val repository = DictionaryProvider.repository(application)
     private val savedItems = UserDataProvider.savedItems(application)
     private val savedLists = UserDataProvider.savedLists(application)
+    private val scans = UserDataProvider.scans(application)
+
+    /**
+     * The photograph on screen and how it was read, when this lookup came from a
+     * scan. Null on the typed-lookup route, where a filed word gets no photo — a
+     * normal state (D-94).
+     */
+    private var scanContext: ScanContext? = null
+
+    /**
+     * The photo already saved from the current frame, keyed by the frame itself.
+     *
+     * One photo per shutter press (D-94): filing a second word from the same
+     * frame reuses this rather than writing the file again. Keyed by identity
+     * (`===`), because a retake produces a new [Bitmap] object and that is exactly
+     * the boundary between one shutter press and the next.
+     */
+    private var savedFrame: Pair<Bitmap, ScanId>? = null
+
+    /**
+     * Serialises "is this frame saved yet?" with saving it. Without it, two Adds
+     * in quick succession from the same frame both find nothing saved and both
+     * write a copy — two files, two rows, for one shutter press.
+     */
+    private val photoLock = Mutex()
     private val tokenizer = KuromojiTokenizer()
 
     private val _state = MutableStateFlow(WordLookupState())
@@ -292,6 +325,11 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      * and no reading to key on (D-12), and a saved item with neither is exactly
      * the unresolvable row D-40 has to render forever.
      */
+    /** Called by the scan route whenever the frozen frame or its reading changes. */
+    fun onScanContext(context: ScanContext?) {
+        scanContext = context
+    }
+
     fun onSaveRequested() {
         val entry = _state.value.saveTarget ?: return
         openPicker(
@@ -400,6 +438,11 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         val picker = _picker.value
         val target = picker.target ?: return
         if (picker.nothingChosen) return
+        // Captured now, before anything suspends: the user may retake or move to
+        // another word while the save is still running, and the photo attached
+        // must be the one on screen when Add was pressed.
+        val scan = scanContext
+        val token = _state.value.selected
         onPickerDismissed()
         viewModelScope.launch {
             val item = savedItems.save(
@@ -411,7 +454,65 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
                 savedLists.addToList(savedLists.createList(name).id, item.id)
             }
             picker.staged.forEach { listId -> savedLists.addToList(listId, item.id) }
+            if (scan != null && token != null) attachPhoto(scan, token, target, item.id)
         }
+    }
+
+    /**
+     * Keep the photo this word was filed from, and record where the word sits on
+     * it (D-22, D-94). Called only after the word has been filed: a photo nothing
+     * is filed from is never written (D-94).
+     *
+     * The word's offsets are the selected token's, which index the same string
+     * [ScanLayout.boxFor] does — the overlay's taps already rely on that, and
+     * V-11 checks it. So the box is measured on the photo as captured, and since
+     * the photo is saved without resizing it is correct for the file on disk.
+     */
+    private suspend fun attachPhoto(
+        scan: ScanContext,
+        token: Token,
+        target: PickerTarget,
+        itemId: StudyItemId,
+    ) {
+        val range = rangeOnPhoto(token, target)
+        // No rectangle means the offsets landed on nothing drawable — a line
+        // separator, say. Rare, and the word is filed either way; it just gets
+        // no photo, which is a normal state.
+        val box = scan.layout.boxFor(range) ?: return
+        val scanId = photoLock.withLock {
+            savedFrame?.takeIf { it.first === scan.photo }?.second
+                ?: withContext(Dispatchers.IO) {
+                    // File first, row second: see ScanImageStore.write.
+                    val path = ScanImageStore.write(getApplication(), scan.photo)
+                    scans.createScan(
+                        imagePath = path,
+                        rawText = scan.layout.text,
+                        appVersion = BuildConfig.VERSION_NAME,
+                    )
+                }.also { savedFrame = scan.photo to it }
+        }
+        scans.linkWord(
+            scanId = scanId,
+            itemId = itemId,
+            box = box,
+            charOffset = range.first,
+            charLength = range.last - range.first + 1,
+        )
+    }
+
+    /**
+     * Where on the photo to point for this save.
+     *
+     * Usually the selected word. A **kanji** saved from one of that word's
+     * component chips (D-92) is found inside it — 生 inside 先生 — and the
+     * layout knows every character's own rectangle, so the thumbnail can point at
+     * the character itself rather than the whole word around it.
+     */
+    private fun rangeOnPhoto(token: Token, target: PickerTarget): IntRange {
+        val word = token.start until token.endExclusive
+        if (target.key.type != StudyItemType.KANJI) return word
+        val at = token.text.indexOf(target.key.text)
+        return if (at < 0) word else (token.start + at) until (token.start + at + target.key.text.length)
     }
 
     private fun watchSaved() {
@@ -467,3 +568,12 @@ data class PickerState(
      */
     val noListsYet: Boolean get() = lists.isEmpty() && stagedNewLists.isEmpty()
 }
+
+/**
+ * The frozen photograph and its reading, handed over by the scan route so a
+ * filed word can keep the photo it came from (D-94).
+ */
+data class ScanContext(
+    val photo: Bitmap,
+    val layout: ScanLayout,
+)

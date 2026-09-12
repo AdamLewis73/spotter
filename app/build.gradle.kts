@@ -270,6 +270,16 @@ android {
     }
 }
 
+// The user database's exported schemas, visible to instrumented tests.
+//
+// MigrationTestHelper builds a database at an OLD version from its committed JSON
+// (D-18) — that is the whole point of committing them — and it reads that JSON
+// from the test APK's assets. The directory is static, committed files, so a
+// plain path is the right tool here, unlike the generated dictionary asset below.
+android {
+    sourceSets.getByName("androidTest").assets.directories.add("$rootDir/data/schemas")
+}
+
 // Attach the staged dictionary as a generated asset directory.
 //
 // NOT `sourceSets.main.assets.srcDir(...)`: AGP 9 rejects a Provider there
@@ -287,6 +297,12 @@ androidComponents {
 }
 
 dependencies {
+    // A floor, not a new dependency: see the comment on `kotlinx-serialization`
+    // in the version catalog. Without it the migration tests cannot run.
+    constraints {
+        implementation(libs.kotlinx.serialization.core)
+    }
+
     implementation(project(":domain"))
     implementation(project(":data"))
 
@@ -320,6 +336,7 @@ dependencies {
     // ClassNotFoundException, which reads like a packaging fault rather than a
     // missing dependency.
     androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.room.testing)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

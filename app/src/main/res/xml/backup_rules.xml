@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The same rule as data_extraction_rules.xml, for Android 11 and earlier, which
+  read this file instead. Keep the two identical: a phone on either side of the
+  Android 12 line must back up exactly the same thing. See that file for why
+  it is the user database alone (D-94).
+-->
+<full-backup-content>
+    <include domain="database" path="user-data.db" />
+    <include domain="database" path="user-data.db-wal" />
+</full-backup-content>

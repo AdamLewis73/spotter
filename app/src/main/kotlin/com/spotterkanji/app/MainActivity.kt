@@ -29,6 +29,7 @@ import com.spotterkanji.app.scan.SheetStage
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.app.word.KanjiScreen
 import com.spotterkanji.app.word.SaveToListSheet
+import com.spotterkanji.app.word.ScanContext
 import com.spotterkanji.app.word.WordLookupViewModel
 import com.spotterkanji.app.word.WordScreen
 
@@ -169,6 +170,21 @@ private fun ScanRoute(
             words.onQueryChanged(recognition.layout.text, autoSelect = false)
             stage = SheetStage.Peek
         }
+    }
+
+    // The photo a filed word will keep (D-94). Handed over only once it has been
+    // read, and withdrawn the moment the frame goes — a retake, or back to the
+    // live viewfinder — so a word can never be filed against a photo that is no
+    // longer the one on screen.
+    val frame = state.frame
+    LaunchedEffect(frame, recognition) {
+        words.onScanContext(
+            if (frame != null && recognition is RecognitionState.Done) {
+                ScanContext(frame, recognition.layout)
+            } else {
+                null
+            }
+        )
     }
 
     val selected = wordState.selected

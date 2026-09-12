@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What Android may copy off the device (D-94). Android 12 and later read this
+  file; older versions read backup_rules.xml, which must say the same thing.
+
+  ONLY the user database. Listing anything with <include> means everything not
+  listed is left out, which is the point:
+
+  - The dictionary (dictionary.db, about 100 MB) is excluded. Auto Backup is
+    limited to 25 MB per app, and with the dictionary included the whole backup
+    fails without telling anyone, so users' saved words were not being backed
+    up at all. It is disposable anyway: it re-extracts from the APK.
+  - Photos (files/scans/) are excluded. They are too large for the quota, and a
+    word without a photo is a normal state, so a restore that brings words and
+    lists back without their photos is correct rather than broken.
+  - There are no preferences to lose; the app keeps none.
+
+  The -wal file is included beside the database because Room writes in WAL
+  mode, and recent saves can sit in it until the next checkpoint. The -shm file
+  is not: it is a shared-memory index SQLite rebuilds on open.
+
+  Device transfer (a cable or Wi-Fi move to a new phone) follows the same rule.
+  It has no size limit, so photos could travel that way one day, but the
+  project owner's call is that photos are never copied off the device.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="user-data.db" />
+        <include domain="database" path="user-data.db-wal" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="user-data.db" />
+        <include domain="database" path="user-data.db-wal" />
+    </device-transfer>
+</data-extraction-rules>

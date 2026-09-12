@@ -259,20 +259,28 @@ list_membership                                  join table (D-28)
                            deletion and must survive a restore (D-80)
   UNIQUE(list_id, study_item_id)
 
-scan
-  id UUID, created_at
+scan                            SCHEMA v2. one row per shutter press that
+                                filed at least one word (D-94)
+  id UUID
+  image_path         RELATIVE path, scans/<uuid>.webp (D-24)
+                     the whole photo at its captured size, WebP q80,
+                     never resized (D-94)
   raw_ocr_text       kept per D-22's "capture cheap metadata now"
-  image_path         RELATIVE path (D-24)
-  image_type         FULL_FRAME | WORD_CROP      (D-23)
   app_version        which build created this record
+  created_at, updated_at, deleted_at             (D-16, D-80)
+  — no image_type: D-23's WORD_CROP never exists, so the column is not built
+  — no width/height: read from the file's header when needed (D-94)
 
-scan_word            links a scanned word to where it appeared
+scan_word            links a filed word to where it appeared
   id            UUID PK                          (D-15)
   scan_id, study_item_id    ON DELETE CASCADE — no tombstone (D-80)
+  bbox_x, bbox_y, bbox_w, bbox_h   in the SAVED photo's own pixels (D-22, D-94)
+  char_offset, char_length   into raw_ocr_text
   updated_at                                     (D-80 — universal)
-  bbox_x, bbox_y, bbox_w, bbox_h                 (D-22)
-  char_offset, char_length
+  UNIQUE(scan_id, study_item_id)   one sighting, however many lists
 ```
+
+**A photo exists only because a word from it was filed (D-94).** Nothing is written at the shutter; the file and its `scan` row are created when *Add* files a word, and every later word filed from the same frame links to that same row. A word with no `scan_word` row — typed, or its photo gone after a restore — is a normal state. **The thumbnail is drawn, not stored (D-95):** the list decodes the square around `bbox_*` from the one file, so there is never a second image on disk.
 
 > **Filing is required, and "unfiled" is a real state (D-88, D-89).** Every saved word must belong to at least one list. A `study_item` with **no live `list_membership` rows** is a word that has been unfiled: the row and its review history are kept, and it is hidden from lists, from the Saved counts and from review until it is filed again. No column expresses this — the absence of live membership rows *is* the state. Two consequences: "is this word saved?" must join membership rather than test for the row, and review eligibility depends on membership.
 
@@ -316,7 +324,7 @@ Android preserves internal storage and databases across app updates automaticall
 
 **Android Auto Backup** — a platform feature that backs an app's data up to the user's Google Drive and restores it when they set up a new device. Free, but two constraints matter:
 
-- **The per-app quota is 25 MB.** The dictionary DB and saved images must be excluded via `data_extraction_rules`, or backups silently fail. Only the user DB should be included.
+- **The per-app quota is 25 MB.** The dictionary DB and saved images must be excluded via `data_extraction_rules`, or backups silently fail. Only the user DB should be included. **Built:** `res/xml/data_extraction_rules.xml` (Android 12+) and `backup_rules.xml` (older) include `user-data.db` and its `-wal` and nothing else. Photos are never backed up (D-94), so a restored phone has its words, lists and history but not their photos — which the app draws exactly like a word that never had one.
 - It can restore an **old** database into a **newer** app version, so migrations must handle arriving from any prior schema version, not just the most recent one.
 
 **Manual export/import (D-20)** — an in-app action producing a versioned JSON or zip through Android's share sheet or file picker, importable on a fresh install or another device. Include a format version field from the very first release, so future importers can recognize and upgrade older files.

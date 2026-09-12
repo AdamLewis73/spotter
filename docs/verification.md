@@ -398,9 +398,38 @@ Setup: save 先生, add it to two lists ("Street Signs" and "Food Menu"), review
 
 Expect **one** `srs_state` row and **one** due date. If the word appears twice in a review session, or has two independent schedules, scheduling has been attached to list membership instead of to the study item — which doubles the user's workload and corrupts FSRS's model of their retention.
 
-### V-14 · Study item type discriminator populated (D-27)
+### V-14 · Study item type discriminator populated (D-27, D-92)
 
-Every v1 row must have `type = WORD` explicitly, never null or defaulted. A nullable discriminator that "works" because v1 only writes one kind is the exact retrofit D-27 exists to prevent.
+Every row must carry its `type` explicitly — never null, never defaulted. A nullable discriminator that "works" because the reader assumes one kind is the exact retrofit D-27 exists to prevent.
+
+*Corrected 2026-09-12.* This case used to say **every v1 row is `WORD`**, which **D-92** made false: kanji are study items in v1, so a saved 生 is a `KANJI` row. Read as written, the old text would have licensed exactly the assumption it was there to forbid.
+
+The case to test is 生, because it is the one where `type` is the *only* thing keeping two items apart:
+
+| Setup | Expected |
+|---|---|
+| Save 生 as a word — なま, "raw" | one row, `type = WORD` |
+| Then save 生 from the kanji screen (D-92) | a **second** row, `type = KANJI` — not a merge, not an update of the first |
+| Read the stored column directly | `WORD` and `KANJI`, both written out; never null, never a default |
+| File both in one list | both appear, with their own glosses |
+
+The kanji row's reading is deliberately empty, so identity rests on `(text, reading, type)`. Drop `type` and these two collide: saving one silently becomes an edit of the other, and the learner's kanji card quietly acquires a word's meaning.
+
+### V-30 · A saved photo still fits the boxes stored beside it (D-94, D-95, D-22)
+
+Setup: photograph a sign, file a word from it, open the list.
+
+| Check | Expected |
+|---|---|
+| The file on disk | **exactly** the pixel dimensions of the frame that was captured — not scaled, not rotated, not padded |
+| The thumbnail | centred on that word, with some of the sign around it |
+| A second word filed from the same frame | the **same** file; one photo per shutter press |
+| A word filed with nothing photographed — typed, or imported | no photo, drawn as an empty slot, no error |
+| A restored backup | the words and lists are there and the photos are not; every row looks like the typed case |
+
+**Why this is a verification case and not a unit test's business.** `scan_word` stores each word's rectangle in the saved photo's own pixels, and nothing at read time can tell whether those numbers are right. Resize, rotate or re-encode the photo at any point on the way to disk and the rectangles still load, still decode, and still produce a thumbnail — of the wrong part of the sign. There is no error and no crash; the thumbnails simply drift off the words, and only a person looking at them can see it.
+
+The instrumented check is a photo with one bright block on a flat ground, so "did it land on the word" is a pixel comparison. That catches a systematic shift. **It does not replace looking at one real sign**, which is what catches a device whose camera delivers frames in an orientation the emulator never produces.
 
 ### V-20 · An orphaned saved item renders and stays reviewable (D-40, D-43)
 

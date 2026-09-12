@@ -63,6 +63,7 @@ import com.spotterkanji.app.R
 import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.domain.user.StudyItem
+import com.spotterkanji.domain.user.ScanThumbnail
 import com.spotterkanji.domain.user.StudyItemId
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -105,6 +106,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 internal fun ListDetailScreen(
     listName: String,
     words: List<StudyItem>,
+    thumbnails: Map<StudyItemId, ScanThumbnail>,
     onBack: () -> Unit,
     onRemove: (StudyItemId) -> Unit,
     onUndoRemove: (StudyItemId) -> Unit,
@@ -232,6 +234,7 @@ internal fun ListDetailScreen(
                 items(words, key = { it.id.value }) { word ->
                     RemovableWordRow(
                         word = word,
+                        thumbnail = thumbnails[word.id],
                         revealed = revealed == word.id,
                         onHold = { revealed = word.id },
                         onTap = { revealed = null },
@@ -321,6 +324,7 @@ private fun EmptyList() {
 @Composable
 private fun RemovableWordRow(
     word: StudyItem,
+    thumbnail: ScanThumbnail?,
     revealed: Boolean,
     onHold: () -> Unit,
     onTap: () -> Unit,
@@ -353,6 +357,10 @@ private fun RemovableWordRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(tokens.spaceMd),
         ) {
+            // The patch of the photo the word was found in (D-95), or an empty
+            // slot for a word with none. Always the same size, so words with and
+            // without photos line up in one column.
+            PhotoThumbnail(thumbnail)
             Column(modifier = Modifier.weight(1f)) {
                 // The reading sits ABOVE the word here, unlike the peek sheet
                 // which shows none at all (D-47). This word was saved with a

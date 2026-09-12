@@ -53,6 +53,16 @@ androidx-navigation = "2.10.1"
 # another module's transitive graph holding still.
 coroutines = "1.9.0"
 
+# NOT a direct dependency — a floor under a transitive one. lifecycle and
+# navigation bring kotlinx-serialization-core 1.7.3 into the app, and AGP forces
+# the androidTest APK to match the app exactly. room-testing is compiled against
+# 1.8.1 and on 1.7.3 fails with AbstractMethodError the moment it parses a schema
+# JSON, so no migration test can run. Raising the floor to 1.8.1 fixes both, and
+# is safe for the shipped app: this library keeps binary compatibility forwards
+# within a major version, so code built against 1.7 runs on 1.8. Pinned to the
+# lowest version room-testing asks for, not the newest.
+kotlinx-serialization = "1.8.1"
+
 junit = "4.13.2"
 androidx-test-junit = "1.3.0"
 androidx-test-runner = "1.7.0"
@@ -63,11 +73,18 @@ androidx-espresso = "3.7.0"
 # :domain without weakening D-60 — it compiles for iOS too, so it is not the
 # kind of JVM-only dependency that would strand the portable layer.
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinx-serialization" }
 
 # The navigation host and the type-safe route helpers. `architecture.md`
 # named Navigation Compose as the choice before any of it was built; D-90
 # is the point at which there are three real destinations to host.
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "androidx-navigation" }
+
+# MigrationTestHelper: opens a database at an OLD schema version, fills it, and
+# migrates it forward — the only way to prove an upgrade keeps user data rather
+# than assuming it (D-18). Versioned with Room itself; verified on Google Maven
+# 2026-09-10 that 2.8.4 exists, to stay in lockstep with the pinned `room`.
+room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }

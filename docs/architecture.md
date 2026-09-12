@@ -54,6 +54,8 @@ For `:domain` this is enforced by the compiler: it is declared as a plain Kotlin
 
 One caveat: Room itself has Android dependencies, so `:data` isn't strictly platform-free. That's an accepted compromise for now. If strict purity becomes necessary, SQLDelight is the multiplatform equivalent. Not worth switching preemptively.
 
+**Saved photos are a worked example of the line.** Encoding a photo is `android.graphics`, so `ScanImageStore` sits in `:app` and is the only thing that knows where the files are. What crosses into `:data` is a **relative** path (D-24) — `scans/<uuid>.webp` — and what decides *which square of a photo* a thumbnail shows is `domain/scan/thumbnailRegion`, pure arithmetic on the portable box type, unit-tested with no device. An iOS port replaces one small file and keeps the geometry and the schema.
+
 ## iOS portability
 
 Not a v1 concern. The only goal is to avoid a from-scratch rewrite if an iOS version is ever built.
@@ -162,7 +164,7 @@ Bottom nav: Scan · Saved · Review          (D-36)
 
 Scan → shutter → frozen image + overlay
   → tap word  → PEEK SHEET (ModalBottomSheet, partially expanded)
-                  word · reading · meaning · [Save] · [Full Details]
+                  word · meanings — NO reading (D-47) · [Save] · [Full Details]
   → expand    → WORD SCREEN — the same sheet, fully expanded (D-30)
   → tap chip  → KANJI SCREEN — swaps in place, back arrow (D-32)
                   tabs: Overview | Examples | Stroke Order

@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.room.Room
 import com.spotterkanji.data.user.RoomSavedItemsRepository
 import com.spotterkanji.data.user.RoomSavedListRepository
+import com.spotterkanji.data.user.RoomScanRepository
 import com.spotterkanji.data.user.UserDatabase
 import com.spotterkanji.domain.user.SavedItemsRepository
 import com.spotterkanji.domain.user.SavedListRepository
+import com.spotterkanji.domain.user.ScanRepository
 
 /**
  * Builds the writable user database — the counterpart to [DictionaryProvider],
@@ -43,6 +45,9 @@ object UserDataProvider {
 
     fun savedLists(context: Context): SavedListRepository =
         RoomSavedListRepository(database(context))
+
+    fun scans(context: Context): ScanRepository =
+        RoomScanRepository(database(context))
 
     private fun build(context: Context): UserDatabase =
         Room.databaseBuilder(context, UserDatabase::class.java, UserDatabase.FILE_NAME)

@@ -45,6 +45,18 @@ Scan
              │
              └─ expand, SINGLE character → KANJI SCREEN directly (D-49)
                             Overview | Examples | Stroke Order
+
+             [Save] on either screen → LIST PICKER, centred overlay (D-91)
+                        staged choices; writes nothing until [Add] (D-88)
+                        lists already holding the word are shown locked
+                        filing here is what keeps the photo (D-94)
+
+Saved
+ └─ the user's lists — name · word count; create, rename, delete
+     └─ one list → its words, newest first
+                   each row: thumbnail of where the word was seen (D-95)
+                             — an empty slot when it has no photo (D-94)
+                   hold a row → remove, confirm, three seconds to undo (D-93)
 ```
 
 Both routes reach **the same** kanji screen. One kanji, one screen.
@@ -175,6 +187,8 @@ Silently omitting the card is the failure this prevents, and it is invisible: th
 So a line in onboarding does not discharge it. Placing the screen inside Saved or a menu (D-36) satisfies the requirement. Exact wording, per-dataset credits and the shipped dataset versions are in `attribution.md`.
 
 **Storage screen (D-25).** Usage breakdown, a clear action, and a "save scan images" toggle. Users who discover an app consuming 500 MB uninstall it.
+
+> **D-94 changes what this screen is for.** There is no scan history — a photo is kept only when a word is filed from it — so the "save scan images" toggle no longer has the history it was written for. Usage and clearing still apply, to the photos attached to saved words. Rethink the toggle when the screen is built.
 
 **Content settings (D-54).** Two toggles, living wherever Settings lands — not in the bottom nav (D-36):
 
