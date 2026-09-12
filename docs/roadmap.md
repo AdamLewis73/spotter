@@ -22,7 +22,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit. One deferred item: the live-preview detection indicator, which has no `V-##` | Raw recognized text into the Phase 2 pipeline |
 | 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save is drawn and disabled; it lands with the Phase 6 checkpoint | The real scan experience |
-| 6 | Saved lists | **In progress** — checkpoints settled (D-79, D-80), schema and Save built, wireflow settled (D-85 to D-92). Saved screen and list picker next | Multiple lists, many-to-many |
+| 6 | Saved lists | **In progress** — checkpoints settled (D-79, D-80), wireflow settled (D-85 to D-92). Built: schema v2 with its first migration, Save through the list picker, the Saved screen and list screen, remove-with-undo (D-93), and scan photos with drawn thumbnails (D-94, D-95). Left: D-86's text input, and close-out | Multiple lists, many-to-many |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |
 

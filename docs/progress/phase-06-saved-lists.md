@@ -199,7 +199,33 @@ at build time. A dependency constraint in `app/build.gradle.kts` holds it at
 - [x] `UserDatabase` v2 by `AutoMigration`, with `MigrationTestHelper` cases
 - [x] Backup covers the database only (D-94)
 - [x] Saved tab in the bottom nav (D-36) — landed with the app shell
-- [ ] Relevant `V-##` cases from `verification.md` added to this list
+- [x] The `V-##` cases this phase owns, named below
+
+## The verification cases this phase owns
+
+Four, and two of them were written or corrected here. Each is a failure that
+produces a normal-looking screen with no error — which is the only thing that
+belongs in `verification.md`.
+
+| Case | What it protects | State |
+|---|---|---|
+| **V-14** | every `study_item` carries an explicit `type` (D-27) | **Met** — 先生 saves as `WORD`, 生 from the kanji screen as a separate `KANJI` row, both covered by instrumented cases |
+| **V-30** | a saved photo still fits the boxes stored beside it (D-94, D-95, D-22) | **Met in the parts a machine can check**; the real-sign check is still owed |
+| **V-13** | one schedule per item across lists (D-29) | **Not this phase's to meet.** `srs_state` is Phase 7. What Phase 6 owes it is the shape that makes it possible, and that holds: `srs_state` hangs off `study_item`, not off `list_membership`, and the Saved query uses `EXISTS` so a word in three lists is one row on screen |
+| **V-20** | an orphaned saved word still renders and stays reviewable (D-40, D-43) | **Half met.** `snapshot_gloss` is written at save time and the list renders from the saved row, so the card survives a dictionary that has dropped the word. The *reviewable* half is Phase 7's, and is the half most likely to be missed |
+
+**V-14 was stale and is corrected.** It said every v1 row is `WORD`, which D-92
+made false the moment kanji became study items — and read literally it licensed
+exactly the assumption D-27 exists to forbid. Corrected in place rather than in a
+closed phase's file, because Phase 6 is open and owns it.
+
+**V-30 is new, and it is the one to keep in mind.** A word's rectangle is stored
+in its photo's own pixels, so if anything ever resizes or re-encodes a photo on
+the way to disk, every thumbnail quietly points at the wrong part of the sign:
+no crash, no error, just wrong pictures. The instrumented cases catch a
+systematic shift; **one real photograph of a real sign** is what would catch a
+phone whose camera hands over frames in an orientation the emulator never
+produces.
 
 ## Settled while wiring Save, 2026-08-28
 

@@ -9,6 +9,7 @@ import com.spotterkanji.data.user.UserDatabase
 import com.spotterkanji.domain.user.SavedList
 import com.spotterkanji.domain.user.StudyItem
 import com.spotterkanji.domain.user.StudyItemKey
+import com.spotterkanji.domain.user.StudyItemType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -125,6 +126,38 @@ class UserDataTest {
         val saved = items.observeSaved().first()
         assertEquals(3, saved.size)
         assertEquals(3, saved.map { it.key.reading }.toSet().size)
+    }
+
+    /**
+     * V-14, at the database: the `type` discriminator is written, and it is part
+     * of the identity (D-27, D-92).
+     *
+     * 生 is both a word — なま, "raw" — and a kanji the learner can save on its
+     * own since D-92. They are two study items, and the only thing separating
+     * them in the unique index is `type`, because the kanji row's reading is
+     * deliberately empty. If `type` were ever defaulted or ignored, these two
+     * would collide: saving one would silently become an update of the other,
+     * and the learner's kanji card would acquire a word's gloss.
+     */
+    @Test
+    fun a_kanji_and_a_word_written_the_same_way_are_two_items() = runBlocking {
+        val signs = lists.createList("Street Signs")
+        val word = fileInto(signs, StudyItemKey("生", "なま", StudyItemType.WORD), "raw; unprocessed")
+        val kanji = fileInto(signs, StudyItemKey("生", "", StudyItemType.KANJI), "life; birth")
+
+        assertNotEquals(word.id, kanji.id)
+        assertEquals(2, items.observeSaved().first().size)
+        assertEquals(StudyItemType.WORD, items.find(StudyItemKey("生", "なま"))?.key?.type)
+        assertEquals(StudyItemType.KANJI, items.find(StudyItemKey("生", "", StudyItemType.KANJI))?.key?.type)
+
+        // Explicitly stored, never null and never left to a default — the whole
+        // point of V-14, and invisible from the model layer above.
+        db.openHelper.readableDatabase
+            .query("SELECT type FROM study_item WHERE text = '生' ORDER BY type")
+            .use { row ->
+                val types = buildList { while (row.moveToNext()) add(row.getString(0)) }
+                assertEquals(listOf("KANJI", "WORD"), types)
+            }
     }
 
     /** Save is idempotent: the button can be tapped twice, or a sync can race it. */

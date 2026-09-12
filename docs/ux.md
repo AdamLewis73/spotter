@@ -45,6 +45,18 @@ Scan
              │
              └─ expand, SINGLE character → KANJI SCREEN directly (D-49)
                             Overview | Examples | Stroke Order
+
+             [Save] on either screen → LIST PICKER, centred overlay (D-91)
+                        staged choices; writes nothing until [Add] (D-88)
+                        lists already holding the word are shown locked
+                        filing here is what keeps the photo (D-94)
+
+Saved
+ └─ the user's lists — name · word count; create, rename, delete
+     └─ one list → its words, newest first
+                   each row: thumbnail of where the word was seen (D-95)
+                             — an empty slot when it has no photo (D-94)
+                   hold a row → remove, confirm, three seconds to undo (D-93)
 ```
 
 Both routes reach **the same** kanji screen. One kanji, one screen.
