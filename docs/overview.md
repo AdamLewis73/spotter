@@ -77,7 +77,7 @@ The user sees, without reading any authored explanation, that 生 carries differ
 
 *Had they scanned 生 on its own* — on a beer tap, say — they would land on **this same kanji screen directly**, skipping the word screen (D-49). Its Overview tab would additionally list 生's senses as a standalone word (なま "raw", せい "life", き "pure"), each with example sentences. One kanji, one screen, whichever direction you arrive from.
 
-**8. Save and review.** Tapping Save opens a picker of the user's lists. Nothing is written until they press *Add* (D-91), and the word must go into at least one list — "Street Signs", say — because a saved word that is filed nowhere would appear nowhere (D-88). Filing it is also what keeps the photograph (D-94): the frame is written to disk at that moment, once however many words are filed from it, and the list shows each word with the part of the photo it was found in (D-95). It then enters the FSRS schedule and reappears for review at the right time.
+**8. Save and review.** Tapping Save opens a picker of the user's own lists, whatever they have chosen to call them. Nothing is written until they press *Add* (D-91), and the word must go into at least one of them, because a saved word that is filed nowhere would appear nowhere (D-88). A new list can be created right there, which on a fresh install is the only route to saving anything at all. Filing it is also what keeps the photograph (D-94): the frame is written to disk at that moment, once however many words are filed from it, and the list shows each word with the part of the photo it was found in (D-95). It then enters the FSRS schedule and reappears for review at the right time.
 
 ## Product principles
 
