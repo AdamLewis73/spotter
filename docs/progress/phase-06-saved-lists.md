@@ -158,6 +158,13 @@ picker, so a second sighting of a word filed everywhere has no route to its
 photo except filing it into a new list. Consistent with the picker as decided;
 flagged in case a second photo of a known word turns out to matter.
 
+**Gotcha, emulator:** it can report `sys.boot_completed=1` and still be half
+up — every install then fails with `Failed to install split APK(s)`, and logcat
+says *"Cannot access system provider: 'settings' before system providers are
+installed"*. Nothing is wrong with the build. Kill the emulator and relaunch it
+with `-no-snapshot-load -gpu swiftshader_indirect`, then wait for **both**
+`sys.boot_completed=1` and `pm path android` to answer before running anything.
+
 **Gotcha for the next migration test:** `room-testing` needs
 kotlinx-serialization 1.8, and the app's own libraries pinned the test
 classpath to 1.7.3, failing at runtime with an `AbstractMethodError` rather than
