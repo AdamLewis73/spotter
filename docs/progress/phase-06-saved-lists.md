@@ -1,7 +1,7 @@
 # Phase 6 — Saved lists
 
-**Status:** in progress. Checkpoints settled, schema v2 built, Save, lists and scan photos work.
-**Updated:** 2026-09-10
+**Status:** in progress. Checkpoints settled, schema v2 built; Save, lists, scan photos and search from a list work. Close-out is next.
+**Updated:** 2026-09-16
 
 ## Current state
 
@@ -103,7 +103,7 @@ filling a colour role this project never set. The removal red needed a defined
 passes AA, following the `JadeLight` precedent), and the undo message was
 Material's lavender and purple until the `inverse*` roles were defined.
 
-Still owed: **D-86**, moving typing a word off the camera into Saved.
+~~Still owed: **D-86**, moving typing a word off the camera into Saved.~~ **Done, see below (D-96).**
 ~~The scan image work~~ **Done — see below.**
 
 **Where a returning word goes, settled (D-93):** Undo puts it back exactly where
@@ -158,6 +158,46 @@ picker, so a second sighting of a word filed everywhere has no route to its
 photo except filing it into a new list. Consistent with the picker as decided;
 flagged in case a second photo of a known word turns out to matter.
 
+**Search from inside a list is built (D-86, D-96).** There is no artboard; the
+owner specified it on 2026-09-16. Saved → a list → *Add a word from search* at
+the top → a text field, with nothing below it until something is typed. Results
+are dictionary words **beginning with** the text, one row per written form,
+exact match first and then commonest first. Each row shows reading, word and
+gloss. The reading is the one the word screen leads with, so the row and the
+screen behind it agree. When nothing begins with the text, as with a pasted
+sentence, the words found inside it are listed instead, and the screen says so.
+Tapping a row opens the scan's own word screen with the word **whole**, and
+Save opens the picker with the list you came from already ticked. The tick is
+staged, never written, until *Add* (D-91).
+
+- **No dictionary rebuild.** The prefix is a range query on the existing
+  `UNIQUE (text, reading)` index. `LIKE 'x%'` would not use that index, and
+  would scan every row on every keystroke.
+- **Written forms only.** Typing せんせい does not find 先生. That needs the
+  reading index `schema.sql` dropped (8.3 MB). Recorded in `roadmap.md`'s
+  deferred table as *Search by reading*.
+- **The keyboard comes up once**, on arrival. Coming back from a word does not
+  raise it again, because then the next back press would only close the
+  keyboard instead of leaving.
+- **The camera's debug search button and the unused Phase 4 recognized-text
+  strip are gone.** The `query` intent extra still opens the Phase 2 screen, so
+  `/inspect` is unaffected.
+
+**Tests: 12 instrumented cases.** Eleven cover the dictionary queries and both
+ViewModels. One drives the whole path in the real activity, because
+`adb shell input text` cannot type Japanese: that is the only way to put 先生 in
+the field by script. Two cases were confirmed to fail when their behaviour was
+removed: the pre-ticked list, and the row's reading. The reading case uses 孝,
+whose raw first reading is the obsolete きょう. The obvious example, 上手, stopped
+showing the problem once D-84 fixed its query order, so a test on 上手 passed
+with the rule deleted.
+
+**Open, for the owner: how does a learner type a kanji they cannot read?** The
+phone's Japanese keyboard (Gboard) converts romaji and kana into kanji and has
+handwriting input, so a learner can already type a word they can *say*. The
+harder case is a word they can see but not say. The owner wants to brainstorm
+this separately. Reading search is one piece of it, and is cheap to add.
+
 **Gotcha, emulator:** it can report `sys.boot_completed=1` and still be half
 up — every install then fails with `Failed to install split APK(s)`, and logcat
 says *"Cannot access system provider: 'settings' before system providers are
@@ -196,7 +236,10 @@ at build time. A dependency constraint in `app/build.gradle.kts` holds it at
 - [x] The kanji screen's Save, through the same picker (D-92)
 - [x] Remove a word from a list — hold, confirm, three-second undo (D-93);
       never resets progress
-- [ ] Typing a word moves off the camera into Saved (D-86)
+- [x] Typing a word moves off the camera into Saved (D-86): *Add a word from
+      search* inside a list (D-96); the camera's debug search button is gone
+- [ ] D-86's recovery path, *Type a word* when camera permission is denied —
+      **deferred by the owner on 2026-09-16**; it will open the same screen
 - [x] Scan image saved alongside the word (D-24, D-94) — once per shutter
       press, only when a word is filed, never resized; D-94 superseded D-21's
       resizing and D-25's scan history
@@ -311,7 +354,10 @@ will eventually host storage, attribution and export — neither is settled here
 
 ## Open questions
 
-None outstanding. Both that were open yesterday are now decided: the system back
+- **How learners type kanji they cannot read** (D-96). The owner wants to
+  brainstorm it. It does not block close-out.
+
+None blocking. Both that were open yesterday are now decided: the system back
 gesture exits the app (D-90), and the kanji screen's Save works, because kanji
 are study items in v1 (D-92).
 

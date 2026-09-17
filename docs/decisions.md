@@ -124,6 +124,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-93 | Removing from a list: hold, confirm, undo — and it never resets progress | SRS |
 | D-94 | A photo is kept only when a word is filed from it: at full size, never backed up | Images |
 | D-95 | Thumbnails draw a crop of the photo; no second image is ever saved | Images |
+| D-96 | Typing a word is reached from inside a list, as search-as-you-type; that list is pre-ticked | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1390,6 +1391,24 @@ D-88 requires every saved word to be filed and opens a picker to do it. This set
 *One consequence worth stating:* **the scan sheet can only add.** From a photograph you can file a word and never unfile it. That is deliberate — unfiling is destructive to organisation and belongs where the user can see the list they are emptying.
 
 *Cost to reverse:* low, and confined to one overlay.
+
+**D-96 — Typing a word is reached from inside a list: *Add a word from search* opens a search screen whose results appear as you type. The list you came from is ticked in the picker. Settles the placement D-86 left open.**
+
+D-86 moved typing off the camera and put it "with Saved", leaving exact placement open. The project owner settled it on 2026-09-16, with no artboard: **Saved → open a list → *Add a word from search*** at the very top of the list → a screen with a text field at the top and, below it, nothing until the user types.
+
+- **Results are dictionary words beginning with what was typed**, one row per written form (D-48), exact match first, then commonest first with unranked last (V-04), then shorter first. Each row shows reading, word and first gloss, like a list's own rows.
+- **The row shows a reading, unlike the peek (D-47).** The peek would be guessing what a photograph said. Here the user typed the word, and the reading is what tells similar rows apart. It is the reading the word screen leads with, so the row never promises one word and opens another.
+- **When nothing begins with the text** (a pasted sentence, say), the screen lists the dictionary words found *inside* it, in order and without particles, and says that is what it is showing.
+- **Tapping a result opens the same word screen a scan opens**, with the chosen word whole rather than segmented again. Back returns to the results, then to the list.
+- **The list the user came from is ticked in the picker.** The tick is staged like any other (D-91): nothing is written until *Add*, and it can be unticked. A list that already holds the word is not pre-ticked, because the picker does not offer it.
+
+*What this does not do:* search by **reading**. Typing せんせい finds only words written in kana, not 先生. The dictionary index that reading search needs was removed for its size (8.3 MB, `schema.sql`), and putting it back means rebuilding the dictionary. For now, turning kana into kanji is left to the keyboard: Gboard's Japanese layout converts romaji and kana, and has handwriting input. How learners should type kanji they cannot yet read is an open question for the owner to brainstorm, not something settled here.
+
+*Also removed:* the debug search button on the camera, and the unused Phase 4 recognized-text strip. The `query` intent extra still opens the Phase 2 screen, so `/inspect` works unchanged.
+
+*Not yet built:* D-86's recovery path, *Type a word* when camera permission is denied. The owner deferred it on 2026-09-16. When it is built, it opens this same screen with no list ticked.
+
+*Cost to reverse:* near zero. It is an entry point and one screen; nothing here touches stored data.
 
 ---
 

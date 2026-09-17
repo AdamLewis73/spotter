@@ -9,7 +9,6 @@
     <string name="scan_shutter">Take photo</string>
     <string name="scan_retake">Retake</string>
     <string name="scan_frozen_photo">Captured photo</string>
-    <string name="scan_open_lookup">Look up a word by typing</string>
 
     <!-- Camera permission. `ux.md` wants the premise explained before the ask,
          because a viewfinder alone reads as a translator. That onboarding is a
@@ -27,7 +26,6 @@
     <string name="scan_reading">Reading…</string>
     <string name="scan_no_text">No Japanese text found here</string>
     <string name="scan_recognize_failed">That photo could not be read. Try again.</string>
-    <string name="scan_tap_to_look_up">Tap to look these words up</string>
     <string name="scan_tap_a_word">Tap a word</string>
     <string name="scan_peek_save">Save</string>
     <!-- The same button once the word is saved; tapping it again unsaves. -->
@@ -72,6 +70,14 @@
     <string name="list_back">Back to Saved</string>
     <string name="list_empty_title">This list is empty</string>
     <string name="list_empty_body">Words you file into it will appear here, with the photo you found them in.</string>
+    <string name="list_add_from_search">＋  Add a word from search</string>
+
+    <!-- Search, reached from inside a list (D-96). -->
+    <string name="search_back">Back to list</string>
+    <string name="search_title">Add a word</string>
+    <string name="search_placeholder" translatable="false">先生</string>
+    <string name="search_found_inside">No word starts with that. Words found in it:</string>
+    <string name="search_nothing">No words found.</string>
 
     <!-- Review destination. Says review is unbuilt rather than showing an empty
          queue — they look identical and mean opposite things (Phase 7, D-79). -->

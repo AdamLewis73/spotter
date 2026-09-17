@@ -41,21 +41,13 @@ import com.spotterkanji.app.word.WordScreen
  * incumbents, and it is a Phase 4 change because it shapes navigation rather
  * than being a coat of paint applied later.
  *
- * Phase 2's text-input screen survives as a *debug* path rather than being
- * deleted. It is how every `V-##` case so far has been driven, so removing it
- * would cost the project its test harness — but it is also a second front door,
- * which is exactly what D-61 rules out. Two mechanisms keep both facts true:
+ * Phase 2's text-input screen survives as a *test harness*, reached only by the
+ * `query` **intent extra**, which opens it directly and bypasses the camera.
+ * It is how every `V-##` case has been driven, so `/inspect` depends on it.
  *
- *  - The `query` **intent extra opens the lookup screen directly**, bypassing
- *    the camera entirely. `/inspect` therefore works unchanged, in any build
- *    type, without a single tap.
- *  - A small **search affordance on the camera screen**, present only in debug
- *    builds, reaches the same screen by hand.
- *
- * A real user-facing search is wanted eventually and is a deliberate open
- * question — see `progress/phase-04-camera.md`. It is not this: promoting the
- * debug path to a feature is a product decision about what the second screen of
- * a scanner-first app should be, and it is not made by leaving a button on.
+ * It is no longer reachable by hand. The debug search button that used to sit
+ * on the camera is gone: typing a word left the camera for Saved (D-86), and
+ * the real search screen lives inside a list (D-96).
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,34 +88,16 @@ class MainActivity : ComponentActivity() {
                     // was waiting for — it said the navigation decision should be
                     // made against three real destinations rather than pre-empted.
                     //
-                    // The lookup screen is deliberately NOT one of them. It stays
-                    // outside the shell, exactly as before: non-null means show
-                    // it, seeded with that string. Two callers rely on that and
-                    // neither should change here — `/inspect` launches with
-                    // `--es query`, and the debug affordance opens it empty.
-                    // D-86 moves typing a word to Saved, and that is its own
-                    // piece of work rather than a side effect of adding a navbar.
-                    var lookup by rememberSaveable { mutableStateOf(seed) }
-
-                    val current = lookup
-                    if (current != null) {
-                        // A launch seeded by intent has nowhere to go back TO, so
-                        // back leaves the app as it always did. A scan does, and
-                        // back returns to the frozen frame it came from.
-                        BackHandler(enabled = seed == null) { lookup = null }
-                        LookupRoute(seed = current.takeIf { it.isNotBlank() })
+                    // The lookup harness is deliberately NOT one of them. It sits
+                    // outside the shell and only an intent reaches it; back leaves
+                    // the app, since a launch straight into it has nowhere to go
+                    // back to.
+                    if (seed != null) {
+                        LookupRoute(seed = seed)
                     } else {
                         SpotterApp(
                             scanContent = { bottomBarHeight ->
-                                ScanRoute(
-                                    onLookUp = { recognized -> lookup = recognized },
-                                    onOpenLookup = if (BuildConfig.DEBUG) {
-                                        { lookup = "" }
-                                    } else {
-                                        null
-                                    },
-                                    bottomBarHeight = bottomBarHeight,
-                                )
+                                ScanRoute(bottomBarHeight = bottomBarHeight)
                             },
                         )
                     }
@@ -139,8 +113,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun ScanRoute(
-    onLookUp: (String) -> Unit,
-    onOpenLookup: (() -> Unit)?,
     bottomBarHeight: Dp,
 ) {
     val scan: ScanViewModel = viewModel()
@@ -214,7 +186,6 @@ private fun ScanRoute(
         onCameraUnavailable = scan::onCameraUnavailable,
         onCameraBound = scan::onCameraBound,
         onRetake = scan::onRetake,
-        onLookUp = onLookUp,
         onOffsetTapped = { offset ->
             val token = offset?.let { at ->
                 wordState.tokens.firstOrNull { at >= it.start && at < it.endExclusive }
@@ -227,7 +198,6 @@ private fun ScanRoute(
             }
         },
         selection = selected?.let { it.start until it.endExclusive },
-        onOpenLookup = onOpenLookup,
         bottomBarHeight = bottomBarHeight,
         sheet = {
             if (selected != null) {
@@ -288,7 +258,7 @@ private fun ScanRoute(
     )
 }
 
-/** Phase 2's screen, unchanged: type a word, see what it means. */
+/** Phase 2's screen, kept as the `/inspect` harness: type a word, see what it means. */
 @Composable
 private fun LookupRoute(seed: String?) {
     val viewModel: WordLookupViewModel = viewModel()

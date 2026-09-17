@@ -29,14 +29,11 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -58,14 +55,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.spotterkanji.domain.scan.ScanLayout
 import com.spotterkanji.app.R
-import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.ensureActive
@@ -80,9 +74,6 @@ import kotlinx.coroutines.ensureActive
  * worth having working alone before anything downstream can be blamed for them.
  * ML Kit arrives next; the tappable overlay over the frozen frame is Phase 5,
  * drawn to design artboard 1a.
- *
- * @param onOpenLookup route to the Phase 2 text-input screen, or null to hide it.
- *   Non-null only in debug builds — see `MainActivity`.
  */
 @Composable
 internal fun ScanScreen(
@@ -93,10 +84,8 @@ internal fun ScanScreen(
     onCameraUnavailable: () -> Unit,
     onCameraBound: () -> Unit,
     onRetake: () -> Unit,
-    onLookUp: (String) -> Unit,
     onOffsetTapped: (Int?) -> Unit,
     selection: IntRange?,
-    onOpenLookup: (() -> Unit)?,
     sheet: @Composable BoxScope.() -> Unit,
     /**
      * How far the app's own bottom navigation reaches up the screen (D-90).
@@ -129,7 +118,6 @@ internal fun ScanScreen(
                 onCameraUnavailable = onCameraUnavailable,
                 onCameraBound = onCameraBound,
                 onRetake = onRetake,
-                onLookUp = onLookUp,
                 onOffsetTapped = onOffsetTapped,
                 selection = selection,
                 sheet = sheet,
@@ -148,26 +136,6 @@ internal fun ScanScreen(
                 onAction = permission.onOpenSettings,
             )
         }
-
-        // Debug only, and in the top corner on purpose: `ux.md` keeps important
-        // controls out of the top corners because the phone is held up one-handed
-        // while scanning — which makes a corner exactly the right place for a
-        // control that is not important.
-        if (onOpenLookup != null) {
-            IconButton(
-                onClick = onOpenLookup,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .statusBarsPadding()
-                    .padding(SpotterTheme.tokens.spaceSm),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Search,
-                    contentDescription = stringResource(R.string.scan_open_lookup),
-                    tint = Color.White.copy(alpha = 0.75f),
-                )
-            }
-        }
     }
 }
 
@@ -180,7 +148,6 @@ private fun CameraStage(
     onCameraUnavailable: () -> Unit,
     onCameraBound: () -> Unit,
     onRetake: () -> Unit,
-    onLookUp: (String) -> Unit,
     onOffsetTapped: (Int?) -> Unit,
     selection: IntRange?,
     sheet: @Composable BoxScope.() -> Unit,
@@ -477,45 +444,6 @@ private fun ReadingStrip(text: String) {
                 vertical = SpotterTheme.tokens.spaceSm,
             ),
     )
-}
-
-@Composable
-private fun RecognizedStrip(
-    layout: ScanLayout,
-    onLookUp: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(Color.Black.copy(alpha = 0.72f))
-            .clickable(onClick = onLookUp)
-            .padding(SpotterTheme.tokens.spaceMd),
-    ) {
-        Text(
-            // Line breaks become spaces for display only. The separator earns its
-            // place in the string itself — it stops a word being invented across
-            // a line break — but rendering it here would turn a two-line sign
-            // into a two-line strip for no gain.
-            text = layout.text.replace(ScanLayout.SEPARATOR, " "),
-            // `SpotterJapanese` explicitly, per D-34. IBM Plex carries no CJK and
-            // falls back to the system font silently, which on some devices means
-            // Chinese glyph forms for 直, 骨, 令 and 化 (V-12). In an app that
-            // teaches people to read kanji that is a correctness bug, and it is
-            // invisible on any device whose fallback happens to be Japanese.
-            fontFamily = SpotterJapanese,
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = stringResource(R.string.scan_tap_to_look_up),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = SpotterTheme.tokens.spaceXs),
-        )
-    }
 }
 
 /**

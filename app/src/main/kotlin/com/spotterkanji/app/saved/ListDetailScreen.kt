@@ -24,11 +24,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -110,6 +112,7 @@ internal fun ListDetailScreen(
     onBack: () -> Unit,
     onRemove: (StudyItemId) -> Unit,
     onUndoRemove: (StudyItemId) -> Unit,
+    onAddFromSearch: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -225,6 +228,19 @@ internal fun ListDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = tokens.spaceXs),
                     )
+                    // At the very top of the list, above the words (D-96): the
+                    // one way to add a word without a camera.
+                    OutlinedButton(
+                        onClick = onAddFromSearch,
+                        // The same shape and height as Saved's "New list".
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = tokens.spaceMd)
+                            .height(48.dp),
+                    ) {
+                        Text(stringResource(R.string.list_add_from_search))
+                    }
                 }
             }
 
