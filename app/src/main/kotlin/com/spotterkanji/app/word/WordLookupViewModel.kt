@@ -138,6 +138,15 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
     /** Follows the lists while the picker is open, so a list made elsewhere appears. */
     private var pickerJob: Job? = null
 
+    /**
+     * The list the user is adding words to, when they arrived from one (D-96).
+     *
+     * The picker opens with it already ticked. Ticked is **staged**, not
+     * written — nothing reaches the database until *Add* (D-91), and the user
+     * can untick it like any other choice.
+     */
+    private var defaultList: SavedListId? = null
+
     private val _picker = MutableStateFlow(PickerState())
     val picker: StateFlow<PickerState> = _picker.asStateFlow()
 
@@ -208,6 +217,40 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
                 _state.value = _state.value.copy(searching = false)
             }
         }
+    }
+
+    /**
+     * Open one word the user picked from search results (D-96).
+     *
+     * Not routed through [onQueryChanged]: that segments the text, and
+     * segmenting a word the user already chose can split it — 選挙管理委員会
+     * would open on 選挙. The chosen word is the whole query and its only token.
+     * The longest-match pass still runs, so the words inside it are offered as
+     * alternates exactly as they are after a scan (D-70).
+     */
+    fun onWordChosen(text: String) {
+        if (text.isEmpty()) return
+        lookupJob?.cancel()
+        savedWatchJob?.cancel()
+        val token = Token(text, 0, text.length)
+        _state.value = WordLookupState(
+            query = text,
+            tokens = listOf(token),
+            selected = token,
+            searching = true,
+        )
+        lookupJob = viewModelScope.launch {
+            matches = LongestMatch.matchesIn(
+                text,
+                repository.existingWords(LongestMatch.candidates(text)),
+            )
+            load(token)
+        }
+    }
+
+    /** See [defaultList]. Null when the user did not come from a list. */
+    fun onDefaultList(id: SavedListId?) {
+        defaultList = id
     }
 
     /**
@@ -373,17 +416,28 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         val key = target.key
         pickerJob?.cancel()
         pickerJob = viewModelScope.launch {
+            // Only on the first emission: after that the ticks are the user's,
+            // and a list update arriving must not re-tick what they unticked.
+            var presetApplied = false
             combine(
                 savedLists.observeLists(),
                 savedLists.observeListsHolding(key),
             ) { all, holding ->
                 all to holding.map { it.id }.toSet()
             }.collect { (all, holding) ->
-                _picker.value = _picker.value.copy(
+                // A list that already holds the word is shown as such and is not
+                // choosable (D-91), so it is not pre-ticked either.
+                val preset = defaultList?.takeIf { id ->
+                    !presetApplied && id !in holding && all.any { it.id == id }
+                }
+                presetApplied = true
+                val current = _picker.value
+                _picker.value = current.copy(
                     open = true,
                     target = target,
                     lists = all,
                     alreadyHolding = holding,
+                    staged = if (preset != null) current.staged + preset else current.staged,
                 )
             }
         }

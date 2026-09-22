@@ -50,4 +50,25 @@ interface DictionaryRepository {
      * waiting on.
      */
     suspend fun existingWords(texts: Set<String>): Set<String>
+
+    /**
+     * Written forms beginning with [prefix], for the search screen (D-96).
+     *
+     * An exact match leads, then commonest first with unranked last (V-04),
+     * then shorter before longer — so typing 生 offers 生 itself, then common
+     * words beginning with it such as 生活 and 生徒, rather than whichever rare
+     * compound happens to sort first.
+     *
+     * Matches the **written form only**. Typing せんせい finds kana-written words
+     * and not 先生: the index that would serve a reading search was removed from
+     * the dictionary for its size (see `schema.sql`), and putting it back is a
+     * rebuild. Converting kana to kanji is left to the keyboard for now.
+     */
+    suspend fun search(prefix: String, limit: Int): List<WordHit>
+
+    /**
+     * A [WordHit] for each of [texts] the dictionary holds, in the given order.
+     * Texts it does not hold are skipped.
+     */
+    suspend fun hits(texts: List<String>): List<WordHit>
 }

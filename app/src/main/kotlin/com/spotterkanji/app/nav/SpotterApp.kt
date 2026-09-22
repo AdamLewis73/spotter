@@ -22,6 +22,7 @@ import com.spotterkanji.app.saved.ListDetailScreen
 import com.spotterkanji.app.saved.ListDetailViewModel
 import com.spotterkanji.app.saved.SavedScreen
 import com.spotterkanji.app.saved.SavedViewModel
+import com.spotterkanji.app.search.SearchRoute
 import com.spotterkanji.domain.user.SavedListId
 
 /**
@@ -53,7 +54,7 @@ internal fun SpotterApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route
     // List detail is not a bar destination, but it belongs to Saved, so Saved
-    // stays lit while it is open. Otherwise opening a list would appear to leave
+    // stays lit while it is open — and so does the search opened from inside it. Otherwise opening a list would appear to leave
     // the section it is part of.
     val current = SpotterDestination.forRoute(route)
         ?: SpotterDestination.Saved.takeIf { route?.startsWith(LIST_ROUTE_PREFIX) == true }
@@ -119,6 +120,18 @@ internal fun SpotterApp(
                     onBack = { navController.popBackStack() },
                     onRemove = viewModel::onRemove,
                     onUndoRemove = viewModel::onUndoRemove,
+                    onAddFromSearch = { navController.navigate(searchRoute(SavedListId(id))) },
+                    contentPadding = innerPadding.withSystemBars(),
+                )
+            }
+
+            // Typing a word, reached from inside a list (D-86, D-96). Nested under
+            // the list's route, so back returns to that list.
+            composable(SEARCH_ROUTE) { entry ->
+                val id = entry.arguments?.getString(LIST_ARG).orEmpty()
+                SearchRoute(
+                    listId = SavedListId(id),
+                    onBack = { navController.popBackStack() },
                     contentPadding = innerPadding.withSystemBars(),
                 )
             }
@@ -163,4 +176,7 @@ private const val LIST_ARG = "listId"
 private const val LIST_ROUTE_PREFIX = "list/"
 private const val LIST_ROUTE = "$LIST_ROUTE_PREFIX{$LIST_ARG}"
 
+private const val SEARCH_ROUTE = "$LIST_ROUTE/search"
+
 private fun listRoute(id: SavedListId) = "$LIST_ROUTE_PREFIX${id.value}"
+private fun searchRoute(id: SavedListId) = "${listRoute(id)}/search"

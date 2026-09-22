@@ -9,6 +9,7 @@ import com.spotterkanji.domain.dictionary.KanjiReadingGroup
 import com.spotterkanji.domain.dictionary.KanjiSummary
 import com.spotterkanji.domain.dictionary.ReadingStatus
 import com.spotterkanji.domain.dictionary.Sense
+import com.spotterkanji.domain.dictionary.WordHit
 import com.spotterkanji.domain.dictionary.forDisplay
 import com.spotterkanji.domain.text.isKanji
 import org.json.JSONArray
@@ -91,6 +92,55 @@ class RoomDictionaryRepository(
             // orders by frequency, and an archaic reading inherits the writing's
             // frequency, so 上手 arrives here headed by じょうしゅ.
         }.forDisplay()
+    }
+
+    override suspend fun search(prefix: String, limit: Int): List<WordHit> {
+        if (prefix.isEmpty()) return emptyList()
+        // U+10FFFF is the highest code point, and its UTF-8 bytes sort after
+        // every other character's, so this bound admits every string that starts
+        // with the prefix and nothing that does not.
+        val texts = dao.textsInRange(
+            from = prefix,
+            to = prefix + "\uDBFF\uDFFF",
+            exact = prefix,
+            limit = limit,
+        )
+        return hits(texts)
+    }
+
+    override suspend fun hits(texts: List<String>): List<WordHit> {
+        val wanted = texts.distinct()
+        if (wanted.isEmpty()) return emptyList()
+        val byText = dao.wordsByTexts(wanted).groupBy { it.text }
+        val sensesByWord = dao.sensesFor(byText.values.flatten().map { it.id })
+            .groupBy { it.wordId }
+        return wanted.mapNotNull { text ->
+            val words = byText[text] ?: return@mapNotNull null
+            // The same rule the word screen applies, so the reading on the row is
+            // the one that screen leads with. The query alone heads 孝 with the
+            // obsolete きょう rather than こう (V-21).
+            val lead = words.map { word ->
+                val tags = word.readingInfo.toStringList()
+                DictionaryEntry(
+                    text = word.text,
+                    reading = word.reading,
+                    // No examples: a results row never shows them, and they are
+                    // the heaviest part of a lookup.
+                    senses = sensesByWord[word.id].orEmpty()
+                        .map { Sense(glosses = it.glosses.toStringList()) },
+                    frequencyRank = word.freqRank,
+                    entSeq = word.entSeq,
+                    isCommon = word.isCommon != 0,
+                    readingStatus = ReadingStatus.of(tags),
+                    isGikun = ReadingStatus.isGikun(tags),
+                )
+            }.forDisplay().first()
+            WordHit(
+                text = lead.text,
+                reading = lead.reading,
+                gloss = lead.senses.firstOrNull()?.glosses?.joinToString("; ").orEmpty(),
+            )
+        }
     }
 
     override suspend fun existingWords(texts: Set<String>): Set<String> {

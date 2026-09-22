@@ -160,6 +160,7 @@ Bottom nav: Scan · Saved · Review          (D-36)
   system back exits the app; no back control on the camera  (D-90)
   first run: explain → camera permission → Scan            (D-87)
   typing a word lives with Saved, not on the camera         (D-86)
+    Saved → a list → "Add a word from search" → results as you type (D-96)
   saving opens a staged list picker; nothing writes till Add (D-88, D-91)
 
 Scan → shutter → frozen image + overlay

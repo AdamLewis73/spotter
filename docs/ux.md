@@ -22,7 +22,7 @@ The app's core interaction — tapping one specific word on a photograph — has
 
 > **D-90** — the app's own bottom navigation (Scan · Saved · Review, as icons) is drawn on **all three** destinations, the camera included. Not to be confused with Android's *system* navigation bar, which sits below it and belongs to the platform. There is no back control on the camera; system back exits the app, as on any Android start destination.
 
-> **D-86** moves text input off the camera and over to Saved, and keeps it as recovery when the camera is unusable. **D-87** adds a first-run sequence before the viewfinder: explain, then ask for the camera permission. **D-88** requires every saved word to be filed in at least one list, through the picker **D-91** specifies. **D-92** makes kanji saveable too.
+> **D-86** moves text input off the camera and over to Saved, and keeps it as recovery when the camera is unusable. **D-96** places it inside a list, as *Add a word from search*. **D-87** adds a first-run sequence before the viewfinder: explain, then ask for the camera permission. **D-88** requires every saved word to be filed in at least one list, through the picker **D-91** specifies. **D-92** makes kanji saveable too.
 
 ```
 Bottom nav: Scan · Saved · Review          (three — resist a fourth, D-36)

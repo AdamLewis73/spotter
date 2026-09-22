@@ -44,6 +44,48 @@ interface DictionaryDao {
     )
     suspend fun wordsByText(text: String): List<WordRow>
 
+    /**
+     * Written forms in the half-open range [[from], [to]), best first (D-96).
+     *
+     * A **range**, not `LIKE 'x%'`: SQLite only turns `LIKE` into an index
+     * range under a case-insensitive collation, and `text` is indexed BINARY by
+     * `UNIQUE (text, reading)`. Written as a range, the prefix walks that index
+     * directly; written as `LIKE`, it scans all ~200,000 rows per keystroke.
+     *
+     * `GROUP BY text` because the index holds a row per reading, and the search
+     * screen wants one row per written form (D-48). A word's rank is its best
+     * reading's, with unranked sorting last (V-04) — `MIN` skips NULLs, so a
+     * word with no ranked reading at all is the only one left NULL.
+     */
+    @Query(
+        """
+        SELECT text FROM word
+        WHERE text >= :from AND text < :to
+        GROUP BY text
+        ORDER BY text = :exact DESC,
+                 MIN(freq_rank) IS NULL, MIN(freq_rank),
+                 length(text), text
+        LIMIT :limit
+        """
+    )
+    suspend fun textsInRange(from: String, to: String, exact: String, limit: Int): List<String>
+
+    /**
+     * Every reading of every one of [texts], in [wordsByText]'s order within
+     * each — so grouping the result by text gives what a lookup of each would.
+     */
+    @Query(
+        """
+        SELECT * FROM word
+        WHERE text IN (:texts)
+        ORDER BY text,
+                 freq_rank IS NULL, freq_rank,
+                 reading_freq_rank IS NULL,
+                 reading
+        """
+    )
+    suspend fun wordsByTexts(texts: List<String>): List<WordRow>
+
     @Query(
         """
         SELECT * FROM word_sense
