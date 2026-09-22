@@ -128,7 +128,11 @@ Built by a desktop Python script (D-10) and loaded via Room's `createFromAsset`.
 
 **99.7 MB on disk, 30.3 MB gzipped** — the gzipped figure is what the APK carries, and the device holds both once Room extracts the asset. Physical layout is D-56 (`WITHOUT ROWID` for narrow rows, plain tables for wide ones) and indexing is D-57 (demand-driven, column order load-bearing). Both carry the per-object measurements; re-measure per object before accepting any layout change, because the total hides a single table moving the wrong way.
 
-Draft schema. Expect revision once the real source files have been inspected:
+**Built, and `tools/dictbuild/schema.sql` is the source of truth.** What
+follows is the shape, for reading; that file carries the column comments, the
+`WITHOUT ROWID` choices (D-56) and the indexes (D-57). Phase 1 shipped it, so
+this is a description rather than a plan — check it against the file before
+relying on a detail.
 
 ```
 kanji
@@ -147,12 +151,17 @@ word
   text              先生
   reading           せんせい
   ent_seq           JMdict's own entry id; a lookup hint, not an identity
+  reading_info      JSON array of re_inf tags; display policy is D-66
+  freq_rank         writing + reading priority, NULL = unranked, sorts last
+  reading_freq_rank the reading's OWN re_pri, tiebreak only (D-84)
+  is_common         1 if the entry carried any priority tag
+  UNIQUE (text, reading)    — also the index prefix searches walk (D-96)
 
 word_sense
-  word_id, gloss, part_of_speech, sense_order
+  word_id, sense_order, glosses, part_of_speech, misc
 
-word_frequency
-  word_id, rank     derived from JMdict priority tags
+  — there is no `word_frequency` table. An earlier draft of this file had one;
+    frequency lives on `word` itself, in the two columns above.
 
 kanji_in_word       ← from JmdictFurigana; powers D-04 and the Examples tab
   kanji_char        生
@@ -164,7 +173,7 @@ kanji_in_word       ← from JmdictFurigana; powers D-04 and the Examples tab
   reading_type      'on' | 'kun' | NULL
   word_freq         word.freq_rank denormalized, NULL stored as 9999
 
-example             ← ingested but NOT rendered in v1 (D-51)
+example             ← rendered since D-69, resolving D-51
   word_id, sense_order       attaches to a SENSE, not just a word
   japanese, english
   tatoeba_id                 ex_srce; lets a sentence be traced upstream
@@ -222,7 +231,7 @@ Every table follows D-15 (UUID keys), D-16 (`updated_at` + soft delete) as scope
 ```
 study_item
   id            UUID PK                          (D-15)
-  type          WORD | KANJI                     (D-27 — v1 always writes WORD)
+  type          WORD | KANJI                     (D-27; both occur in v1, D-92)
   text          先生
   reading       せんせい  — part of the identity  (D-12)
   ent_seq       hint only, never the identity    (D-11)

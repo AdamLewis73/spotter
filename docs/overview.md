@@ -39,7 +39,7 @@ Worth stating up front because "contextual meaning" reads, on a first pass, as t
 
 A user photographs a sign reading `先生と生産`. This walks the whole system end to end.
 
-**1. Scan.** The camera preview shows a "Japanese text detected" indicator. The user presses the shutter. The frame freezes (D-02) and everything afterward happens on that still image.
+**1. Scan.** The user presses the shutter. *(D-02 describes a "Japanese text detected" indicator on the preview; Phase 4 deferred it and it is not built — the preview shows the viewfinder and the shutter.)* The frame freezes (D-02) and everything afterward happens on that still image.
 
 **2. Recognition.** ML Kit reads the image and returns the text `先生と生産` along with pixel rectangles for each chunk it found.
 
@@ -98,7 +98,7 @@ The user sees, without reading any authored explanation, that 生 carries differ
 | **Scan** | Camera → freeze frame → tap detected words → detail sheet |
 | **Word screen** | Reading, meanings, component kanji, example sentences |
 | **Kanji screen** | Overview / Examples / Stroke Order tabs |
-| **Saved lists** | Multiple user-named lists ("Street Signs", "Food Menu") |
+| **Saved lists** | Lists the user makes and names; every saved word lives in at least one (D-88) |
 | **SRS review** | FSRS-scheduled quizzes over saved words |
 
 ## Platform

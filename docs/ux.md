@@ -8,7 +8,7 @@ The app's core interaction — tapping one specific word on a photograph — has
 
 | Term | Meaning |
 |---|---|
-| **Peek sheet** | A Material 3 `ModalBottomSheet` raised partway over the frozen scan, showing a one-line summary of the tapped word. Expanding it reveals the full word screen — they are the same component (D-30). |
+| **Peek sheet** | The app's own sheet raised partway over the frozen scan, showing a one-line summary of the tapped word. Expanding it reveals the full word screen — they are the same component (D-30). *Not* a Material `ModalBottomSheet`: that dims the photograph the user is reading and owns no back stack, so Phase 5 wrote one (`scan/ScanSheet.kt`). |
 | **Word screen** | The expanded sheet. Reading, meanings, component chips, examples. No tabs. |
 | **Kanji screen** | Reached by tapping a component chip. Three tabs. Swaps in place inside the sheet (D-32). |
 | **Component chips** | Small tappable elements on the word screen, one per constituent kanji, showing meanings only (D-06). |
@@ -30,7 +30,9 @@ Bottom nav: Scan · Saved · Review          (three — resist a fourth, D-36)
                system back exits the app — no back control on the camera
 
 Scan
- └─ live preview + "text detected" indicator + large shutter
+ └─ live preview + large shutter
+     │  (the "Japanese text detected" indicator D-02 describes is NOT built —
+     │   Phase 4 deferred it, and it owns no `V-##`)
      └─ frozen image + overlay
          └─ tap word → PEEK SHEET
                         word · meanings only — NO reading (D-47)
@@ -53,7 +55,11 @@ Scan
 
 Saved
  └─ the user's lists — name · word count; create, rename, delete
-     └─ one list → its words, newest first
+     └─ one list → "Add a word from search" at the top      (D-86, D-96)
+        │            └─ type → results → tap one → the SAME word and kanji
+        │               screens as a scan; Save opens the picker with this
+        │               list already ticked
+        └─ its words, newest first
                    each row: thumbnail of where the word was seen (D-95)
                              — an empty slot when it has no photo (D-94)
                    hold a row → remove, confirm, three seconds to undo (D-93)
@@ -114,7 +120,7 @@ which is what keeps it independent of review (D-72).
 
 | Tab | Content |
 |---|---|
-| **Overview** | Meanings, on'yomi / kun'yomi, and — when the kanji is also a standalone word — an **As a word** section listing its senses (D-49). Example sentences there follow the same v1 rule as the word screen: ingested, not rendered (D-51) |
+| **Overview** | Meanings, on'yomi / kun'yomi, and — when the kanji is also a standalone word — an **As a word** section listing its senses (D-49). **It shows glosses only.** The word screen renders example sentences as of D-69; this section was written under the older rule and never caught up, so the same word shows sentences on one screen and not the other. A gap, not a rule |
 | **Examples** | Other **words** containing this kanji, grouped by reading, frequency-sorted (D-04) |
 | **Stroke Order** | KanjiVG animation — paths drawn sequentially — plus play/pause, a speed control, and a tappable per-stroke grid. **The counter shows the number of paths being animated, not KANJIDIC2's figure**: the two disagree for ~1.7% of kanji, mostly 辶 forms, and 辻 labelled "5 strokes" while visibly drawing 6 is a contradiction the user watches happen (V-09). Strokes not yet drawn stay visible as a faint ghost, so the stage is never empty and the animation reads as a character filling in. A kanji outside KanjiVG's 6,416 says so and falls back to KANJIDIC2's count |
 
@@ -138,15 +144,28 @@ Material's accessibility minimum for a touch target is 48dp. A kanji on a shop s
 2. **Ambiguity chips.** When a tap could resolve to more than one token, show a small horizontal row of candidates near the touch point rather than silently guessing. This doubles as the compound-versus-word interface: tapping 先 offers both 先 and 先生, which is exactly the pedagogical point (D-07).
 3. **Snap to nearest token** within a tolerance radius, so near-misses still land.
 
+**As built at the end of Phase 5: none of the three.** A tap has to land inside a
+character's own rectangle — `ScanLayout.offsetAt` returns the character
+containing the point, and null otherwise — with one exception, which is that a
+tap on **ruby** falls through to the base character beneath it (V-26). There is
+no pinch-zoom on the frozen frame, no ambiguity chips (artboard 1b), and no
+tolerance radius. On a sign photographed from across a street that is the
+difference between the feature working and not, so this is the largest known gap
+in v1's core interaction. It is recorded in `roadmap.md`'s **deferred** table
+rather than against Phase 5 — the phase shipped what it shipped, and this is
+work waiting for whoever picks it up, with the cost of doing so written down.
+
 ### Vertical text
 
 Japanese signage, menus, and book spines are frequently written **縦書き** — top to bottom, right to left. Overlay geometry, reading order, and sheet placement must all tolerate it. See `architecture.md` for the coordinate-mapping implications.
 
-Test against vertical text from the first day of overlay work. Discovering it later means redoing the most error-prone stage of the pipeline.
+Test against vertical text from the first day of overlay work. Discovering it later means redoing the most error-prone stage of the pipeline. *Phase 5 did, and it paid: the fault was in stage 2 rather than the overlay — ML Kit emits columns left-to-right (D-75, V-10).*
 
 ## Typography
 
 **Furigana rendering is custom work.** Compose has no built-in ruby-text support. A composable that draws small kana above a word — with correct centering, sizing, and line breaking — will appear on nearly every screen in the app. Build it once, early, and reuse it everywhere.
+
+**Not built as of Phase 6.** Nothing in the app renders ruby: readings sit beside or above their word as ordinary text, and the peek sheet shows none at all (D-47). "Early" has passed, so treat this as a piece of work that needs a home rather than as something already in hand. Note it is unrelated to V-26, which is about keeping ruby *out of the OCR token stream* — that one is built.
 
 Whole-word ruby only (D-14): せんせい positioned over 先生 as a unit, never split per character.
 
@@ -180,7 +199,7 @@ The meaning shown comes from `snapshot_gloss` (D-43); the merge target from the 
 
 Silently omitting the card is the failure this prevents, and it is invisible: the list is simply one shorter than the user remembers. They cannot tell whether the app lost their word or they misremembered saving it.
 
-**Attribution screen.** A licence obligation under CC BY-SA, and EDRDG's statement is specific about its shape for mobile apps:
+**Attribution screen — a release blocker, and no phase owns it.** Not built as of Phase 6, and it appears in no phase's checklist; `roadmap.md` tracks features rather than licence obligations. It is a licence obligation under CC BY-SA, and EDRDG's statement is specific about its shape for mobile apps:
 
 > acknowledgement must be made **on a separate screen accessed from a menu, such as one labelled "About"** — it is not sufficient just to mention it on a start-up/launch page.
 

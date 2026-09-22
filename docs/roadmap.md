@@ -18,11 +18,11 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | # | Phase | Status | Output |
 |---|---|---|---|
 | 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
-| 2 | Android app, text input only | **Feature-complete** — every `V-##` case this phase owns is met; the user-data checkpoint lands with Save in Phase 6 | Paste 先生 → word + kanji screens |
+| 2 | Android app, text input only | **Complete** — every `V-##` case this phase owns is met, and its one outstanding item, the user-data checkpoint, was discharged in Phase 6 | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit. One deferred item: the live-preview detection indicator, which has no `V-##` | Raw recognized text into the Phase 2 pipeline |
-| 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save is drawn and disabled; it lands with the Phase 6 checkpoint | The real scan experience |
-| 6 | Saved lists | **In progress** — checkpoints settled (D-79, D-80), wireflow settled (D-85 to D-92). Built: schema v2 with its first migration, Save through the list picker, the Saved screen and list screen, remove-with-undo (D-93), scan photos with drawn thumbnails (D-94, D-95), and search from inside a list (D-86, D-96). Left: close-out | Multiple lists, many-to-many |
+| 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save went live in Phase 6 | The real scan experience |
+| 6 | Saved lists | **Complete** — checkpoints settled (D-79, D-80), wireflow settled (D-85 to D-92). Schema v2 with its first migration, Save through the list picker, the Saved and list screens, remove-with-undo (D-93), scan photos with drawn thumbnails (D-94, D-95), and search from inside a list (D-86, D-96). Two items named as owed rather than closed: V-30 wants one real sign on a real phone, and D-86's camera-denied *Type a word* is deferred | Multiple lists, many-to-many |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |
 
@@ -38,7 +38,7 @@ Three things are known to be harder than they look:
 
 - **Reading normalization (D-37, V-17).** JmdictFurigana supplies hiragana; on'yomi must be katakana. Worse, surface readings drift from dictionary readings through rendaku and gemination (学校 = がっこう, not がくこう), so the match is fuzzy rather than exact. This is the hardest correctness problem in the phase.
 - **Entry expansion (V-18).** A JMdict entry is not a word; `re_restr` and `stagk`/`stagr` must be honoured or the ingest invents words and misattributes meanings.
-- **Frequency derivation (V-04).** Priority tags live on writing and reading elements separately, so `word_frequency` needs a stated rule.
+- **Frequency derivation (V-04).** Priority tags live on writing and reading elements separately, so `word.freq_rank` needs a stated rule. *(Settled and built; D-84 later added `reading_freq_rank` for ordering readings within one word.)*
 
 **Settled:** the example-sentence source is `JMdict_e_examp`, which replaces plain `JMdict_e` rather than adding to it (D-51). Sentences are rendered as of Phase 2 (D-69) — see the note below.
 
@@ -72,7 +72,7 @@ CameraX plus ML Kit's Japanese model, feeding recognized text into a pipeline th
 
 **This is where the product starts existing** (D-61). The app opens on the camera — no home screen, no dashboard, no shortcut grid. That is the whole positioning against the incumbents, and it is a Phase 4 decision because it shapes navigation, not a coat of paint applied later.
 
-**Done as of 2026-08-24: the camera is the launcher destination, and the freeze-frame works** (D-73). Preview, shutter, freeze, retake, and the permission flow. The Phase 2 text box survives as a debug path rather than a second front door — reached by the `query` intent extra in any build, and by a debug-only affordance on the scan screen — so `/inspect` and every `V-##` case still have a harness.
+**Done as of 2026-08-24: the camera is the launcher destination, and the freeze-frame works** (D-73). Preview, shutter, freeze, retake, and the permission flow. The Phase 2 text box survives as a debug path rather than a second front door — reached by the `query` intent extra in any build, and by a debug-only affordance on the scan screen — so `/inspect` and every `V-##` case still have a harness. *(The scan-screen affordance was removed in Phase 6 by **D-96**, which gave typing a real home inside a list; the intent extra is unchanged, so the harness stands.)*
 
 The live camera screen is **not** in the design project. Artboards 1a–1c are overlay treatments and all draw the *frozen* frame; none draw viewfinder chrome. It was designed in place knowingly, against `ux.md` rather than against an artboard.
 
@@ -99,6 +99,13 @@ Saved lists, then FSRS review, then export/import.
 
 **Open for Phase 7:** what goes on the **back of a review card** for a word with several senses. 甘い is "sweet; sugary; mild; naive; lenient" — all of it, or the primary sense only, or something the user chooses? This is a flashcard design question, not a data or scanning one (D-44), and it is the only part of the sense-disambiguation discussion that remains unresolved.
 
+**Phase 6 closed 2026-09-22.** The study loop has a front half: words are saved
+only by being filed (D-88, D-89), through a picker that writes nothing until
+*Add* (D-91); kanji are study items too (D-92); a word keeps the photo it was
+filed from (D-94, D-95); and a word can be found by typing as well as by
+scanning (D-86, D-96). `srs_state` and `review_log` are Phase 7's, and the shape
+they need holds — scheduling hangs off `study_item`, never off a list (V-13).
+
 **A shippable v1 is Phases 1–5.** Phases 6–8 turn it from a lookup tool into a study app. The staging matters: the full spec is a large build, and stalling at 60% is the common failure mode for solo projects of this size.
 
 ---
@@ -115,10 +122,10 @@ The project owner has asked to be consulted at these points rather than having a
 | Phase 1 | Which datasets to ingest — JmdictFurigana is in (D-13) | Adding one later means a full rebuild plus a schema change |
 | Phase 2, first commit | Module structure; `:domain` and `:data` free of `android.*` | This is the iOS-portability line — retrofitting is a rewrite |
 | ~~Phase 2, first UI commit~~ | ~~Material 3 plus a design-token layer (D-35)~~ — **done 2026-08-11**: fixed palette, light and dark, plus bundled Noto Sans JP (D-34) | Touches every composable if done later |
-| Phase 2, first user-data write | UUID keys, `updated_at`, soft delete, schema export on, destructive migration off (D-15 – D-18) | Getting this wrong deletes user data in production |
-| Phase 2, first user-data write | `snapshot_gloss` on `study_item` (D-43) | Adding it later is a migration, **and** every word saved before it has a permanently empty snapshot — the gloss cannot be recovered for a word the dictionary has since dropped |
+| ~~Phase 2, first user-data write~~ | ~~UUID keys, `updated_at`, soft delete, schema export on, destructive migration off (D-15 – D-18)~~ — **discharged 2026-08-28**: reviewed with the owner and kept as written; `UserDatabase` v1 built to them, and CI greps for the banned call | Getting this wrong deletes user data in production |
+| ~~Phase 2, first user-data write~~ | ~~`snapshot_gloss` on `study_item` (D-43)~~ — **discharged 2026-08-28**: written at save time from the gloss line on screen, and it is what makes an orphaned word still render (V-20) | Adding it later is a migration, **and** every word saved before it has a permanently empty snapshot — the gloss cannot be recovered for a word the dictionary has since dropped |
 | Phase 5 | ~~Bounding box stored in the scan record (D-22)~~ — **discharged 2026-08-26**: `ScanLayout.boxFor` makes the box knowable at save time; the schema field itself is Phase 6's to add | Cheap now; later requires re-running OCR over every saved image |
-| Phase 6 | Study-item identity `(text, reading)` plus the `type` discriminator (D-12, D-27) | All review history is keyed to it |
+| ~~Phase 6~~ | ~~Study-item identity `(text, reading)` plus the `type` discriminator (D-12, D-27)~~ — **discharged 2026-08-28**, and `type` earns its place in v1 rather than waiting: D-92 makes kanji study items, so 生-the-word and 生-the-kanji are two rows (V-14) | All review history is keyed to it |
 | ~~Phase 6~~ | ~~Which user tables carry tombstones (D-16)~~ — **settled 2026-08-28 (D-80):** soft delete where the user deletes, cascade for derived children | Once real removals have happened with no tombstone, there is nothing left to recover |
 | ~~Phase 6~~ | ~~**Built-in SRS, or export to Anki?** (D-26, D-29)~~ — **settled 2026-08-28: both (D-79).** FSRS is built in Phase 7; Anki export joins the Phase 8 export formats | The schema Phase 6 builds assumes the answer. Serious learners already live in Anki; beginners don't have it |
 
@@ -146,4 +153,5 @@ Pinned deliberately, each with the reason and the cost of adding it later. **Non
 | **User-facing search** | A real "type a word" screen, as opposed to the debug text box the camera screen hides behind a flag | ~~Wanted, and asked for explicitly on 2026-08-24 — but what the *second* screen of a scanner-first app should be is a D-61 question~~ — **answered 2026-09-01 by D-86: it lives with Saved, not on the camera.** The screen already exists; what was deferred was only its home, and the wireflow settled it. **Built 2026-09-16 (D-96)**: *Add a word from search* inside a list, with results as you type | **Spent** — one screen and an entry point |
 | **Search by reading** | Typing せんせい finds 先生, so a learner who can say a word but not write it can still find it | D-96 searches written forms only. The index it needs was dropped from the dictionary for its 8.3 MB (`schema.sql`), and the phone's Japanese keyboard already turns romaji and kana into kanji. **How learners should type kanji is an open question the owner wants to brainstorm**, not a rejected feature | **Low** — one index line, a dictionary rebuild and a `SCHEMA_VERSION` bump; no user-data change |
 | **User-chosen reading on a saved word** | Let the learner save a reading other than the leading one — or several — so FSRS reviews the reading they actually met, not the commonest one | Proposed 2026-08-28. D-81 saves the top-ranked entry because the peek deliberately shows no reading (D-47) while identity needs one (D-12); genuine ambiguity is **1% of common words** (412 of 41,289 measured), but weighted toward 後 中 外 間 — single kanji that are everywhere on signage. Wanted, and it is the honest answer to "why guess at all"; likely artboard **1b**, the ambiguity chips nobody has opened yet | **Near zero** on the schema — D-12's (text, reading) identity already stores one row per reading, so this is a picker and nothing else |
+| **Tap-target mitigations** | `ux.md` names three for text too small to hit reliably — pinch-zoom on the frozen frame, ambiguity chips (artboard **1b**) when a tap could mean more than one word, and snapping to the nearest word within a tolerance — and says none is sufficient alone. Artboard **1c**, the loupe, is a fourth | **None is built**, found by the 2026-09-22 doc sweep rather than by a decision to defer. Phase 5 shipped exact hit-testing: a tap must land inside the character's own rectangle, and only ruby falls through to the word beneath it (V-26). It has not been tried on a real sign at a real distance, so how badly it bites is unmeasured — which is the same evidence V-30 is waiting on | **Medium.** The geometry is already there: `ScanLayout.offsetAt` is where a tolerance radius goes, `LongestMatch` already produces the overlapping candidates chips would show (D-70), and zoom is a transform on the frame the overlay already maps through `ScanProjection`. It is UI work on settled data, not new pipeline |
 | **JLPT level** | An estimated N5–N1 level per kanji | No official list exists post-2010; only community reconstructions of unstated licensing (D-42) | **Near zero** — a dictionary column, no migration. Settle the encoding first |

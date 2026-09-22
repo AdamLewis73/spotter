@@ -431,6 +431,20 @@ Setup: photograph a sign, file a word from it, open the list.
 
 The instrumented check is a photo with one bright block on a flat ground, so "did it land on the word" is a pixel comparison. That catches a systematic shift. **It does not replace looking at one real sign**, which is what catches a device whose camera delivers frames in an orientation the emulator never produces.
 
+### V-31 · A search row's reading is the one its word screen leads with (D-96, V-21, D-84)
+
+Setup: open search from inside a list, type 孝, and read the row. Then tap it.
+
+| Check | Expected |
+|---|---|
+| The row | 孝 · **こう** |
+| The word screen it opens | leads with **こう**, the same reading |
+| 上手 | row and screen both **じょうず** |
+
+The trap: the query that finds words by prefix orders them by frequency, and an obsolete reading inherits its written form's frequency (D-84). For 孝 that puts きょう first. The word screen does not use that order — it sorts by reading status first (V-21), so it leads with こう. Take the query's first row as the reading to display and the two disagree: the list offers one word and the screen opens another, with no error and nothing to see unless both are read at once. A learner who saves from the row believes a reading the app never showed them again.
+
+**Test it on 孝, not on 上手.** 上手 was the canonical example of this family and stopped exhibiting it when D-84 added the reading-level tiebreak. A case written on 上手 passes with the status rule deleted — confirmed by doing exactly that on 2026-09-16, which is how this case came to be written on a different word.
+
 ### V-20 · An orphaned saved item renders and stays reviewable (D-40, D-43)
 
 Setup: save a word, then swap in a dictionary build where that `(text, reading)` no longer resolves.
