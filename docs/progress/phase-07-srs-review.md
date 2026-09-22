@@ -1,7 +1,7 @@
 # Phase 7 — SRS review
 
-**Status:** not started
-**Updated:** 2026-08-28
+**Status:** not started — **unblocked**, Phase 6 closed 2026-09-22
+**Updated:** 2026-09-22
 
 ## Current state
 
@@ -9,7 +9,18 @@ Not started.
 
 ## Next action
 
-Nothing yet — needs Phase 6's saved items to schedule.
+**Start by settling the back of a review card** (`roadmap.md`, still open): for
+a word with several senses — 甘い is "sweet; sugary; mild; naive; lenient" — does
+the card show all of them, the primary only, or something the user chooses? It
+is a flashcard design question, not a data one (D-44), and it shapes what the
+review screen renders before any FSRS code is written.
+
+What Phase 6 leaves ready: `study_item` exists with `(text, reading, type)`
+identity, saved words are the filed ones (D-88, D-89), and `srs_state` hangs off
+the item rather than off a list, which is what V-13 protects. `srs_state` and
+`review_log` are new tables, so they arrive as a Room `AutoMigration` from
+`UserDatabase` v2 — `phase-06-saved-lists.md` records how the first one was
+written and tested.
 
 ## Done
 

@@ -22,7 +22,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit. One deferred item: the live-preview detection indicator, which has no `V-##` | Raw recognized text into the Phase 2 pipeline |
 | 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save is drawn and disabled; it lands with the Phase 6 checkpoint | The real scan experience |
-| 6 | Saved lists | **In progress** — checkpoints settled (D-79, D-80), wireflow settled (D-85 to D-92). Built: schema v2 with its first migration, Save through the list picker, the Saved screen and list screen, remove-with-undo (D-93), scan photos with drawn thumbnails (D-94, D-95), and search from inside a list (D-86, D-96). Left: close-out | Multiple lists, many-to-many |
+| 6 | Saved lists | **Complete** — checkpoints settled (D-79, D-80), wireflow settled (D-85 to D-92). Schema v2 with its first migration, Save through the list picker, the Saved and list screens, remove-with-undo (D-93), scan photos with drawn thumbnails (D-94, D-95), and search from inside a list (D-86, D-96). Two items named as owed rather than closed: V-30 wants one real sign on a real phone, and D-86's camera-denied *Type a word* is deferred | Multiple lists, many-to-many |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |
 
@@ -72,7 +72,7 @@ CameraX plus ML Kit's Japanese model, feeding recognized text into a pipeline th
 
 **This is where the product starts existing** (D-61). The app opens on the camera — no home screen, no dashboard, no shortcut grid. That is the whole positioning against the incumbents, and it is a Phase 4 decision because it shapes navigation, not a coat of paint applied later.
 
-**Done as of 2026-08-24: the camera is the launcher destination, and the freeze-frame works** (D-73). Preview, shutter, freeze, retake, and the permission flow. The Phase 2 text box survives as a debug path rather than a second front door — reached by the `query` intent extra in any build, and by a debug-only affordance on the scan screen — so `/inspect` and every `V-##` case still have a harness.
+**Done as of 2026-08-24: the camera is the launcher destination, and the freeze-frame works** (D-73). Preview, shutter, freeze, retake, and the permission flow. The Phase 2 text box survives as a debug path rather than a second front door — reached by the `query` intent extra in any build, and by a debug-only affordance on the scan screen — so `/inspect` and every `V-##` case still have a harness. *(The scan-screen affordance was removed in Phase 6 by **D-96**, which gave typing a real home inside a list; the intent extra is unchanged, so the harness stands.)*
 
 The live camera screen is **not** in the design project. Artboards 1a–1c are overlay treatments and all draw the *frozen* frame; none draw viewfinder chrome. It was designed in place knowingly, against `ux.md` rather than against an artboard.
 
@@ -98,6 +98,13 @@ Saved lists, then FSRS review, then export/import.
 **Settled before Phase 6, as it had to be (D-79):** Spotter schedules reviews itself *and* exports to Anki — the scheduler first, because building export first hands the retention loop away before there is one, and the beginner this app is aimed at does not run Anki. So Phase 7 is unchanged and Phase 8 gains a second export format.
 
 **Open for Phase 7:** what goes on the **back of a review card** for a word with several senses. 甘い is "sweet; sugary; mild; naive; lenient" — all of it, or the primary sense only, or something the user chooses? This is a flashcard design question, not a data or scanning one (D-44), and it is the only part of the sense-disambiguation discussion that remains unresolved.
+
+**Phase 6 closed 2026-09-22.** The study loop has a front half: words are saved
+only by being filed (D-88, D-89), through a picker that writes nothing until
+*Add* (D-91); kanji are study items too (D-92); a word keeps the photo it was
+filed from (D-94, D-95); and a word can be found by typing as well as by
+scanning (D-86, D-96). `srs_state` and `review_log` are Phase 7's, and the shape
+they need holds — scheduling hangs off `study_item`, never off a list (V-13).
 
 **A shippable v1 is Phases 1–5.** Phases 6–8 turn it from a lookup tool into a study app. The staging matters: the full spec is a large build, and stalling at 60% is the common failure mode for solo projects of this size.
 

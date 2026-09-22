@@ -1,7 +1,8 @@
 # Phase 6 — Saved lists
 
-**Status:** in progress. Checkpoints settled, schema v2 built; Save, lists, scan photos and search from a list work. Close-out is next.
-**Updated:** 2026-09-16
+**Status:** done. Schema v2, Save through the list picker, the Saved and list
+screens, remove-with-undo, scan photos, and search from inside a list.
+**Updated:** 2026-09-22
 
 ## Current state
 
@@ -58,6 +59,27 @@ it is banned — a check that fails on its own documentation gets deleted rather
 than obeyed.
 
 ## Next action
+
+**Phase 7 — FSRS review.** Nothing here blocks it: `srs_state` hangs off
+`study_item` rather than off `list_membership` (V-13), so one word in three
+lists has one schedule, and `study_item` is the table the scheduler needs.
+Phase 7 opens with a question already recorded in `roadmap.md` — what goes on
+the **back of a review card** for a word with several senses.
+
+**Two things this phase leaves owed, both named on purpose rather than closed
+by assertion:**
+
+- **V-30's one real sign, on a real phone.** The instrumented cases use a
+  synthetic photo, which catches a systematic shift but cannot catch a camera
+  that hands over frames in an orientation the emulator never produces. It
+  needs the project owner and a camera; nothing in a repository can discharge
+  it.
+- **D-86's recovery path** — *Type a word* when camera permission is denied.
+  Deferred by the owner on 2026-09-16, and it is one entry point into a screen
+  that now exists (D-96), so it stays cheap.
+
+### The work, in the order it landed
+
 
 ~~Make saved-ness mean what D-89 says it means.~~ **Done — 18 instrumented
 cases, including an unfiled word reporting itself unsaved, a word in two lists
@@ -253,7 +275,7 @@ at build time. A dependency constraint in `app/build.gradle.kts` holds it at
 
 ## The verification cases this phase owns
 
-Four, and two of them were written or corrected here. Each is a failure that
+Five, and three of them were written or corrected here. Each is a failure that
 produces a normal-looking screen with no error — which is the only thing that
 belongs in `verification.md`.
 
@@ -262,6 +284,7 @@ belongs in `verification.md`.
 | **V-14** | every `study_item` carries an explicit `type` (D-27) | **Met** — 先生 saves as `WORD`, 生 from the kanji screen as a separate `KANJI` row, both covered by instrumented cases |
 | **V-30** | a saved photo still fits the boxes stored beside it (D-94, D-95, D-22) | **Met in the parts a machine can check**; the real-sign check is still owed |
 | **V-13** | one schedule per item across lists (D-29) | **Not this phase's to meet.** `srs_state` is Phase 7. What Phase 6 owes it is the shape that makes it possible, and that holds: `srs_state` hangs off `study_item`, not off `list_membership`, and the Saved query uses `EXISTS` so a word in three lists is one row on screen |
+| **V-31** | a search row shows the reading its word screen leads with (D-96, V-21) | **Met** — instrumented on 孝, and confirmed to fail when the rule is removed |
 | **V-20** | an orphaned saved word still renders and stays reviewable (D-40, D-43) | **Half met.** `snapshot_gloss` is written at save time and the list renders from the saved row, so the card survives a dictionary that has dropped the word. The *reviewable* half is Phase 7's, and is the half most likely to be missed |
 
 **V-14 was stale and is corrected.** It said every v1 row is `WORD`, which D-92
