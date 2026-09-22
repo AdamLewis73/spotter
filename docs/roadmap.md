@@ -18,10 +18,10 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | # | Phase | Status | Output |
 |---|---|---|---|
 | 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
-| 2 | Android app, text input only | **Feature-complete** — every `V-##` case this phase owns is met; the user-data checkpoint lands with Save in Phase 6 | Paste 先生 → word + kanji screens |
+| 2 | Android app, text input only | **Complete** — every `V-##` case this phase owns is met, and its one outstanding item, the user-data checkpoint, was discharged in Phase 6 | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit. One deferred item: the live-preview detection indicator, which has no `V-##` | Raw recognized text into the Phase 2 pipeline |
-| 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save is drawn and disabled; it lands with the Phase 6 checkpoint | The real scan experience |
+| 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save went live in Phase 6. Still open: the tap-target mitigations `ux.md` calls for — artboards 1b (ambiguity chips) and 1c (loupe), and pinch-zoom — none of which are built | The real scan experience |
 | 6 | Saved lists | **Complete** — checkpoints settled (D-79, D-80), wireflow settled (D-85 to D-92). Schema v2 with its first migration, Save through the list picker, the Saved and list screens, remove-with-undo (D-93), scan photos with drawn thumbnails (D-94, D-95), and search from inside a list (D-86, D-96). Two items named as owed rather than closed: V-30 wants one real sign on a real phone, and D-86's camera-denied *Type a word* is deferred | Multiple lists, many-to-many |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |
@@ -38,7 +38,7 @@ Three things are known to be harder than they look:
 
 - **Reading normalization (D-37, V-17).** JmdictFurigana supplies hiragana; on'yomi must be katakana. Worse, surface readings drift from dictionary readings through rendaku and gemination (学校 = がっこう, not がくこう), so the match is fuzzy rather than exact. This is the hardest correctness problem in the phase.
 - **Entry expansion (V-18).** A JMdict entry is not a word; `re_restr` and `stagk`/`stagr` must be honoured or the ingest invents words and misattributes meanings.
-- **Frequency derivation (V-04).** Priority tags live on writing and reading elements separately, so `word_frequency` needs a stated rule.
+- **Frequency derivation (V-04).** Priority tags live on writing and reading elements separately, so `word.freq_rank` needs a stated rule. *(Settled and built; D-84 later added `reading_freq_rank` for ordering readings within one word.)*
 
 **Settled:** the example-sentence source is `JMdict_e_examp`, which replaces plain `JMdict_e` rather than adding to it (D-51). Sentences are rendered as of Phase 2 (D-69) — see the note below.
 
@@ -122,10 +122,10 @@ The project owner has asked to be consulted at these points rather than having a
 | Phase 1 | Which datasets to ingest — JmdictFurigana is in (D-13) | Adding one later means a full rebuild plus a schema change |
 | Phase 2, first commit | Module structure; `:domain` and `:data` free of `android.*` | This is the iOS-portability line — retrofitting is a rewrite |
 | ~~Phase 2, first UI commit~~ | ~~Material 3 plus a design-token layer (D-35)~~ — **done 2026-08-11**: fixed palette, light and dark, plus bundled Noto Sans JP (D-34) | Touches every composable if done later |
-| Phase 2, first user-data write | UUID keys, `updated_at`, soft delete, schema export on, destructive migration off (D-15 – D-18) | Getting this wrong deletes user data in production |
-| Phase 2, first user-data write | `snapshot_gloss` on `study_item` (D-43) | Adding it later is a migration, **and** every word saved before it has a permanently empty snapshot — the gloss cannot be recovered for a word the dictionary has since dropped |
+| ~~Phase 2, first user-data write~~ | ~~UUID keys, `updated_at`, soft delete, schema export on, destructive migration off (D-15 – D-18)~~ — **discharged 2026-08-28**: reviewed with the owner and kept as written; `UserDatabase` v1 built to them, and CI greps for the banned call | Getting this wrong deletes user data in production |
+| ~~Phase 2, first user-data write~~ | ~~`snapshot_gloss` on `study_item` (D-43)~~ — **discharged 2026-08-28**: written at save time from the gloss line on screen, and it is what makes an orphaned word still render (V-20) | Adding it later is a migration, **and** every word saved before it has a permanently empty snapshot — the gloss cannot be recovered for a word the dictionary has since dropped |
 | Phase 5 | ~~Bounding box stored in the scan record (D-22)~~ — **discharged 2026-08-26**: `ScanLayout.boxFor` makes the box knowable at save time; the schema field itself is Phase 6's to add | Cheap now; later requires re-running OCR over every saved image |
-| Phase 6 | Study-item identity `(text, reading)` plus the `type` discriminator (D-12, D-27) | All review history is keyed to it |
+| ~~Phase 6~~ | ~~Study-item identity `(text, reading)` plus the `type` discriminator (D-12, D-27)~~ — **discharged 2026-08-28**, and `type` earns its place in v1 rather than waiting: D-92 makes kanji study items, so 生-the-word and 生-the-kanji are two rows (V-14) | All review history is keyed to it |
 | ~~Phase 6~~ | ~~Which user tables carry tombstones (D-16)~~ — **settled 2026-08-28 (D-80):** soft delete where the user deletes, cascade for derived children | Once real removals have happened with no tombstone, there is nothing left to recover |
 | ~~Phase 6~~ | ~~**Built-in SRS, or export to Anki?** (D-26, D-29)~~ — **settled 2026-08-28: both (D-79).** FSRS is built in Phase 7; Anki export joins the Phase 8 export formats | The schema Phase 6 builds assumes the answer. Serious learners already live in Anki; beginners don't have it |
 

@@ -12,7 +12,7 @@ Read `overview.md` first if you're new to this project — it explains what the 
 | OCR | ML Kit Text Recognition v2, Japanese model | On-device, offline, free, no API key |
 | Tokenizer | Kuromoji (IPADIC) + JMdict longest-match | D-07 |
 | Database | Room (SQLite) | Two separate DBs — D-09 |
-| DI | Hilt | Add once the app works, not before |
+| DI | Hilt | Add once the app works, not before — **that point has arrived and it is still not added**, see below |
 | State | ViewModel + StateFlow | Unidirectional data flow |
 | Navigation | Navigation Compose | |
 | SRS | FSRS (ported) | D-26 |
@@ -32,6 +32,14 @@ ML Kit offers *bundled* and *unbundled* variants. Bundled ships the model inside
 - **`compileSdk` / `targetSdk`: latest stable.** Google Play requires apps to target API 36 (Android 16) or higher as of 2026-08-31. **Currently 37.** Note that from API 37 the SDK platforms carry *minor* versions — the installable packages are `android-37.0` and `android-37.1`, and there is no bare `android-37`.
 - **`minSdk`: 26.** This is the *floor* of Android versions that can install the app — a completely different knob from `targetSdk`. Setting it near the newest release would cut the app off from most devices in use for no benefit. ML Kit itself only requires API 21+.
 - **JDK 17 bytecode throughout**, including `:domain`, because Android's dexer rejects class files stamped newer than it understands.
+
+**Dependency injection is still two hand-written objects.** `DictionaryProvider`
+and `UserDataProvider` in `:app` build the databases and hand out repositories,
+each holding one instance. The rule above said to add Hilt once the app works,
+and as of Phase 6 it does — so this is now a deliberate open question rather
+than a "not yet". What would force it: a ViewModel needing a repository the
+provider cannot reach, or tests wanting a fake in place of Room. Neither has
+happened; every test so far uses the real database on purpose.
 
 ## Module structure
 
@@ -131,7 +139,7 @@ A tap then resolves as: pixel `(x, y)` → containing element → character inde
 
 Japanese signage, menus, and book spines are frequently written **縦書き** (*tategaki*) — top to bottom, right to left. When they are, stage 4 interpolates on the **y** axis instead of x, and reading order between columns runs right-to-left.
 
-This must be handled in the coordinate layer from the start. Discovering it after building a horizontal-only implementation means redoing stage 4 — the most error-prone part of the pipeline. Include vertical text in test images from the first day of Phase 5.
+This must be handled in the coordinate layer from the start. Discovering it after building a horizontal-only implementation means redoing stage 4 — the most error-prone part of the pipeline. *Phase 5 did include vertical fixtures from day one, and it is what found D-75 below.*
 
 **Check stage 2 first, though.** Stage 2 takes ML Kit's own block-then-line order as given, so if the recognizer walks columns left-to-right the *string* is scrambled before stage 4 receives anything — a stage 2 fault that presents as a coordinate fault. Confirm the recognizer's reading order on a vertical fixture before designing the bridge.
 
@@ -146,7 +154,7 @@ The geometry that does all of this lives in `:domain` on a portable box type rat
 
 **Built 2026-08-26 as `domain/scan/ScanLayout`.** It takes what the recognizer *grouped* — trusted — and imposes reading order, ruby separation and the line-break policy, which are not. `:app` converts ML Kit's tree to `ScanLine`s and decides nothing. The result answers the bridge in both directions: `boxAt(offset)` to draw a highlight and `offsetAt(x, y)` to resolve a tap.
 
-Still in `:app`, and the remaining hard part: **image pixels are not screen pixels.** The frozen frame is drawn with `ContentScale.Crop`, so the transform is not a plain scale and must come from the measured layout size. Test it separately from the interpolation — on screen the two failures look identical.
+The other half stayed in `:app`, and it is the part that needed saying twice: **image pixels are not screen pixels.** The frozen frame is drawn with `ContentScale.Crop`, so the transform is not a plain scale and must come from the measured layout size. **Built as `scan/ScanProjection`**, and tested in `:domain` apart from the interpolation, because on screen a wrong transform and a wrong interpolation look identical.
 
 ### Why this is stage 5, not stage 1
 
@@ -164,7 +172,7 @@ Bottom nav: Scan · Saved · Review          (D-36)
   saving opens a staged list picker; nothing writes till Add (D-88, D-91)
 
 Scan → shutter → frozen image + overlay
-  → tap word  → PEEK SHEET (ModalBottomSheet, partially expanded)
+  → tap word  → PEEK SHEET (the app's own sheet at 30%, not ModalBottomSheet)
                   word · meanings — NO reading (D-47) · [Save] · [Full Details]
   → expand    → WORD SCREEN — the same sheet, fully expanded (D-30)
   → tap chip  → KANJI SCREEN — swaps in place, back arrow (D-32)
@@ -174,6 +182,8 @@ Scan → shutter → frozen image + overlay
 A single kanji scanned on its own may route directly to the kanji screen.
 
 The two-level in-sheet stack (word → kanji) requires custom plumbing, since `ModalBottomSheet` has no built-in back stack. See D-32 for why that cost is accepted.
+
+**As built, the sheet is not a `ModalBottomSheet` at all** (`scan/ScanSheet.kt`): that component dims what is behind it, which is the photograph the user is reading, and it owns no back stack. It is one draggable surface at two heights — 30% and 92% — with back unwinding kanji → word → peek → frozen frame → viewfinder by hand.
 
 ## Repository pattern
 
