@@ -151,8 +151,9 @@ tap on **ruby** falls through to the base character beneath it (V-26). There is
 no pinch-zoom on the frozen frame, no ambiguity chips (artboard 1b), and no
 tolerance radius. On a sign photographed from across a street that is the
 difference between the feature working and not, so this is the largest known gap
-in v1's core interaction, and it is recorded in `roadmap.md`'s Phase 5 row rather
-than left to be rediscovered.
+in v1's core interaction. It is recorded in `roadmap.md`'s **deferred** table
+rather than against Phase 5 — the phase shipped what it shipped, and this is
+work waiting for whoever picks it up, with the cost of doing so written down.
 
 ### Vertical text
 
