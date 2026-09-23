@@ -6,6 +6,7 @@ import com.spotterkanji.domain.user.ScanRepository
 import com.spotterkanji.domain.user.ScanThumbnail
 import com.spotterkanji.domain.user.StudyItemId
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.time.Clock
 import java.time.Instant
@@ -64,12 +65,29 @@ class RoomScanRepository(
         )
     }
 
+    /**
+     * Batched like `RoomDictionaryRepository.existingWords`, and for the same
+     * reason: every id is a bound variable, and SQLite before 3.32 (Android 8
+     * to 11) refuses a statement with more than 999. A list that long is rare,
+     * but the failure would be the list screen crashing on open.
+     *
+     * Splitting by word keeps each word's photos in one batch, so "newest per
+     * word" below is unaffected by where the batches fall.
+     */
     override fun observeThumbnails(
         itemIds: List<StudyItemId>,
-    ): Flow<Map<StudyItemId, ScanThumbnail>> =
-        dao.observeThumbnailRows(itemIds.map { it.value }).map { rows ->
+    ): Flow<Map<StudyItemId, ScanThumbnail>> {
+        val ids = itemIds.map { it.value }
+        val rows: Flow<List<ThumbnailRow>> = if (ids.size <= MAX_BOUND_VARIABLES) {
+            dao.observeThumbnailRows(ids)
+        } else {
+            combine(ids.chunked(MAX_BOUND_VARIABLES).map(dao::observeThumbnailRows)) { batches ->
+                batches.flatMap { it }
+            }
+        }
+        return rows.map { all ->
             // Rows arrive newest first, so the first seen for each word wins.
-            rows.groupBy { it.studyItemId }.mapValues { (_, forWord) ->
+            all.groupBy { it.studyItemId }.mapValues { (_, forWord) ->
                 val newest = forWord.first()
                 ScanThumbnail(
                     itemId = StudyItemId(newest.studyItemId),
@@ -83,4 +101,10 @@ class RoomScanRepository(
                 )
             }.mapKeys { (id, _) -> StudyItemId(id) }
         }
+    }
+
+    private companion object {
+        /** Safely under SQLite's historical limit of 999 bound variables. */
+        const val MAX_BOUND_VARIABLES = 500
+    }
 }

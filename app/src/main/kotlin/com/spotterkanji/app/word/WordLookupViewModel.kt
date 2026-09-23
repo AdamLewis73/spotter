@@ -65,14 +65,6 @@ data class WordLookupState(
      * eventually own anyway.
      */
     val openKanji: KanjiDetail? = null,
-    /**
-     * Whether the word on screen is currently in the user's saved words.
-     *
-     * Held in state rather than asked for on tap so the button reflects a write
-     * made anywhere — including an unsave performed elsewhere while this sheet
-     * is still open over the photograph.
-     */
-    val saved: Boolean = false,
 ) {
     /**
      * The entry Save acts on: the **top-ranked** one, which is the entry whose
@@ -127,15 +119,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
 
     private var lookupJob: Job? = null
 
-    /**
-     * Follows the saved/unsaved state of whichever word is on screen.
-     *
-     * Separate from [lookupJob] and outlives it: the lookup finishes, but this
-     * keeps running so the button still moves if the same word is unsaved from
-     * somewhere else.
-     */
-    private var savedWatchJob: Job? = null
-
     /** Follows the lists while the picker is open, so a list made elsewhere appears. */
     private var pickerJob: Job? = null
 
@@ -178,7 +161,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
 
         if (query.isBlank()) {
             matches = emptyList()
-            savedWatchJob?.cancel()
             _state.value = WordLookupState(query = query)
             return
         }
@@ -232,7 +214,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
     fun onWordChosen(text: String) {
         if (text.isEmpty()) return
         lookupJob?.cancel()
-        savedWatchJob?.cancel()
         val token = Token(text, 0, text.length)
         _state.value = WordLookupState(
             query = text,
@@ -263,7 +244,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun onSelectionCleared() {
         lookupJob?.cancel()
-        savedWatchJob?.cancel()
         _state.value = _state.value.copy(
             selected = null,
             entries = emptyList(),
@@ -271,7 +251,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
             kanji = emptyList(),
             openKanji = null,
             searching = false,
-            saved = false,
         )
     }
 
@@ -290,7 +269,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun onResultDismissed() {
         lookupJob?.cancel()
-        savedWatchJob?.cancel()
         _state.value = WordLookupState()
     }
 
@@ -354,7 +332,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
             openKanji = if (loneKanji) repository.kanjiDetail(token.text) else _state.value.openKanji,
             searching = false,
         )
-        watchSaved()
     }
 
     /** Called by the scan route whenever the frozen frame or its reading changes. */
@@ -582,18 +559,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         return if (at < 0) word else (token.start + at) until (token.start + at + target.key.text.length)
     }
 
-    private fun watchSaved() {
-        savedWatchJob?.cancel()
-        val entry = _state.value.saveTarget
-        if (entry == null) {
-            _state.value = _state.value.copy(saved = false)
-            return
-        }
-        savedWatchJob = viewModelScope.launch {
-            savedItems.observeIsSaved(StudyItemKey(entry.text, entry.reading))
-                .collect { isSaved -> _state.value = _state.value.copy(saved = isSaved) }
-        }
-    }
 }
 
 /** What the picker is about to file: a word, or a kanji (D-92). */
