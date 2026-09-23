@@ -110,11 +110,18 @@ file rather than to context, so slice the artboard out of that file by
   wood, curved lanterns and stylized brush script, it is not pixel count. Two
   images is too thin to close this, but enough to stop treating resolution as the
   obvious lever. See `phase-05-overlay.md` for the fuller quality picture.
-- **The camera stays bound while a frame is frozen.** Rebinding costs a few
-  hundred milliseconds, and today a frozen frame has nothing on it to read, so
-  every freeze is followed by an immediate retake and that latency is what a user
-  would notice. Revisit in Phase 5, when the peek sheet gives people a reason to
-  sit on a frozen frame for minutes and battery becomes the larger cost.
+- ~~**The camera stays bound while a frame is frozen.**~~ Revisited
+  2026-09-23, once the peek sheet had given people a reason to sit on a frozen
+  frame for minutes. The camera now stays bound for **10 seconds** behind a
+  frozen frame — so freeze, glance, retake is still instant — and is then
+  released. A Retake after that rebinds, and the last photo stays on screen
+  until the camera's first live frame arrives (a Camera2 capture callback, not
+  `bindToLifecycle` returning), then fades into it over 200 ms, so the rebind is
+  never seen as black. The viewfinder now stays composed under the frozen frame
+  so its surface survives the quick case. **Not yet checked on a device**:
+  confirm with `/launch` that a retake after 10 s crossfades rather than
+  flashing, and with `adb shell dumpsys media.camera` that the camera is closed
+  while idle. The 10 s figure is a guess to tune there.
 - **Preview and ImageCapture share one aspect-ratio strategy, both drawn with
   `ContentScale.Crop`.** This makes the photograph a superset of what was framed.
   The failure it prevents — text visible at the edge of the viewfinder and absent

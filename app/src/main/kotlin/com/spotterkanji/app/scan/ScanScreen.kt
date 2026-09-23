@@ -1,8 +1,13 @@
 package com.spotterkanji.app.scan
 
 import android.graphics.Bitmap
+import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CaptureRequest
+import android.hardware.camera2.TotalCaptureResult
 import android.graphics.Matrix
 import android.util.Size
+import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -15,6 +20,8 @@ import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -45,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -62,7 +70,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.spotterkanji.app.R
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The app's front door (D-61): a live viewfinder, one large shutter, and the
@@ -137,6 +147,7 @@ internal fun ScanScreen(
     }
 }
 
+@OptIn(ExperimentalCamera2Interop::class) // the first-frame signal, below
 @Composable
 private fun CameraStage(
     state: ScanUiState,
@@ -155,6 +166,45 @@ private fun CameraStage(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var surfaceRequest by remember { mutableStateOf<SurfaceRequest?>(null) }
+
+    // ---- Releasing the camera behind a frozen frame --------------------------
+    //
+    // A frozen frame keeps the camera running for [FROZEN_IDLE_MS], so the
+    // common case — freeze, glance, retake — goes straight back to a live
+    // picture. Past that the user is reading, not about to retake, and a
+    // streaming camera nobody can see is the larger cost; the camera is
+    // released entirely. The price is a rebind on the next Retake, a few
+    // hundred milliseconds, and [heldFrame] covers it: the last photo stays up
+    // until the first live frame arrives, then fades into it. Never black.
+
+    // True once the frozen frame has sat long enough to release the camera.
+    var idle by remember { mutableStateOf(false) }
+
+    // True from the first frame after a bind until the unbind. Set by the
+    // camera's own capture callback rather than by bindToLifecycle returning,
+    // which happens well before any picture does.
+    var streaming by remember { mutableStateOf(false) }
+
+    // The last frozen frame, kept past a Retake to cover the camera's warm-up.
+    var heldFrame by remember { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(state.frame) {
+        val frozen = state.frame
+        idle = false
+        if (frozen != null) {
+            heldFrame = frozen
+            delay(FROZEN_IDLE_MS)
+            idle = true
+        }
+    }
+
+    // Let go of the held photo once the live picture has faded in over it.
+    LaunchedEffect(state.frame, streaming) {
+        if (state.frame == null && streaming) {
+            delay(HANDOVER_FADE_MS.toLong())
+            heldFrame = null
+        }
+    }
 
     // Preview and ImageCapture are given the SAME aspect-ratio strategy, and both
     // are displayed with ContentScale.Crop. That pairing is what makes the
@@ -191,7 +241,11 @@ private fun CameraStage(
             .build()
     }
 
-    LaunchedEffect(lifecycleOwner) {
+    LaunchedEffect(lifecycleOwner, idle) {
+        // Idle: the previous run's `finally` has already unbound the camera,
+        // and there is nothing to bind until Retake clears the flag.
+        if (idle) return@LaunchedEffect
+
         val provider = try {
             ProcessCameraProvider.awaitInstance(context)
         } catch (e: Exception) {
@@ -204,11 +258,31 @@ private fun CameraStage(
             return@LaunchedEffect
         }
 
-        val preview = Preview.Builder()
+        // Cleared in `finally`, so a frame arriving from a camera already being
+        // released cannot report the new binding as live.
+        val bound = AtomicBoolean(true)
+        val firstFrame = AtomicBoolean(false)
+        val mainExecutor = ContextCompat.getMainExecutor(context)
+        val previewBuilder = Preview.Builder()
             .setResolutionSelector(
                 ResolutionSelector.Builder().setAspectRatioStrategy(aspectRatio).build(),
             )
-            .build()
+        Camera2Interop.Extender(previewBuilder).setSessionCaptureCallback(
+            object : CameraCaptureSession.CaptureCallback() {
+                override fun onCaptureCompleted(
+                    session: CameraCaptureSession,
+                    request: CaptureRequest,
+                    result: TotalCaptureResult,
+                ) {
+                    // Every preview frame lands here, on the camera's thread.
+                    // Only the first matters, and state is set on the main one.
+                    if (firstFrame.compareAndSet(false, true)) {
+                        mainExecutor.execute { if (bound.get()) streaming = true }
+                    }
+                }
+            },
+        )
+        val preview = previewBuilder.build()
             .apply { setSurfaceProvider { request -> surfaceRequest = request } }
 
         try {
@@ -225,6 +299,9 @@ private fun CameraStage(
                 // else ever retracts it.
                 onCameraBound()
             } catch (e: Exception) {
+                // No live picture is coming, so the held photo must not stay up
+                // pretending to be one.
+                heldFrame = null
                 onCameraUnavailable()
             }
 
@@ -244,10 +321,25 @@ private fun CameraStage(
             // user navigates away — without it the hardware stays held and the
             // next bind fails on some devices with a bare "camera in use".
             provider.unbindAll()
+            bound.set(false)
+            streaming = false
+            // The request belonged to the binding just released. The next bind
+            // issues its own.
+            surfaceRequest = null
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // The viewfinder stays composed under a frozen frame rather than
+        // leaving with it, so its surface survives and a Retake inside the idle
+        // window is instant. The photo drawn over it is opaque.
+        surfaceRequest?.let { request ->
+            CameraXViewfinder(
+                surfaceRequest = request,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
         val frame = state.frame
         if (frame != null) {
             Image(
@@ -257,10 +349,20 @@ private fun CameraStage(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            surfaceRequest?.let { request ->
-                CameraXViewfinder(
-                    surfaceRequest = request,
-                    modifier = Modifier.fillMaxSize(),
+            heldFrame?.let { held ->
+                // Fully opaque until the camera delivers, then a short fade.
+                // After a quick Retake the camera never stopped, so this starts
+                // at zero and nothing is shown at all.
+                val heldAlpha by animateFloatAsState(
+                    targetValue = if (streaming) 0f else 1f,
+                    animationSpec = tween(HANDOVER_FADE_MS),
+                    label = "handover",
+                )
+                Image(
+                    bitmap = held.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().alpha(heldAlpha),
                 )
             }
         }
@@ -278,13 +380,9 @@ private fun CameraStage(
             )
         }
 
-        // The camera stays bound while a frame is frozen rather than being
-        // unbound and rebound around it. Rebinding costs a few hundred
-        // milliseconds, which is the delay a user would feel on every Retake.
-        // Still open, and more pressing since the peek sheet landed: it gives
-        // people a reason to sit on a frozen frame for minutes, and at that
-        // point the battery cost of a streaming preview nobody can see becomes
-        // the larger of the two. Unmeasured.
+        // The camera stays bound behind a frozen frame only for
+        // FROZEN_IDLE_MS, then is released — see the note at the top of this
+        // function.
 
         sheet()
 
@@ -525,3 +623,16 @@ private fun ImageProxy.toUprightBitmap(): Bitmap {
     val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
     return Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, matrix, true)
 }
+
+/**
+ * How long a frozen frame keeps the camera running before it is released.
+ *
+ * Long enough for freeze, glance, retake — the case where a rebind would be
+ * felt — and short against the minutes someone spends reading the peek sheet,
+ * which is where a streaming camera nobody can see costs battery. Not measured
+ * on a device yet; tune it there.
+ */
+private const val FROZEN_IDLE_MS = 10_000L
+
+/** The crossfade from the held photo to the live picture after a rebind. */
+private const val HANDOVER_FADE_MS = 200
