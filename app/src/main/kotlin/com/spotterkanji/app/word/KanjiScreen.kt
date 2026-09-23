@@ -54,8 +54,8 @@ import com.spotterkanji.domain.dictionary.Sense
 /**
  * The kanji screen, reached by tapping a component chip (D-05).
  *
- * Two tabs for now; **Stroke Order is Phase 3** and stroke count lives there
- * rather than here, beside the thing it describes (D-50).
+ * Three tabs: Overview, Examples and Stroke order. Stroke count lives on the
+ * last rather than here, beside the thing it describes (D-50).
  *
  * What is deliberately missing is as considered as what is present. School grade
  * and the classical radical are both dropped (D-50): the grade names a Japanese
@@ -104,7 +104,7 @@ fun KanjiScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
-            // Inert until Phase 6, like the word screen's (D-67).
+            // Files the kanji itself through the list picker (D-92).
             GlyphButton(
                 glyph = "✚",
                 contentDescription = "Save",

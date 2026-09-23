@@ -68,12 +68,10 @@ import kotlinx.coroutines.ensureActive
  * The app's front door (D-61): a live viewfinder, one large shutter, and the
  * frozen frame the shutter produces (D-02).
  *
- * **This is Phase 4 step one and deliberately does nothing with the photograph.**
- * There is no text recognition here, no tokenizing, and no overlay — capture and
- * freeze are the parts with the device-specific failures in them, and they are
- * worth having working alone before anything downstream can be blamed for them.
- * ML Kit arrives next; the tappable overlay over the frozen frame is Phase 5,
- * drawn to design artboard 1a.
+ * This file owns capture and freeze — the parts with the device-specific
+ * failures in them. Everything done with the photograph lives elsewhere and is
+ * handed in: recognition in `ScanViewModel`, the tappable overlay in
+ * [ScanOverlay] (artboard 1a), and the peek sheet as [sheet].
  */
 @Composable
 internal fun ScanScreen(
@@ -283,9 +281,10 @@ private fun CameraStage(
         // The camera stays bound while a frame is frozen rather than being
         // unbound and rebound around it. Rebinding costs a few hundred
         // milliseconds, which is the delay a user would feel on every Retake.
-        // Worth revisiting in Phase 5: the peek sheet gives people a reason to
-        // sit on a frozen frame for minutes, and at that point the battery cost
-        // of a streaming preview nobody can see becomes the larger of the two.
+        // Still open, and more pressing since the peek sheet landed: it gives
+        // people a reason to sit on a frozen frame for minutes, and at that
+        // point the battery cost of a streaming preview nobody can see becomes
+        // the larger of the two. Unmeasured.
 
         sheet()
 

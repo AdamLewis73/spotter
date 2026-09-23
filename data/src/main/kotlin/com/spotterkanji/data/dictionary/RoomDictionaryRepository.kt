@@ -143,9 +143,20 @@ class RoomDictionaryRepository(
         }
     }
 
+    /**
+     * Batched, because the candidate set outgrows one SQL statement.
+     *
+     * Every string is its own bound variable, and SQLite before 3.32 refuses a
+     * statement with more than 999 — which is what Android 8 to 11 ship.
+     * Longest-match asks about up to twelve substrings per character, so any
+     * scan past about eighty characters crossed it: the real notice in
+     * `RealNoticeLayoutTest` is 99 characters and 1,069 candidates. The query
+     * threw, and nothing above it catches.
+     */
     override suspend fun existingWords(texts: Set<String>): Set<String> {
         if (texts.isEmpty()) return emptySet()
-        return dao.existingWords(texts).toSet()
+        return texts.chunked(MAX_BOUND_VARIABLES)
+            .flatMapTo(mutableSetOf()) { chunk -> dao.existingWords(chunk.toSet()) }
     }
 
     override suspend fun kanjiIn(text: String): List<KanjiSummary> {
@@ -232,6 +243,12 @@ class RoomDictionaryRepository(
          */
         const val EXAMPLES_PER_READING = 8
         val READING_TYPE_ORDER = listOf("on", "kun")
+
+        /**
+         * Safely under SQLite's historical limit of 999 bound variables per
+         * statement, which Android 8 to 11 still enforce.
+         */
+        const val MAX_BOUND_VARIABLES = 500
     }
 }
 

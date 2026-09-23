@@ -61,5 +61,8 @@ written and tested.
 - FSRS, not SM-2 or anything hand-rolled (D-26).
 - Lists only filter; they never own scheduling (D-29). A word in three lists is
   still one schedule.
-- Kanji-only study items are deferred, but D-27's `type` discriminator is in the
-  schema from day one so adding them costs near zero.
+- Kanji are study items in v1 (D-92, superseding D-01), so review has to handle
+  `KANJI` cards as well as `WORD` ones. The kanji screen's Save already files
+  them, keyed `(character, "", KANJI)`.
+- The Review tab itself already exists (D-36, D-90) as a placeholder screen;
+  what is unbuilt is everything behind it.

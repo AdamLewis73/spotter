@@ -25,6 +25,7 @@ import com.spotterkanji.domain.user.SavedList
 import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.StudyItemKey
 import com.spotterkanji.domain.user.StudyItemType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -192,7 +193,7 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
                 // Whitespace is a token to Kuromoji, and an empty chip in the
                 // strip to everyone else. It became visible when scanned text
                 // arrived — a multi-line sign carries a separator per line
-                // break (see `scan/RecognizedText.kt`) — but typing "先生 と"
+                // break (see `ScanLayout.SEPARATOR`) — but typing "先生 と"
                 // by hand always did the same thing. Dropped here rather than
                 // at the scan boundary, because the separators are load-bearing
                 // in the string itself: they stop the tokenizer inventing a word
@@ -284,7 +285,7 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      * Close the result and go back to an empty search.
      *
      * The design's back arrow dismisses the sheet to the photograph behind it
-     * (D-30). There is no photograph until Phase 4, so the nearest true
+     * (D-30). The typed-lookup harness has no photograph, so the nearest true
      * equivalent is clearing what was looked up.
      */
     fun onResultDismissed() {
@@ -356,6 +357,11 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         watchSaved()
     }
 
+    /** Called by the scan route whenever the frozen frame or its reading changes. */
+    fun onScanContext(context: ScanContext?) {
+        scanContext = context
+    }
+
     /**
      * Open the list picker for the word on screen (D-88, D-91).
      *
@@ -368,11 +374,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      * and no reading to key on (D-12), and a saved item with neither is exactly
      * the unresolvable row D-40 has to render forever.
      */
-    /** Called by the scan route whenever the frozen frame or its reading changes. */
-    fun onScanContext(context: ScanContext?) {
-        scanContext = context
-    }
-
     fun onSaveRequested() {
         val entry = _state.value.saveTarget ?: return
         openPicker(
@@ -466,7 +467,9 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun onPickerNewListStaged(name: String) {
         val trimmed = name.trim()
-        if (trimmed.isEmpty()) return
+        // Staging the same name twice is one list, not two. The picker keys its
+        // rows by name, so a duplicate also crashed the overlay outright.
+        if (trimmed.isEmpty() || trimmed in _picker.value.stagedNewLists) return
         _picker.value = _picker.value.copy(
             stagedNewLists = _picker.value.stagedNewLists + trimmed,
         )
@@ -535,14 +538,24 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         val box = scan.layout.boxFor(range) ?: return
         val scanId = photoLock.withLock {
             savedFrame?.takeIf { it.first === scan.photo }?.second
-                ?: withContext(Dispatchers.IO) {
-                    // File first, row second: see ScanImageStore.write.
-                    val path = ScanImageStore.write(getApplication(), scan.photo)
-                    scans.createScan(
-                        imagePath = path,
-                        rawText = scan.layout.text,
-                        appVersion = BuildConfig.VERSION_NAME,
-                    )
+                ?: try {
+                    withContext(Dispatchers.IO) {
+                        // File first, row second: see ScanImageStore.write.
+                        val path = ScanImageStore.write(getApplication(), scan.photo)
+                        scans.createScan(
+                            imagePath = path,
+                            rawText = scan.layout.text,
+                            appVersion = BuildConfig.VERSION_NAME,
+                        )
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // A full disk or a failed encode. The word is already filed
+                    // by now, and a word without a photo is a normal state
+                    // (D-94) — so it keeps no photo rather than taking the app
+                    // down with it, which is what an uncaught throw here did.
+                    return
                 }.also { savedFrame = scan.photo to it }
         }
         scans.linkWord(
@@ -583,6 +596,13 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
     }
 }
 
+/** What the picker is about to file: a word, or a kanji (D-92). */
+data class PickerTarget(
+    val key: StudyItemKey,
+    val snapshotGloss: String,
+    val entSeq: Long?,
+)
+
 /**
  * The list picker's staged state (D-91).
  *
@@ -595,13 +615,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
  * out. Removal lives on the list screen, where the user can see what they are
  * emptying.
  */
-/** What the picker is about to file: a word, or a kanji (D-92). */
-data class PickerTarget(
-    val key: StudyItemKey,
-    val snapshotGloss: String,
-    val entSeq: Long?,
-)
-
 data class PickerState(
     val open: Boolean = false,
     val target: PickerTarget? = null,

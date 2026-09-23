@@ -291,6 +291,30 @@ class DictionaryReadTest {
         assertEquals(setOf("先生", "東京"), out)
     }
 
+    /**
+     * A whole notice's worth of candidates, which is more bound variables than
+     * SQLite before 3.32 accepts in one statement (999). Android 8 to 11 ship
+     * that SQLite, so there this threw and took the scan down with it.
+     *
+     * The text is `RealNoticeLayoutTest`'s notice, misreads included: 99
+     * characters, 1,069 candidates. It passes on a newer emulator regardless of
+     * batching, so it is only a real check on API 30 or below — but on any
+     * device it still proves words are found past the first batch.
+     */
+    @Test
+    fun a_long_scan_is_not_one_oversized_query() = runBlocking {
+        val text = "【重要】\nお知らせ\n合風6号核近の影響により、明日6月3日(水)はミュージアム·関質室を" +
+            "臨時休節いたします。\n企画展『「怖い」本』6月4日(木)より開幕いたします。\n" +
+            "ご理解のほどお願い申し上げます。"
+        val candidates = LongestMatch.candidates(text)
+        assertTrue("the case needs over 999 candidates, has ${candidates.size}", candidates.size > 999)
+
+        val known = repository.existingWords(candidates)
+
+        assertTrue("expected 開幕 from the later lines, got $known", "開幕" in known)
+        assertTrue("expected 理解 from the last line, got $known", "理解" in known)
+    }
+
     /** A word that is genuinely absent returns empty rather than throwing. */
     @Test
     fun an_unknown_word_returns_nothing() = runBlocking {

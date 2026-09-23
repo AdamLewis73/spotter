@@ -71,8 +71,8 @@ object DictionaryProvider {
      *
      * Deleting is the whole fix: Room re-extracts on the next open. That is safe
      * precisely because this database is read-only and disposable (D-38) — there
-     * is no user data in it to lose. The user database, when it arrives, gets
-     * the opposite treatment (D-16, D-17).
+     * is no user data in it to lose. The user database gets the opposite
+     * treatment (D-16, D-17) — see [UserDataProvider].
      *
      * Visible for testing.
      */

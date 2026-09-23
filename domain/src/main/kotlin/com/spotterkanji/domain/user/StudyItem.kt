@@ -5,10 +5,12 @@ import java.time.Instant
 /**
  * What kind of thing is being studied (D-27).
  *
- * v1 only ever writes [WORD]. [KANJI] exists in the type from the first schema
- * version because adding the discriminator later would mean restructuring the
- * table that every row of review history points at — a migration across the
- * user's entire study record, to add a column v1 could have carried for free.
+ * Both are written in v1: the kanji screen's Save files a [KANJI] (D-92).
+ * The discriminator was in the type from the first schema version, before
+ * anything wrote a kanji, because adding it later would have meant
+ * restructuring the table that every row of review history points at — a
+ * migration across the user's entire study record, for a column that cost
+ * nothing up front.
  */
 enum class StudyItemType { WORD, KANJI }
 

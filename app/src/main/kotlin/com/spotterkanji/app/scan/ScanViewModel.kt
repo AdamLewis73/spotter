@@ -132,7 +132,11 @@ internal class ScanViewModel : ViewModel() {
         }
     }
 
-    /** Back to the viewfinder. The frame is dropped, not stored (D-21 is Phase 6). */
+    /**
+     * Back to the viewfinder, dropping the frame. A photo is only ever kept by
+     * filing a word from it (D-94), which has already happened by now if it is
+     * going to.
+     */
     fun onRetake() {
         recognitionJob?.cancel()
         recognitionJob = null
