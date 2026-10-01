@@ -7,7 +7,7 @@
 
 An aside between Phases 6 and 7, at the project owner's request: read the whole
 codebase for anything broken, messy or done wrong, fix what is small, and bring
-anything that changes design or flow to the owner first. Seven bugs are fixed,
+anything that changes design or flow to the owner first. Eight bugs are fixed,
 four decisions were taken with the owner (D-97 to D-100), and three verification
 cases came out of it (V-32 to V-34).
 
@@ -33,6 +33,11 @@ screen shows** — listed under *Owed on a device* below. Then Phase 7.
       the band, and only it. The band reaches about a fifth of a glyph past the
       word and may nick the neighbours' edges — judge whether that reads.
 - [ ] **Japanese forms in user text (V-32)**, on an emulator set to English.
+- [ ] **The peek (D-99).** Tap a word on a scan: the peek sits on top of the
+      bottom bar with Save and Full details visible, and the word strip across
+      its top. Swipe the strip; tap a chip and the band moves on the photo. Drag
+      up — the strip is gone; Back — it returns. Try a short emulator too
+      (640 dp): the peek grows to fit rather than clipping its buttons.
 
 ## Done
 
@@ -56,14 +61,18 @@ screen shows** — listed under *Owed on a device* below. Then Phase 7.
 - [x] **User-typed Japanese could render in Chinese forms** (V-32, D-98).
 - [x] **On a long sign the full-height sheet's word strip pushed the word out of
       reach** (D-99). 63 chips, 528 dp; 0 dp left for the word on a short phone.
+- [x] **The peek's Save and Full details sat behind the bottom bar.** Since D-90
+      put the bar on the camera, the scan screen runs under it and only the
+      shutter was lifted clear. Found while fitting the word strip into the peek;
+      read from the layout code, not yet seen on a screen.
 
 ### Decided with the owner
 
 - [x] D-97 — the bottom bar keeps the system font (Roboto), by preference.
 - [x] D-98 — no Chinese letterforms anywhere: `ja` locale on every style, Noto
       Sans JP on user text.
-- [x] D-99 — only words are chips; the strip is one swipeable row, and the scan
-      sheet has none.
+- [x] D-99 — only words are chips; the strip is one swipeable row, at the top
+      of the peek and gone from the full word screen.
 - [x] D-100 — the camera is released 10 s into a frozen frame.
 
 ### Housekeeping
@@ -89,9 +98,6 @@ screen shows** — listed under *Owed on a device* below. Then Phase 7.
   Material styles `Type.kt` never defined, so they render in the system font
   rather than IBM Plex. The owner preferred Roboto for the bar but does "not
   necessarily love either font". Left exactly as it was until that is decided.
-- **The word strip in the scan sheet.** D-99 removes it there. If the owner meant
-  the one-row strip to *replace* the old block in the sheet rather than to be
-  dropped from it, it is one condition in `WordScreen` to bring back.
 
 ## Notes
 

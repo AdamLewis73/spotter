@@ -8,7 +8,7 @@ The app's core interaction — tapping one specific word on a photograph — has
 
 | Term | Meaning |
 |---|---|
-| **Peek sheet** | The app's own sheet raised partway over the frozen scan, showing a one-line summary of the tapped word. Expanding it reveals the full word screen — they are the same component (D-30). *Not* a Material `ModalBottomSheet`: that dims the photograph the user is reading and owns no back stack, so Phase 5 wrote one (`scan/ScanSheet.kt`). |
+| **Peek sheet** | The app's own sheet raised partway over the frozen scan, showing a one-line summary of the tapped word, with the sign's other words in one swipeable row above it (D-99). Expanding it reveals the full word screen, without that row — they are the same component (D-30). It sits above the app's bottom bar, never under it. *Not* a Material `ModalBottomSheet`: that dims the photograph the user is reading and owns no back stack, so Phase 5 wrote one (`scan/ScanSheet.kt`). |
 | **Word screen** | The expanded sheet. Reading, meanings, component chips, examples. No tabs. |
 | **Kanji screen** | Reached by tapping a component chip. Three tabs. Swaps in place inside the sheet (D-32). |
 | **Component chips** | Small tappable elements on the word screen, one per constituent kanji, showing meanings only (D-06). |

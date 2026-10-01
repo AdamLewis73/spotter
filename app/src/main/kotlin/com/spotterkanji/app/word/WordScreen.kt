@@ -16,19 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -113,15 +108,16 @@ fun WordScreen(
             modifier = Modifier.fillMaxWidth().padding(top = tokens.spaceMd),
         )
 
-        // The typed-lookup harness only (D-99). Over a photograph the words are
-        // already on the sign, and the strip repeated every one of them — on a
-        // long notice it outgrew the sheet and pushed the word itself out of
-        // reach. Search opens a single chosen word, so it has nothing to strip.
+        // The typed-lookup harness only (D-99). Over a scan the strip belongs to
+        // the peek, and leaves when the sheet opens to this screen, so the word
+        // has the full height. Search opens a single chosen word, so it has
+        // nothing to strip.
         if (standalone && state.showTokens) {
-            TokenStrip(
+            WordStrip(
                 tokens = state.tokens,
                 selected = state.selected,
                 onTokenSelected = onTokenSelected,
+                modifier = Modifier.padding(top = tokens.spaceMd),
             )
         }
 
@@ -311,67 +307,6 @@ private fun AlternateStrip(
                         )
                         .clickable { onAlternateSelected(match) }
                         .padding(horizontal = spacing.spaceSm, vertical = spacing.spaceXs),
-                )
-            }
-        }
-    }
-}
-
-/**
- * The segmented input, one chip per token.
- *
- * The text-box counterpart of tapping a word on a photograph: the same "here
- * are the words, pick one" interaction the scan overlay provides, with the
- * camera and coordinate mapping removed.
- *
- * Particles are shown but muted. They have to keep their place — leaving them
- * out would misrepresent how the sentence divides — while "case marking
- * particle" is not what someone photographing a sign wants explained.
- */
-@Composable
-private fun TokenStrip(
-    tokens: List<Token>,
-    selected: Token?,
-    onTokenSelected: (Token) -> Unit,
-) {
-    val spacing = SpotterTheme.tokens
-    Column(modifier = Modifier.padding(top = spacing.spaceMd)) {
-        Text(
-            text = "TAP A WORD",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        // One row that swipes sideways, not a wrapping block (D-99): its height
-        // is one chip whatever the length of the text, so it can never crowd
-        // the word below it.
-        val rowState = rememberLazyListState()
-        val selectedIndex = selected?.let { tokens.indexOf(it) } ?: -1
-        // Keep the open word in view when it was chosen some other way — the
-        // first content word on arrival, say, sitting off the right-hand edge.
-        LaunchedEffect(selectedIndex) {
-            if (selectedIndex >= 0) rowState.animateScrollToItem(selectedIndex)
-        }
-        LazyRow(
-            state = rowState,
-            horizontalArrangement = Arrangement.spacedBy(spacing.spaceSm),
-            modifier = Modifier.padding(top = spacing.spaceXs),
-        ) {
-            items(tokens) { token ->
-                FilterChip(
-                    selected = token == selected,
-                    onClick = { onTokenSelected(token) },
-                    label = {
-                        Text(
-                            text = token.text,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontFamily = SpotterJapanese,
-                            color = if (token.isContentWord) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                    },
                 )
             }
         }

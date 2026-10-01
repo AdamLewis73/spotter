@@ -127,7 +127,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-96 | Typing a word is reached from inside a list, as search-as-you-type; that list is pre-ticked | UI |
 | D-97 | The bottom bar's labels use the phone's own UI font, not IBM Plex | UI |
 | D-98 | No kanji may render in Chinese forms: every text style is tagged Japanese, and user text takes Noto Sans JP | UI |
-| D-99 | Only words are chips; the word strip is one swipeable row, and the scan sheet has none | UI |
+| D-99 | Only words are chips; the word strip is one swipeable row, in the peek but not the full-height word screen | UI |
 | D-100 | A frozen frame releases the camera after 10 seconds; the photo covers the rebind | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
@@ -1437,13 +1437,15 @@ The runs are found by `japaneseRuns()` in `:domain`, which also covers full-widt
 
 *Cost to reverse:* low. Both layers are local to `Type.kt` and one helper.
 
-**D-99 — Only words are chips. The word strip is a single row that swipes sideways, and the scan sheet does not show it.**
+**D-99 — Only words are chips. The word strip is a single row that swipes sideways. Over a scan it sits at the top of the peek sheet and leaves when the sheet opens to the full word screen.**
 
 Three changes, settled by the project owner on 2026-10-01 after the audit drew the full-height sheet at a Pixel 9's real size:
 
-1. **The scan sheet shows no word strip.** Over a photograph the words are already on the sign; the strip repeated all of them. On the 99-character notice in `RealNoticeLayoutTest` that was 63 chips in 11 rows, 528 dp, leaving 159 dp for the word on a Pixel 9 and **none** on a shorter phone — the strip did not scroll, so the word could not be reached at all. The peek already hid it for this reason. The typed-lookup harness keeps it, because there it is the only way to choose a word.
-2. **Where the strip remains, it is one row that swipes sideways**, not a wrapping block. Its height is one chip whatever the text, and it scrolls the chosen word into view.
+1. **The strip is one row that swipes sideways**, not a wrapping block. Its height is one chip whatever the text, and it scrolls the chosen word into view — including a word chosen by tapping the photograph. The block it replaced sat at the top of the full-height word screen: on the 99-character notice in `RealNoticeLayoutTest` it was 63 chips in 11 rows, 528 dp, leaving 159 dp for the word on a Pixel 9 and **none** on a shorter phone, and since it did not scroll the word could not be reached at all.
+2. **Over a scan it lives in the peek, not the word screen.** The peek shows the row above the word, so the next word on the sign is one tap away without hunting for it on the photograph. Dragging up (or *Full details*) opens the word screen without it, so the word has the height; Back to the peek brings it back. The typed-lookup harness keeps it too, captioned "TAP A WORD", because there it is the only way to choose a word. *(As first recorded the scan sheet had no strip at all; the owner corrected that the same day, before it merged.)*
 3. **A token must be a word.** Kuromoji also emits punctuation, brackets and bare digits — 【 、 『 ( 6 — which became chips, and on a photograph a tap on one opened a peek saying "Not in the dictionary". A token now survives only if it is written in kana or kanji, or the dictionary knows it anyway: JMdict has ＪＲ and ＣＤ, which have neither. A tap on punctuation now behaves like a tap on bare photo and dismisses.
+
+*Also fixed with it:* the peek never sat above the app's bottom bar (D-90). The scan screen runs the full height so the photo reaches the edges, the bar is drawn over its foot, and only the shutter had been lifted clear — so the bar covered the peek's *Save* and *Full details*. The sheet now stops at the bar. The peek keeps its 30% but never drops below the 256 dp its contents need, with the meaning held to two lines, so a short phone no longer clips the buttons.
 
 *Cost to reverse:* near zero. Display rules only; nothing stored.
 

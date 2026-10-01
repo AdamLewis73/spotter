@@ -23,7 +23,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit. One deferred item: the live-preview detection indicator, which has no `V-##` | Raw recognized text into the Phase 2 pipeline |
 | 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save went live in Phase 6 | The real scan experience |
 | 6 | Saved lists | **Complete** — checkpoints settled (D-79, D-80), wireflow settled (D-85 to D-92). Schema v2 with its first migration, Save through the list picker, the Saved and list screens, remove-with-undo (D-93), scan photos with drawn thumbnails (D-94, D-95), and search from inside a list (D-86, D-96). Two items named as owed rather than closed: V-30 wants one real sign on a real phone, and D-86's camera-denied *Type a word* is deferred | Multiple lists, many-to-many |
-| 6.5 | Audit | **Complete** — an aside before Phase 7: a read of the whole codebase for anything broken, messy or done wrong, without changing design or flow. Seven bugs fixed, four decisions taken with the owner (D-97 to D-100). Three checks owed on a device | Fixes, no new features |
+| 6.5 | Audit | **Complete** — an aside before Phase 7: a read of the whole codebase for anything broken, messy or done wrong, without changing design or flow. Eight bugs fixed, four decisions taken with the owner (D-97 to D-100). Three checks owed on a device | Fixes, no new features |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |
 | 9 | Release prep | Not started — **deliberately last** | The in-app attribution screen the data licences require, and whatever else a store release needs |
@@ -112,7 +112,7 @@ they need holds — scheduling hangs off `study_item`, never off a list (V-13).
 
 An aside the project owner asked for between Phases 6 and 7: read everything, fix what is broken or messy, change no design or flow without asking. The full record is `progress/phase-06.5-audit.md`.
 
-What it found that mattered: **a scan of a long sign crashed the app on Android 8–11** (more than 999 SQL variables in one query); **the jade selection band framed the whole line or nothing** (V-33); **kanji past the basic plane were not kanji** (V-34); **user-typed Japanese rendered in Chinese letterforms** (V-32, D-98); and **on a long sign the full-height sheet's word strip pushed the word out of reach** (D-99). The camera now releases itself behind a frozen frame (D-100).
+What it found that mattered: **a scan of a long sign crashed the app on Android 8–11** (more than 999 SQL variables in one query); **the jade selection band framed the whole line or nothing** (V-33); **kanji past the basic plane were not kanji** (V-34); **user-typed Japanese rendered in Chinese letterforms** (V-32, D-98); and **on a long sign the full-height sheet's word strip pushed the word out of reach**, and **the peek's buttons sat behind the bottom bar** (D-99). The camera now releases itself behind a frozen frame (D-100).
 
 ### Phase 9 — Release prep
 
