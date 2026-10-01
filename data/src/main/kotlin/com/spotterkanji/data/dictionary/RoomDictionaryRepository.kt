@@ -11,7 +11,7 @@ import com.spotterkanji.domain.dictionary.ReadingStatus
 import com.spotterkanji.domain.dictionary.Sense
 import com.spotterkanji.domain.dictionary.WordHit
 import com.spotterkanji.domain.dictionary.forDisplay
-import com.spotterkanji.domain.text.isKanji
+import com.spotterkanji.domain.text.kanjiCharacters
 import org.json.JSONArray
 
 /**
@@ -161,8 +161,9 @@ class RoomDictionaryRepository(
 
     override suspend fun kanjiIn(text: String): List<KanjiSummary> {
         // Kana contribute no chip — 生きる is one kanji plus okurigana. Distinct,
-        // because 日々 would otherwise query and render 日 twice.
-        val characters = text.filter { it.isKanji() }.map(Char::toString).distinct()
+        // because 日日 would otherwise query and render 日 twice. Whole
+        // characters, not Chars: 𠮟 in 𠮟る is two Chars and one kanji.
+        val characters = kanjiCharacters(text).distinct()
         if (characters.isEmpty()) return emptyList()
 
         val byCharacter = dao.kanji(characters).associateBy { it.character }

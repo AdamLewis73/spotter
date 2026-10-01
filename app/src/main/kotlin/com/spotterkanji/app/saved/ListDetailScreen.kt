@@ -35,10 +35,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarVisuals
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import com.spotterkanji.domain.text.containsJapanese
+import com.spotterkanji.app.ui.theme.withJapaneseFont
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
@@ -144,11 +141,8 @@ internal fun ListDetailScreen(
             title = { Text(stringResource(R.string.list_remove_title)) },
             text = {
                 Text(
-                    withJapaneseRuns(
-                        stringResource(R.string.list_remove_body, word.key.text, listName),
-                        word.key.text,
-                        listName,
-                    ),
+                    stringResource(R.string.list_remove_body, word.key.text, listName)
+                        .withJapaneseFont(),
                 )
             },
             confirmButton = {
@@ -173,7 +167,6 @@ internal fun ListDetailScreen(
                             snackbar.showSnackbar(
                                 RemovedVisuals(
                                     message = removedMessage.format(word.key.text, listName),
-                                    japaneseRuns = listOf(word.key.text, listName),
                                     actionLabel = undoLabel,
                                 )
                             )
@@ -271,9 +264,8 @@ internal fun ListDetailScreen(
             // A custom body rather than the default, for one reason: the default
             // takes a plain String, and this message has a Japanese word in the
             // middle of an English sentence. Set in IBM Plex, that word falls back
-            // silently to the system font (D-34). The runs are carried alongside
-            // the text so they can be switched to SpotterJapanese.
-            val visuals = data.visuals as? RemovedVisuals
+            // silently to the system font (D-34), so the Japanese part is
+            // switched to SpotterJapanese.
             Snackbar(
                 action = {
                     TextButton(onClick = { data.performAction() }) {
@@ -284,13 +276,7 @@ internal fun ListDetailScreen(
                     }
                 },
             ) {
-                Text(
-                    if (visuals != null) {
-                        withJapaneseRuns(visuals.message, *visuals.japaneseRuns.toTypedArray())
-                    } else {
-                        AnnotatedString(data.visuals.message)
-                    }
-                )
+                Text(data.visuals.message.withJapaneseFont())
             }
         }
     }
@@ -441,14 +427,12 @@ private val PANEL_WIDTH = 92.dp
 private const val UNDO_WINDOW_MS = 3_000L
 
 /**
- * The removal message, carrying which parts of it are Japanese.
- *
- * [message] stays a complete plain sentence so accessibility services read it
- * whole; [japaneseRuns] only tells the renderer where to switch fonts.
+ * The removal message. [message] stays a complete plain sentence so
+ * accessibility services read it whole; the renderer finds the Japanese in it
+ * and switches only that to the Japanese font.
  */
 private class RemovedVisuals(
     override val message: String,
-    val japaneseRuns: List<String>,
     override val actionLabel: String,
 ) : SnackbarVisuals {
     override val withDismissAction: Boolean = false
@@ -457,25 +441,3 @@ private class RemovedVisuals(
     // "short" is four seconds).
     override val duration: SnackbarDuration = SnackbarDuration.Indefinite
 }
-
-/**
- * [full] with each of [runs] that contains Japanese set in SpotterJapanese.
- *
- * For sentences where a Japanese word is substituted into English — the rest
- * stays in IBM Plex, the house face, and only the run that needs Noto Sans JP
- * gets it. A run with no Japanese is left alone, so a list called "Street Signs"
- * does not change typeface just because it sits next to 先生; one called 駅 does.
- */
-private fun withJapaneseRuns(full: String, vararg runs: String): AnnotatedString =
-    buildAnnotatedString {
-        append(full)
-        runs.filter { it.isNotEmpty() && it.containsJapanese() }.forEach { run ->
-            var from = 0
-            while (true) {
-                val at = full.indexOf(run, from)
-                if (at < 0) break
-                addStyle(SpanStyle(fontFamily = SpotterJapanese), at, at + run.length)
-                from = at + run.length
-            }
-        }
-    }

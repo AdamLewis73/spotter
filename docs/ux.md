@@ -173,6 +173,8 @@ Include a **global furigana toggle.** Advanced learners find constant furigana d
 
 **Bundle Noto Sans JP (D-34).** Without an explicit Japanese font, Android may render kanji using Chinese glyph forms — 直, 骨, 令, and 化 all differ visibly between the two. In an app that teaches people to read and write kanji, that is a correctness bug rather than a polish issue.
 
+**And mark the text Japanese (D-98).** Bundling the font covers text the app knows is Japanese. Text the user types — a list name — went through IBM Plex, which has no kanji, and Android filled them in from the system CJK font in Chinese forms. Every typography style now carries the `ja` locale so any such fallback picks the Japanese design, and user text takes Noto Sans JP for its Japanese runs (`withJapaneseFont()`). The bottom bar's labels are the one place the app uses the system font on purpose (D-97).
+
 ## Context of use
 
 This app gets opened while standing in a shop, sitting at a restaurant table, or waiting on a train platform. That drives several things that are easy to miss when designing at a desk:

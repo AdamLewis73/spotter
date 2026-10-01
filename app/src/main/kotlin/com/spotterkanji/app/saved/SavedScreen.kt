@@ -37,7 +37,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spotterkanji.app.R
+import com.spotterkanji.app.ui.theme.JapaneseFontTransformation
 import com.spotterkanji.app.ui.theme.SpotterTheme
+import com.spotterkanji.app.ui.theme.withJapaneseFont
 import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.SavedListSummary
 
@@ -231,7 +233,8 @@ private fun ListCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = summary.list.name,
+                    // The user named it, so it may be Japanese (D-98).
+                    text = summary.list.name.withJapaneseFont(),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -292,6 +295,7 @@ private fun ListNameDialog(
                 onValueChange = { name = it },
                 singleLine = true,
                 label = { Text(stringResource(R.string.saved_list_name)) },
+                visualTransformation = JapaneseFontTransformation,
             )
         },
         confirmButton = {

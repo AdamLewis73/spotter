@@ -17,7 +17,8 @@ import com.spotterkanji.data.tokenize.KuromojiTokenizer
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiSummary
-import com.spotterkanji.domain.text.isKanji
+import com.spotterkanji.domain.text.hasKanaOrKanji
+import com.spotterkanji.domain.text.isSingleKanji
 import com.spotterkanji.domain.tokenize.LongestMatch
 import com.spotterkanji.domain.tokenize.Token
 import com.spotterkanji.domain.tokenize.WordMatch
@@ -171,24 +172,32 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
             // Kuromoji loads a ~12 MB dictionary on first use and segmentation
             // is pure CPU work; neither belongs on the main thread.
             val trimmed = query.trim()
-            val tokens = withContext(Dispatchers.Default) { tokenizer.tokenize(trimmed) }
-                // Whitespace is a token to Kuromoji, and an empty chip in the
-                // strip to everyone else. It became visible when scanned text
-                // arrived — a multi-line sign carries a separator per line
-                // break (see `ScanLayout.SEPARATOR`) — but typing "先生 と"
-                // by hand always did the same thing. Dropped here rather than
-                // at the scan boundary, because the separators are load-bearing
-                // in the string itself: they stop the tokenizer inventing a word
-                // that spans two lines.
-                .filter { it.text.isNotBlank() }
+            val segmented = withContext(Dispatchers.Default) { tokenizer.tokenize(trimmed) }
 
             // The second pass D-07 requires, over the same text. One query for
             // every candidate substring in the line — a hundred or so for a
             // typical sign — rather than one per substring.
-            matches = LongestMatch.matchesIn(
-                trimmed,
-                repository.existingWords(LongestMatch.candidates(trimmed)),
-            )
+            val known = repository.existingWords(LongestMatch.candidates(trimmed))
+            matches = LongestMatch.matchesIn(trimmed, known)
+
+            // Only words are tokens (D-99). Kuromoji also emits whitespace,
+            // punctuation and bare digits — 【 、 『 ( 6 — and each became a
+            // chip in the strip, and a peek reading "Not in the dictionary"
+            // when tapped on the photograph. A token stays if it is written in
+            // kana or kanji, or if the dictionary knows it anyway: JMdict has
+            // ＪＲ and ＣＤ, which have neither.
+            //
+            // Whitespace in particular came from the scan, which puts a
+            // separator at each line break (see `ScanLayout.SEPARATOR`). The
+            // separators stay in the string, where they stop the tokenizer
+            // inventing a word across two lines; only the tokens go.
+            val tokens = segmented.filter { token ->
+                token.text.isNotBlank() && (
+                    token.text.hasKanaOrKanji() ||
+                        token.text in known ||
+                        token.baseForm?.let { it in known } == true
+                    )
+            }
 
             // Open on the first word worth explaining rather than on whatever
             // came first — for 先生と生産 that is 先生, not the particle と.
@@ -313,7 +322,9 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         // An early return here left `entries` empty, so the screen behind
         // announced "生 is not in the dictionary" about a character whose ten
         // senses were on display a moment earlier.
-        val loneKanji = token.text.length == 1 && token.text.first().isKanji()
+        // One kanji, counted as a character rather than by `length`: 𩸽 is
+        // two Chars and still one kanji.
+        val loneKanji = token.text.isSingleKanji()
 
         // Surface form first, dictionary form second. A sign reads 生きた and the
         // dictionary holds 生きる, so without the fallback an inflected word

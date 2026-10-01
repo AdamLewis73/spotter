@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.tooling.preview.Preview
 import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
+import com.spotterkanji.app.ui.theme.withJapaneseFont
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiExample
@@ -254,7 +255,7 @@ private fun ExamplesTab(detail: KanjiDetail) {
 
     if (detail.readingGroups.isEmpty()) {
         Text(
-            text = "No example words for ${detail.character} in the dictionary.",
+            text = "No example words for ${detail.character} in the dictionary.".withJapaneseFont(),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(tokens.spaceMd),
         )
@@ -274,7 +275,8 @@ private fun ExamplesTab(detail: KanjiDetail) {
         if (detail.readingGroups.size == 1) {
             item {
                 Text(
-                    text = "${detail.character} has one reading — this one is straightforward.",
+                    text = "${detail.character} has one reading — this one is straightforward."
+                        .withJapaneseFont(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = tokens.spaceMd),

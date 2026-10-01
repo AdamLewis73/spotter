@@ -521,3 +521,38 @@ The cause was in the builder. `ingest_jmdict.py` computed a word's priority as `
 The third is the instructive one, and it was caught by **V-27's** test rather than by this case: 明日's みょうにち bands at 5 against あした's 49, because the newspaper corpus is register-biased — announcements say みょうにち, people say あした. Attaching the entry's example sentence to the "best-ranked" reading then handed it to みょうにち. So the query tests `reading_freq_rank IS NULL` and never compares the numbers.
 
 **Why this is a verification case rather than a bug report:** it rendered perfectly. 一人 showed a real reading, correctly spelled, with correct meanings, badged common — and it was the wrong one, for a word in the first hundred a learner meets.
+
+### V-32 · Japanese typed by the user shows Japanese forms too (D-34, D-98, V-12)
+
+Found by the Phase 6.5 audit. Setup: on a phone whose system language is **English**, create a list named 令和の看板 and look at its card on Saved, its row in the save picker, and the name field while typing it.
+
+| Check | Expected |
+|---|---|
+| 令 in each of the three places | the **Japanese** form (bottom stroke ㇇), not the Chinese one |
+| A mixed name, "Food 食べ物" | *Food* in IBM Plex, 食べ物 in Noto Sans JP |
+| "“生” is not in the dictionary." on the typed-lookup screen | 生 in Noto Sans JP |
+
+The trap: V-12 passed throughout, because it checks text the app *knows* is Japanese, and every one of those asks for `SpotterJapanese`. A list name is typed by the user, so nothing asked — it went to IBM Plex or Roboto, neither has a kanji, and Android filled them in from the system CJK font, which on an English phone is the Simplified Chinese design. Legible, plausible, and wrong. Two layers now hold it: every typography style carries the `ja` locale, so any fallback picks the Japanese system design, and user text runs through `withJapaneseFont()` for the bundled face.
+
+### V-33 · The selection band frames the tapped word, not its line (D-78, artboard 1a)
+
+Found by the Phase 6.5 audit. Setup: a frame reading 先生と生産 on one line. Tap 先生, then 生産.
+
+| Tap | Expected |
+|---|---|
+| 先生 | jade band around 先生 only |
+| 生産 | jade band around 生産 only |
+
+The trap: the overlay repaints the photo in runs, and a run is a whole line. The band was chosen by whether a run's *first* character was in the selection — so a word that began its line was framed together with the whole line, and a word further along got no band at all. Every lookup still worked, so only looking at the screen shows it. A regression from `9c45bea`; the per-glyph version before it was right.
+
+### V-34 · A kanji past the basic plane is still a kanji (D-49, D-06)
+
+Found by the Phase 6.5 audit. Setup: look up 𠮟る (𠮟 is the standard form of 叱 since 2010), then 𩸽 alone.
+
+| Check | Expected |
+|---|---|
+| 𠮟る's component boxes | one box, 𠮟 · scold |
+| 𩸽 alone | opens the **kanji screen** directly, as any lone kanji does |
+| 𠮷野家 | three boxes: 𠮷, 野, 家 |
+
+The trap: a Kotlin `Char` is 16 bits, and a character past U+FFFF is two of them — `"𠮟".length` is 2, where Python's `len` says 1. Neither half is a kanji, so a test applied `Char` by `Char` found none: no component box, and a lone 𩸽 counted as two characters and skipped D-49. 50 dictionary words and 303 of KANJIDIC2's kanji are affected; nothing errors. `CodePointTest` in `:domain` holds the rule; this case is the screen.

@@ -125,6 +125,10 @@ Scan for the relevant entry rather than reading the whole file.
 | D-94 | A photo is kept only when a word is filed from it: at full size, never backed up | Images |
 | D-95 | Thumbnails draw a crop of the photo; no second image is ever saved | Images |
 | D-96 | Typing a word is reached from inside a list, as search-as-you-type; that list is pre-ticked | UI |
+| D-97 | The bottom bar's labels use the phone's own UI font, not IBM Plex | UI |
+| D-98 | No kanji may render in Chinese forms: every text style is tagged Japanese, and user text takes Noto Sans JP | UI |
+| D-99 | Only words are chips; the word strip is one swipeable row, and the scan sheet has none | UI |
+| D-100 | A frozen frame releases the camera after 10 seconds; the photo covers the rebind | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1409,6 +1413,51 @@ D-86 moved typing off the camera and put it "with Saved", leaving exact placemen
 *Not yet built:* D-86's recovery path, *Type a word* when camera permission is denied. The owner deferred it on 2026-09-16. When it is built, it opens this same screen with no list ticked.
 
 *Cost to reverse:* near zero. It is an entry point and one screen; nothing here touches stored data.
+
+**D-97 — The Scan · Saved · Review labels use the phone's own UI font (Roboto on a Pixel), not IBM Plex.**
+
+Found by the Phase 6.5 audit: eight of Material's fifteen text styles were never defined in `Type.kt`, five of them in use, so the components using them fell back to the system font. The bar's labels were one of them. Shown both side by side, the project owner preferred Roboto there (2026-10-01): it reads better at 12 sp in a row of three, though they "don't necessarily love either font".
+
+So the bar asks for `FontFamily.Default` by name. It no longer inherits it by accident, which means defining `labelMedium` one day cannot change it unnoticed. The rest of the app's typography is unchanged by this; the other places that fell back to Roboto (Saved list names, kanji tabs, dialog titles) are an **open question**, not settled here. See `progress/phase-06.5-audit.md`.
+
+*Note:* "the phone's own font" is Roboto on Pixels and stock Android, but Samsung and others ship their own. If the owner wants Roboto *specifically*, it has to be bundled like Plex.
+
+*Cost to reverse:* one line.
+
+**D-98 — No kanji may ever render in its Chinese form. Every text style carries the `ja` locale; text the user typed has its Japanese runs set in Noto Sans JP.**
+
+D-34 bundled Noto Sans JP because Unicode gives a Chinese and a Japanese character one code while the two typographies draw them differently (直 骨 令 冷). It was enforced by asking for `SpotterJapanese` wherever the app *knows* the text is Japanese — and that left a gap the Phase 6.5 audit found: text the **user** wrote. A list named 令和の看板 went to IBM Plex or Roboto, neither has a kanji, and Android filled the gap from the system CJK font, choosing by the text's locale. Untagged text on an English-language phone gets the Simplified Chinese design. The project owner's ruling, 2026-10-01: Chinese variants must not appear anywhere.
+
+Two layers, because either alone leaves a hole:
+
+- **Every typography style is tagged `ja-JP`** (`Type.kt`, all fifteen, including the eight Material defaults the app never customised). This is the backstop: whatever text reaches whatever style, a missing glyph is filled from the *Japanese* system design. It changes nothing for English, since neither Plex nor Roboto has Japanese-specific Latin forms.
+- **User text takes the bundled face** through `withJapaneseFont()` (and `JapaneseFontTransformation` for text fields): its Japanese runs get Noto Sans JP, the rest keeps the style's font, so "Food 食べ物" is Plex then Noto. This applies to list names on the Saved cards and in the picker, the name fields, and sentences the app builds around a Japanese word.
+
+The runs are found by `japaneseRuns()` in `:domain`, which also covers full-width Latin (ＪＲ) and characters past the basic plane (𠮟). V-32 is the case.
+
+*Cost to reverse:* low. Both layers are local to `Type.kt` and one helper.
+
+**D-99 — Only words are chips. The word strip is a single row that swipes sideways, and the scan sheet does not show it.**
+
+Three changes, settled by the project owner on 2026-10-01 after the audit drew the full-height sheet at a Pixel 9's real size:
+
+1. **The scan sheet shows no word strip.** Over a photograph the words are already on the sign; the strip repeated all of them. On the 99-character notice in `RealNoticeLayoutTest` that was 63 chips in 11 rows, 528 dp, leaving 159 dp for the word on a Pixel 9 and **none** on a shorter phone — the strip did not scroll, so the word could not be reached at all. The peek already hid it for this reason. The typed-lookup harness keeps it, because there it is the only way to choose a word.
+2. **Where the strip remains, it is one row that swipes sideways**, not a wrapping block. Its height is one chip whatever the text, and it scrolls the chosen word into view.
+3. **A token must be a word.** Kuromoji also emits punctuation, brackets and bare digits — 【 、 『 ( 6 — which became chips, and on a photograph a tap on one opened a peek saying "Not in the dictionary". A token now survives only if it is written in kana or kanji, or the dictionary knows it anyway: JMdict has ＪＲ and ＣＤ, which have neither. A tap on punctuation now behaves like a tap on bare photo and dismisses.
+
+*Cost to reverse:* near zero. Display rules only; nothing stored.
+
+**D-100 — A frozen frame keeps the camera running for 10 seconds, then releases it. A Retake after that holds the photo on screen until the camera's first live frame, then crossfades.**
+
+Phase 4 kept the camera bound for as long as a frame was frozen, because rebinding costs a few hundred milliseconds and every freeze was then followed by an immediate retake. It noted the trade would flip once the peek sheet gave people a reason to sit on a frozen frame for minutes. It flipped, and the project owner asked for it fixed without the Retake looking "chunky".
+
+- **For 10 s the camera stays bound** behind the frozen frame, with the viewfinder still composed underneath it so its surface survives. Freeze, glance, retake is instant, exactly as before.
+- **After 10 s it is released entirely.** A streaming camera nobody can see is the larger cost once someone is reading.
+- **A Retake after that rebinds**, and the frozen photo stays up, opaque, until the first live frame arrives — signalled by the camera's own capture callback, not by `bindToLifecycle` returning, which happens well before any picture does. It then fades out over 200 ms. Never a black frame.
+
+*Not verified on a device yet* (`progress/phase-06.5-audit.md`). 10 s is a starting guess, to be tuned against real use.
+
+*Cost to reverse:* low; one composable.
 
 ---
 

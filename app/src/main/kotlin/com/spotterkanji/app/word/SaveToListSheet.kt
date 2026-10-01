@@ -38,8 +38,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.spotterkanji.app.R
+import com.spotterkanji.app.ui.theme.JapaneseFontTransformation
 import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
+import com.spotterkanji.app.ui.theme.withJapaneseFont
 import com.spotterkanji.domain.user.SavedListId
 
 /**
@@ -225,6 +227,7 @@ private fun NewListField(
             onValueChange = onValueChange,
             singleLine = true,
             label = { Text(stringResource(R.string.saved_list_name)) },
+            visualTransformation = JapaneseFontTransformation,
             modifier = Modifier.fillMaxWidth(),
         )
         Row(
@@ -315,7 +318,8 @@ private fun PickerRow(
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = name,
+                    // A list name is the user's, so it may be Japanese (D-98).
+                    text = name.withJapaneseFont(),
                     style = MaterialTheme.typography.bodyLarge,
                     color = nameColor,
                     maxLines = 1,
