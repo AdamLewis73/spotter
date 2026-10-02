@@ -1,6 +1,6 @@
 # Phase 6.5 — Audit
 
-**Status:** done — three checks owed on a device
+**Status:** done — four checks owed on a device
 **Updated:** 2026-10-01
 
 ## Current state
@@ -20,7 +20,7 @@ first real build of `:app` and `:data`.
 
 ## Next action
 
-**Run it on the emulator with `/launch` and look at the three things only a
+**Run it on the emulator with `/launch` and look at the four things only a
 screen shows** — listed under *Owed on a device* below. Then Phase 7.
 
 ## Owed on a device
