@@ -1,5 +1,6 @@
 package com.spotterkanji.domain.text
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,5 +51,39 @@ class ContainsJapaneseTest {
     @Test
     fun `a mixed name does`() {
         assertTrue("駅 signs".containsJapanese())
+    }
+}
+
+/** Which stretches of user-typed text get the Japanese font (D-98). */
+class JapaneseRunsTest {
+
+    private fun runs(text: String) = text.japaneseRuns().map { text.substring(it.first, it.last + 1) }
+
+    @Test
+    fun `an English name has no Japanese runs`() {
+        assertEquals(emptyList<String>(), runs("Street signs"))
+    }
+
+    @Test
+    fun `a mixed name switches only the Japanese part`() {
+        assertEquals(listOf("食べ物"), runs("Food 食べ物"))
+        assertEquals(listOf("食べ物"), runs("食べ物 food"))
+    }
+
+    @Test
+    fun `a space inside Japanese does not split the run`() {
+        assertEquals(listOf("駅 の看板"), runs("駅 の看板"))
+    }
+
+    @Test
+    fun `full-width letters and Japanese punctuation need the font too`() {
+        assertEquals(listOf("ＪＲ"), runs("ＪＲ lines"))
+        assertEquals(listOf("「先生」"), runs("say 「先生」"))
+    }
+
+    @Test
+    fun `a kanji past the basic plane is kept whole`() {
+        assertEquals(listOf("𠮟る"), runs("𠮟る"))
+        assertTrue("𠮟".containsJapanese())
     }
 }

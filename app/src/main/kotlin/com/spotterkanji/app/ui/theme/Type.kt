@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.spotterkanji.app.R
@@ -121,7 +122,8 @@ internal val SpotterMono = FontFamily(
 )
 
 /**
- * The Material scale, set in Latin by default.
+ * The Material scale, set in Latin by default. The theme uses it through
+ * [SpotterTypography], which marks every style as Japanese text (D-98).
  *
  * Default rather than neutral on purpose: most text in the app is English, and
  * the Japanese-bearing composables are few, identifiable, and already separate
@@ -134,7 +136,7 @@ internal val SpotterMono = FontFamily(
  * cramped and stacked. The ratios below stay generous, because the styles are
  * shared with the Japanese composables that override only the family.
  */
-internal val SpotterTypography = Typography(
+private val SpotterTypeScale = Typography(
     displayLarge = TextStyle(
         fontFamily = SpotterJapanese,
         fontWeight = FontWeight.Normal,
@@ -186,3 +188,50 @@ internal val SpotterTypography = Typography(
         letterSpacing = 0.08.em,
     ),
 )
+
+/**
+ * Every text style marked as **Japanese**, so no kanji can come out in Chinese
+ * letterforms (D-98).
+ *
+ * Unicode gives a character one code whether it is written in Japanese or
+ * Chinese, and the two typographies draw some of them differently — 直 骨 令 冷.
+ * When a font has no glyph for a character (IBM Plex has no CJK at all, nor does
+ * the system's Roboto), Android picks a system CJK font for it, and **the text's
+ * locale is what it picks by**. Untagged text on a phone set to English gets
+ * the Simplified Chinese design first. Tagged `ja`, it gets the Japanese one.
+ *
+ * This is the backstop, not the main defence. Text the app knows is Japanese
+ * still asks for [SpotterJapanese] explicitly, so it is drawn in the bundled
+ * font rather than whatever the phone has; this covers everything else — text
+ * the user typed, and any Japanese that reaches a style nobody expected to hold
+ * it. The locale changes nothing for English: neither Plex nor Roboto has
+ * Japanese-specific forms of Latin letters.
+ *
+ * **All fifteen styles, including the eight [SpotterTypeScale] leaves to
+ * Material.** Those keep Material's own size and its system font — the bottom
+ * bar's Roboto is a choice, D-97 — and gain only the locale. An undefined style
+ * would otherwise carry no locale, and its fallback would go back to Chinese.
+ */
+private fun Typography.inJapanese(): Typography {
+    val japanese = LocaleList("ja-JP")
+    fun TextStyle.ja() = copy(localeList = japanese)
+    return copy(
+        displayLarge = displayLarge.ja(),
+        displayMedium = displayMedium.ja(),
+        displaySmall = displaySmall.ja(),
+        headlineLarge = headlineLarge.ja(),
+        headlineMedium = headlineMedium.ja(),
+        headlineSmall = headlineSmall.ja(),
+        titleLarge = titleLarge.ja(),
+        titleMedium = titleMedium.ja(),
+        titleSmall = titleSmall.ja(),
+        bodyLarge = bodyLarge.ja(),
+        bodyMedium = bodyMedium.ja(),
+        bodySmall = bodySmall.ja(),
+        labelLarge = labelLarge.ja(),
+        labelMedium = labelMedium.ja(),
+        labelSmall = labelSmall.ja(),
+    )
+}
+
+internal val SpotterTypography: Typography = SpotterTypeScale.inJapanese()

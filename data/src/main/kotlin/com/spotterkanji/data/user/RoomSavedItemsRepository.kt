@@ -44,8 +44,8 @@ class RoomSavedItemsRepository(
      * **This creates the word; it does not file it** (D-88). A word is only
      * *saved* in the sense the rest of the app means once it belongs to a list,
      * so a caller that stops here has produced a row nothing will show. The
-     * list picker is what completes the action, and until it exists this method
-     * leaves the word unfiled and therefore invisible.
+     * list picker is what completes the action, by filing the word straight
+     * after this returns.
      *
      * The lookup and the write are one transaction because they are otherwise a
      * check-then-act race: two rapid taps on Save, or a save arriving while a

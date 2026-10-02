@@ -11,7 +11,7 @@ import com.spotterkanji.domain.dictionary.ReadingStatus
 import com.spotterkanji.domain.dictionary.Sense
 import com.spotterkanji.domain.dictionary.WordHit
 import com.spotterkanji.domain.dictionary.forDisplay
-import com.spotterkanji.domain.text.isKanji
+import com.spotterkanji.domain.text.kanjiCharacters
 import org.json.JSONArray
 
 /**
@@ -143,15 +143,27 @@ class RoomDictionaryRepository(
         }
     }
 
+    /**
+     * Batched, because the candidate set outgrows one SQL statement.
+     *
+     * Every string is its own bound variable, and SQLite before 3.32 refuses a
+     * statement with more than 999 — which is what Android 8 to 11 ship.
+     * Longest-match asks about up to twelve substrings per character, so any
+     * scan past about eighty characters crossed it: the real notice in
+     * `RealNoticeLayoutTest` is 99 characters and 1,069 candidates. The query
+     * threw, and nothing above it catches.
+     */
     override suspend fun existingWords(texts: Set<String>): Set<String> {
         if (texts.isEmpty()) return emptySet()
-        return dao.existingWords(texts).toSet()
+        return texts.chunked(MAX_BOUND_VARIABLES)
+            .flatMapTo(mutableSetOf()) { chunk -> dao.existingWords(chunk.toSet()) }
     }
 
     override suspend fun kanjiIn(text: String): List<KanjiSummary> {
         // Kana contribute no chip — 生きる is one kanji plus okurigana. Distinct,
-        // because 日々 would otherwise query and render 日 twice.
-        val characters = text.filter { it.isKanji() }.map(Char::toString).distinct()
+        // because 日日 would otherwise query and render 日 twice. Whole
+        // characters, not Chars: 𠮟 in 𠮟る is two Chars and one kanji.
+        val characters = kanjiCharacters(text).distinct()
         if (characters.isEmpty()) return emptyList()
 
         val byCharacter = dao.kanji(characters).associateBy { it.character }
@@ -232,6 +244,12 @@ class RoomDictionaryRepository(
          */
         const val EXAMPLES_PER_READING = 8
         val READING_TYPE_ORDER = listOf("on", "kun")
+
+        /**
+         * Safely under SQLite's historical limit of 999 bound variables per
+         * statement, which Android 8 to 11 still enforce.
+         */
+        const val MAX_BOUND_VARIABLES = 500
     }
 }
 

@@ -17,7 +17,8 @@ import com.spotterkanji.data.tokenize.KuromojiTokenizer
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiSummary
-import com.spotterkanji.domain.text.isKanji
+import com.spotterkanji.domain.text.hasKanaOrKanji
+import com.spotterkanji.domain.text.isSingleKanji
 import com.spotterkanji.domain.tokenize.LongestMatch
 import com.spotterkanji.domain.tokenize.Token
 import com.spotterkanji.domain.tokenize.WordMatch
@@ -25,6 +26,7 @@ import com.spotterkanji.domain.user.SavedList
 import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.StudyItemKey
 import com.spotterkanji.domain.user.StudyItemType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,14 +66,6 @@ data class WordLookupState(
      * eventually own anyway.
      */
     val openKanji: KanjiDetail? = null,
-    /**
-     * Whether the word on screen is currently in the user's saved words.
-     *
-     * Held in state rather than asked for on tap so the button reflects a write
-     * made anywhere — including an unsave performed elsewhere while this sheet
-     * is still open over the photograph.
-     */
-    val saved: Boolean = false,
 ) {
     /**
      * The entry Save acts on: the **top-ranked** one, which is the entry whose
@@ -126,15 +120,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
 
     private var lookupJob: Job? = null
 
-    /**
-     * Follows the saved/unsaved state of whichever word is on screen.
-     *
-     * Separate from [lookupJob] and outlives it: the lookup finishes, but this
-     * keeps running so the button still moves if the same word is unsaved from
-     * somewhere else.
-     */
-    private var savedWatchJob: Job? = null
-
     /** Follows the lists while the picker is open, so a list made elsewhere appears. */
     private var pickerJob: Job? = null
 
@@ -177,7 +162,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
 
         if (query.isBlank()) {
             matches = emptyList()
-            savedWatchJob?.cancel()
             _state.value = WordLookupState(query = query)
             return
         }
@@ -188,24 +172,32 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
             // Kuromoji loads a ~12 MB dictionary on first use and segmentation
             // is pure CPU work; neither belongs on the main thread.
             val trimmed = query.trim()
-            val tokens = withContext(Dispatchers.Default) { tokenizer.tokenize(trimmed) }
-                // Whitespace is a token to Kuromoji, and an empty chip in the
-                // strip to everyone else. It became visible when scanned text
-                // arrived — a multi-line sign carries a separator per line
-                // break (see `scan/RecognizedText.kt`) — but typing "先生 と"
-                // by hand always did the same thing. Dropped here rather than
-                // at the scan boundary, because the separators are load-bearing
-                // in the string itself: they stop the tokenizer inventing a word
-                // that spans two lines.
-                .filter { it.text.isNotBlank() }
+            val segmented = withContext(Dispatchers.Default) { tokenizer.tokenize(trimmed) }
 
             // The second pass D-07 requires, over the same text. One query for
             // every candidate substring in the line — a hundred or so for a
             // typical sign — rather than one per substring.
-            matches = LongestMatch.matchesIn(
-                trimmed,
-                repository.existingWords(LongestMatch.candidates(trimmed)),
-            )
+            val known = repository.existingWords(LongestMatch.candidates(trimmed))
+            matches = LongestMatch.matchesIn(trimmed, known)
+
+            // Only words are tokens (D-99). Kuromoji also emits whitespace,
+            // punctuation and bare digits — 【 、 『 ( 6 — and each became a
+            // chip in the strip, and a peek reading "Not in the dictionary"
+            // when tapped on the photograph. A token stays if it is written in
+            // kana or kanji, or if the dictionary knows it anyway: JMdict has
+            // ＪＲ and ＣＤ, which have neither.
+            //
+            // Whitespace in particular came from the scan, which puts a
+            // separator at each line break (see `ScanLayout.SEPARATOR`). The
+            // separators stay in the string, where they stop the tokenizer
+            // inventing a word across two lines; only the tokens go.
+            val tokens = segmented.filter { token ->
+                token.text.isNotBlank() && (
+                    token.text.hasKanaOrKanji() ||
+                        token.text in known ||
+                        token.baseForm?.let { it in known } == true
+                    )
+            }
 
             // Open on the first word worth explaining rather than on whatever
             // came first — for 先生と生産 that is 先生, not the particle と.
@@ -231,7 +223,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
     fun onWordChosen(text: String) {
         if (text.isEmpty()) return
         lookupJob?.cancel()
-        savedWatchJob?.cancel()
         val token = Token(text, 0, text.length)
         _state.value = WordLookupState(
             query = text,
@@ -262,7 +253,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun onSelectionCleared() {
         lookupJob?.cancel()
-        savedWatchJob?.cancel()
         _state.value = _state.value.copy(
             selected = null,
             entries = emptyList(),
@@ -270,7 +260,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
             kanji = emptyList(),
             openKanji = null,
             searching = false,
-            saved = false,
         )
     }
 
@@ -284,12 +273,11 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      * Close the result and go back to an empty search.
      *
      * The design's back arrow dismisses the sheet to the photograph behind it
-     * (D-30). There is no photograph until Phase 4, so the nearest true
+     * (D-30). The typed-lookup harness has no photograph, so the nearest true
      * equivalent is clearing what was looked up.
      */
     fun onResultDismissed() {
         lookupJob?.cancel()
-        savedWatchJob?.cancel()
         _state.value = WordLookupState()
     }
 
@@ -334,7 +322,9 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         // An early return here left `entries` empty, so the screen behind
         // announced "生 is not in the dictionary" about a character whose ten
         // senses were on display a moment earlier.
-        val loneKanji = token.text.length == 1 && token.text.first().isKanji()
+        // One kanji, counted as a character rather than by `length`: 𩸽 is
+        // two Chars and still one kanji.
+        val loneKanji = token.text.isSingleKanji()
 
         // Surface form first, dictionary form second. A sign reads 生きた and the
         // dictionary holds 生きる, so without the fallback an inflected word
@@ -353,7 +343,11 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
             openKanji = if (loneKanji) repository.kanjiDetail(token.text) else _state.value.openKanji,
             searching = false,
         )
-        watchSaved()
+    }
+
+    /** Called by the scan route whenever the frozen frame or its reading changes. */
+    fun onScanContext(context: ScanContext?) {
+        scanContext = context
     }
 
     /**
@@ -368,11 +362,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      * and no reading to key on (D-12), and a saved item with neither is exactly
      * the unresolvable row D-40 has to render forever.
      */
-    /** Called by the scan route whenever the frozen frame or its reading changes. */
-    fun onScanContext(context: ScanContext?) {
-        scanContext = context
-    }
-
     fun onSaveRequested() {
         val entry = _state.value.saveTarget ?: return
         openPicker(
@@ -466,7 +455,9 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun onPickerNewListStaged(name: String) {
         val trimmed = name.trim()
-        if (trimmed.isEmpty()) return
+        // Staging the same name twice is one list, not two. The picker keys its
+        // rows by name, so a duplicate also crashed the overlay outright.
+        if (trimmed.isEmpty() || trimmed in _picker.value.stagedNewLists) return
         _picker.value = _picker.value.copy(
             stagedNewLists = _picker.value.stagedNewLists + trimmed,
         )
@@ -535,14 +526,24 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         val box = scan.layout.boxFor(range) ?: return
         val scanId = photoLock.withLock {
             savedFrame?.takeIf { it.first === scan.photo }?.second
-                ?: withContext(Dispatchers.IO) {
-                    // File first, row second: see ScanImageStore.write.
-                    val path = ScanImageStore.write(getApplication(), scan.photo)
-                    scans.createScan(
-                        imagePath = path,
-                        rawText = scan.layout.text,
-                        appVersion = BuildConfig.VERSION_NAME,
-                    )
+                ?: try {
+                    withContext(Dispatchers.IO) {
+                        // File first, row second: see ScanImageStore.write.
+                        val path = ScanImageStore.write(getApplication(), scan.photo)
+                        scans.createScan(
+                            imagePath = path,
+                            rawText = scan.layout.text,
+                            appVersion = BuildConfig.VERSION_NAME,
+                        )
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // A full disk or a failed encode. The word is already filed
+                    // by now, and a word without a photo is a normal state
+                    // (D-94) — so it keeps no photo rather than taking the app
+                    // down with it, which is what an uncaught throw here did.
+                    return
                 }.also { savedFrame = scan.photo to it }
         }
         scans.linkWord(
@@ -569,19 +570,14 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
         return if (at < 0) word else (token.start + at) until (token.start + at + target.key.text.length)
     }
 
-    private fun watchSaved() {
-        savedWatchJob?.cancel()
-        val entry = _state.value.saveTarget
-        if (entry == null) {
-            _state.value = _state.value.copy(saved = false)
-            return
-        }
-        savedWatchJob = viewModelScope.launch {
-            savedItems.observeIsSaved(StudyItemKey(entry.text, entry.reading))
-                .collect { isSaved -> _state.value = _state.value.copy(saved = isSaved) }
-        }
-    }
 }
+
+/** What the picker is about to file: a word, or a kanji (D-92). */
+data class PickerTarget(
+    val key: StudyItemKey,
+    val snapshotGloss: String,
+    val entSeq: Long?,
+)
 
 /**
  * The list picker's staged state (D-91).
@@ -595,13 +591,6 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
  * out. Removal lives on the list screen, where the user can see what they are
  * emptying.
  */
-/** What the picker is about to file: a word, or a kanji (D-92). */
-data class PickerTarget(
-    val key: StudyItemKey,
-    val snapshotGloss: String,
-    val entSeq: Long?,
-)
-
 data class PickerState(
     val open: Boolean = false,
     val target: PickerTarget? = null,

@@ -10,11 +10,9 @@ Where it differs from a translation app: it keeps the Japanese and explains it, 
 
 ## Status
 
-**Phase 1 complete.** `tools/dictbuild/` builds the bundled dictionary from four pinned open datasets — 99.7 MB, byte-reproducible from identical sources, 10 of 10 verification cases passing.
+**Phases 1–6 complete; Phase 7 (review) not started.** The app opens on the camera: freeze a frame, and the Japanese on it is read, laid out (vertical text and furigana included) and made tappable on the photograph itself. Tap a word for its readings, meanings, example sentences and component kanji; tap a kanji for its own screen, with example words grouped by reading and stroke order. Save words and kanji into your own lists, each kept with the patch of the photo it was found in.
 
-**Phase 2 (Android app) in progress, and usable.** Type Japanese and it segments into words with Kuromoji; tap one for its readings, meanings and component kanji; tap a kanji for its own screen, whose Examples tab shows every common word grouped by the reading that kanji takes there. The dictionary ships inside the APK and replaces itself when a newer one is installed.
-
-No camera yet — that is Phase 4. See `docs/progress/phase-02-android-text-input.md` for what is still unfinished, including three verification cases that are not met.
+The bundled dictionary is built from four pinned open datasets — 100.1 MB, byte-reproducible from identical sources, 12 of 12 verification cases passing. `docs/roadmap.md` has the phase table and what is still owed.
 
 ```bash
 python tools/dictbuild/build.py     # ~45 s; sources are committed, no network needed

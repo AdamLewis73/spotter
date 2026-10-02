@@ -101,6 +101,20 @@ class WordLookupViewModelTest {
         assertEquals("先生", settled.selected?.text)
     }
 
+    /**
+     * Brackets, punctuation and bare digits are not words, so they are not
+     * tokens (D-99) — the scan of a real notice put 【 、 『 and 6 in the strip.
+     * The particle の stays: it is Japanese, and keeps its place in the sentence.
+     */
+    @Test
+    fun punctuation_and_digits_are_not_tokens() = runBlocking {
+        val model = viewModel()
+        model.onQueryChanged("【重要】6月の『お知らせ』、")
+
+        val settled = model.awaitSettled { it.tokens.isNotEmpty() }!!
+        assertEquals(listOf("重要", "月", "の", "お知らせ"), settled.tokens.map { it.text })
+    }
+
     /** Clearing the field clears the results rather than leaving them stranded. */
     @Test
     fun clearing_the_query_resets_the_screen() = runBlocking {

@@ -58,10 +58,9 @@ class ScanLayout private constructor(
      * image. The box costs four integers and is already known here, which is the
      * whole argument: capture cheap metadata now even when unused.
      *
-     * Nothing stores it yet — there is no user-data schema until Phase 6 — so
-     * this exists to make sure the Phase 5 side of that bargain is actually
-     * held. Offsets owning no rectangle (separators) are skipped, and a range
-     * covering none returns null.
+     * Stored as `scan_word`'s box when a word is filed from a photo (D-94), and
+     * drawn as that word's list thumbnail (D-95). Offsets owning no rectangle
+     * (separators) are skipped, and a range covering none returns null.
      *
      * *One caveat for the caller:* where V-28 joined two lines into one flow, a
      * word can span them, and the union is then a rectangle enclosing both plus

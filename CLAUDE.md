@@ -70,7 +70,7 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 ## Status
 
-**Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 99.7 MB `spotter.db` (30.3 MB gzipped) from four pinned sources in ~45 seconds, byte-reproducible from identical sources (D-58, D-64). `verify.py` passes 12 of 12 verification cases.
+**Phase 1 — Dictionary Builder: complete.** `tools/dictbuild/` builds a 100.1 MB `spotter.db` (30.1 MB gzipped) from four pinned sources in ~45 seconds, byte-reproducible from identical sources (D-58, D-64). `verify.py` passes 12 of 12 verification cases.
 
 **Phase 2 — Android app, text input only: complete.** Type Japanese → Kuromoji segments it → tap a word → readings, meanings, example sentences and component boxes → tap one → the kanji screen, whose Examples tab is D-04. Longest-match offers the words the parse hides (東京都 → 京都). The dictionary ships in the APK and refreshes itself when it changes. Every `V-##` case this phase owns is met, and the **user-data checkpoint** (D-15–D-18, D-43) it left open was discharged in Phase 6 with Save, as designed.
 
@@ -100,9 +100,11 @@ The project owner has asked to be **stopped before decisions that are expensive 
 
 **Phase 6 is closed.** Two items are named as owed rather than asserted done: **V-30** still wants one real sign photographed on a real phone, which only the project owner can do, and **D-86**'s camera-denied *Type a word* is deferred by the owner. How learners type kanji they cannot read is an open brainstorm the owner wants to lead — see `roadmap.md`'s *Search by reading*.
 
+**Phase 6.5 — Audit: done.** An aside before Phase 7: a read of the whole codebase. It fixed a crash scanning long signs on Android 8–11, a scan sheet that ran under the bottom bar (hiding the word screen's kanji boxes), a selection band that framed the whole line, a picker crash, kanji past the basic plane not being kanji (V-34), and user-typed Japanese rendering in Chinese forms (V-32). With the owner it settled **D-97** (bottom bar in the system font), **D-98** (every text style tagged `ja`; user text takes Noto Sans JP), **D-99** (only words are chips; one swipeable row, in the peek but not the full word screen) and **D-100** (the camera is released 10 s into a frozen frame). Four checks are owed on a device — see `docs/progress/phase-06.5-audit.md`. The attribution screen the data licences require is **Phase 9**, deliberately last.
+
 **Phase 7 — SRS review: not started.** It opens with `roadmap.md`'s standing question: what goes on the back of a review card for a word with several senses.
 
-**Read `docs/progress/phase-06-saved-lists.md` first**, then `phase-05-overlay.md` and `phase-04-camera.md` — which carries the camera and ML Kit knowledge, including two measurement traps that produce confident wrong answers — then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors. Both `phase-03-stroke-order.md` and `phase-04-camera.md` carry how to read the Claude Design project without burning a context window on a 106 KB file.
+**Read `docs/progress/phase-06.5-audit.md` first** — it lists what is owed on a device — **then `phase-06-saved-lists.md`**, then `phase-05-overlay.md` and `phase-04-camera.md` — which carries the camera and ML Kit knowledge, including two measurement traps that produce confident wrong answers — then `phase-02-android-text-input.md` for the build gotchas and device knowledge, several of which present as misleading errors. Both `phase-03-stroke-order.md` and `phase-04-camera.md` carry how to read the Claude Design project without burning a context window on a 106 KB file.
 
 Run it with **`/launch`** (starts it for you to drive) or **`/inspect`** (drives it against specific words and reports). Build with `./gradlew :app:assembleDebug`, which needs `JAVA_HOME` pointing at Android Studio's JBR — there is no other JDK on this machine. AGP 9 removed the Kotlin Android plugin, so most published advice is now a build error.
 

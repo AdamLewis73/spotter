@@ -28,15 +28,11 @@
     <string name="scan_recognize_failed">That photo could not be read. Try again.</string>
     <string name="scan_tap_a_word">Tap a word</string>
     <string name="scan_peek_save">Save</string>
-    <!-- The same button once the word is saved; tapping it again unsaves. -->
-    <string name="scan_peek_saved">Saved</string>
     <string name="scan_peek_full_details">Full details</string>
     <string name="scan_peek_looking_up">Looking up…</string>
     <string name="scan_peek_not_found">Not in the dictionary</string>
-    <string name="scan_overlay">Recognized text. Tap a word to look it up.</string>
 
     <string name="scan_no_camera">This device has no camera Spotter can use.</string>
-    <string name="scan_camera_failed">The camera could not be started.</string>
     <string name="scan_capture_failed">That photo could not be taken. Try again.</string>
 
     <!-- Bottom navigation (D-36, D-90). Three destinations; resist a fourth. -->
@@ -67,7 +63,6 @@
     <string name="saved_cancel">Cancel</string>
 
     <!-- List detail (artboard 2e) -->
-    <string name="list_back">Back to Saved</string>
     <string name="list_empty_title">This list is empty</string>
     <string name="list_empty_body">Words you file into it will appear here, with the photo you found them in.</string>
     <string name="list_add_from_search">＋  Add a word from search</string>

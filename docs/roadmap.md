@@ -17,14 +17,16 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 
 | # | Phase | Status | Output |
 |---|---|---|---|
-| 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 99.7 MB, 30.3 MB gzipped |
+| 1 | Dictionary builder (desktop Python) | **Complete** | `spotter.db` — 100.1 MB, 30.1 MB gzipped (99.7 MB when first measured) |
 | 2 | Android app, text input only | **Complete** — every `V-##` case this phase owns is met, and its one outstanding item, the user-data checkpoint, was discharged in Phase 6 | Paste 先生 → word + kanji screens |
 | 3 | Stroke order tab | **Complete** | KanjiVG animation, design artboard 3b |
 | 4 | CameraX + ML Kit | **Complete** — camera, freeze-frame and ML Kit. One deferred item: the live-preview detection indicator, which has no `V-##` | Raw recognized text into the Phase 2 pipeline |
 | 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save went live in Phase 6 | The real scan experience |
 | 6 | Saved lists | **Complete** — checkpoints settled (D-79, D-80), wireflow settled (D-85 to D-92). Schema v2 with its first migration, Save through the list picker, the Saved and list screens, remove-with-undo (D-93), scan photos with drawn thumbnails (D-94, D-95), and search from inside a list (D-86, D-96). Two items named as owed rather than closed: V-30 wants one real sign on a real phone, and D-86's camera-denied *Type a word* is deferred | Multiple lists, many-to-many |
+| 6.5 | Audit | **Complete** — an aside before Phase 7: a read of the whole codebase for anything broken, messy or done wrong, without changing design or flow. Eight bugs fixed, four decisions taken with the owner (D-97 to D-100). Four checks owed on a device | Fixes, no new features |
 | 7 | SRS review | Not started | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |
+| 9 | Release prep | Not started — **deliberately last** | The in-app attribution screen the data licences require, and whatever else a store release needs |
 
 ### Phase 1 — Dictionary builder
 
@@ -106,7 +108,19 @@ filed from (D-94, D-95); and a word can be found by typing as well as by
 scanning (D-86, D-96). `srs_state` and `review_log` are Phase 7's, and the shape
 they need holds — scheduling hangs off `study_item`, never off a list (V-13).
 
-**A shippable v1 is Phases 1–5.** Phases 6–8 turn it from a lookup tool into a study app. The staging matters: the full spec is a large build, and stalling at 60% is the common failure mode for solo projects of this size.
+### Phase 6.5 — Audit
+
+An aside the project owner asked for between Phases 6 and 7: read everything, fix what is broken or messy, change no design or flow without asking. The full record is `progress/phase-06.5-audit.md`.
+
+What it found that mattered: **a scan of a long sign crashed the app on Android 8–11** (more than 999 SQL variables in one query); **the jade selection band framed the whole line or nothing** (V-33); **kanji past the basic plane were not kanji** (V-34); **user-typed Japanese rendered in Chinese letterforms** (V-32, D-98); and **on a long sign the full-height sheet's word strip pushed the word out of reach**, and **the scan sheet ran under the bottom bar**, hiding the word screen's kanji boxes (D-99). The camera now releases itself behind a frozen frame (D-100).
+
+### Phase 9 — Release prep
+
+Last, by the owner's choice (2026-10-01), because the attribution text can still change until the dataset versions are frozen for release.
+
+- **The attribution screen.** EDRDG's licence for JMdict and KANJIDIC2 requires acknowledgement *on a separate screen reached from a menu, such as "About"* — a launch-screen mention does not satisfy it. `attribution.md` holds the text and the shape. No screen exists yet; a placeholder is fine until then. **Nothing may be distributed before this exists**, including a v1 built from Phases 1–5 alone.
+
+**A shippable v1 is Phases 1–5**, plus the Phase 9 attribution screen. Phases 6–8 turn it from a lookup tool into a study app. The staging matters: the full spec is a large build, and stalling at 60% is the common failure mode for solo projects of this size.
 
 ---
 

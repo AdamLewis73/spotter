@@ -101,6 +101,20 @@ abstract class StageDictionaryAsset : DefaultTask() {
         // this only re-hashes what it names. Parsed with a small regex rather
         // than by adding a JSON library to the build classpath — the shape is
         // fixed and written by build.py.
+        // `python build.py --only <stage>` builds a database missing every
+        // other stage's data, under the same build id as a full build. It is
+        // for iterating on one ingest, never for shipping.
+        if (Regex("\"partial\"\\s*:").containsMatchIn(info.readText())) {
+            throw GradleException(
+                """
+                The dictionary on disk is a partial build (`build.py --only`), so
+                the app would ship with whole tables empty. Rebuild it in full:
+                  cd tools/dictbuild
+                  python build.py
+                """.trimIndent(),
+            )
+        }
+
         val builderSection = Regex("\"builder\"\\s*:\\s*\\{([^}]*)}")
             .find(info.readText())?.groupValues?.get(1)
             ?: throw GradleException("build-info.json has no \"builder\" section — rebuild the dictionary.")

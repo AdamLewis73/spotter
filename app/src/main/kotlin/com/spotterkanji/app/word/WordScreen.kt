@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -40,7 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.spotterkanji.app.ui.theme.SpotterJapanese
+import com.spotterkanji.app.ui.theme.JapaneseFontTransformation
 import com.spotterkanji.app.ui.theme.SpotterTheme
+import com.spotterkanji.app.ui.theme.withJapaneseFont
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiSummary
 import com.spotterkanji.domain.dictionary.MergedReading
@@ -66,10 +67,10 @@ import com.spotterkanji.domain.tokenize.WordMatch
  * - **Archaic readings sit under a dashed rule at reduced opacity** — present,
  *   legible, and visibly not part of the main sequence (V-21, D-53).
  *
- * Two things here are inert until later phases and are built anyway, because
- * they are structure rather than decoration: the **drag handle** becomes real
- * when this is the sheet a scan opens (D-30, Phase 5), and **save** is wired to
- * a callback that does nothing until Phase 6.
+ * The same screen serves three routes: the full-height scan sheet (D-30), the
+ * search opened from a list (D-96), and the typed-lookup harness `/inspect`
+ * drives (D-73). Only the harness shows the text field and the drag handle —
+ * see [standalone].
  */
 @Composable
 fun WordScreen(
@@ -93,24 +94,30 @@ fun WordScreen(
     val tokens = SpotterTheme.tokens
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = tokens.spaceMd)) {
-        // Not in the design, and unavoidable: 2a is drawn as the sheet a scan
-        // opens, and until Phase 4 there is no scan. This field is the only way
-        // to put a word on the screen.
+        // Not in the design: 2a is drawn as the sheet a scan opens. The field
+        // survives for the typed-lookup harness, where it is the only way to
+        // put a word on the screen (D-73).
         if (standalone) OutlinedTextField(
             value = state.query,
             onValueChange = onQueryChanged,
             label = { Text("Japanese text") },
-            placeholder = { Text("先生と生産") },
+            placeholder = { Text("先生と生産", fontFamily = SpotterJapanese) },
             singleLine = true,
+            visualTransformation = JapaneseFontTransformation,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             modifier = Modifier.fillMaxWidth().padding(top = tokens.spaceMd),
         )
 
-        if (state.showTokens) {
-            TokenStrip(
+        // The typed-lookup harness only (D-99). Over a scan the strip belongs to
+        // the peek, and leaves when the sheet opens to this screen, so the word
+        // has the full height. Search opens a single chosen word, so it has
+        // nothing to strip.
+        if (standalone && state.showTokens) {
+            WordStrip(
                 tokens = state.tokens,
                 selected = state.selected,
                 onTokenSelected = onTokenSelected,
+                modifier = Modifier.padding(top = tokens.spaceMd),
             )
         }
 
@@ -300,56 +307,6 @@ private fun AlternateStrip(
                         )
                         .clickable { onAlternateSelected(match) }
                         .padding(horizontal = spacing.spaceSm, vertical = spacing.spaceXs),
-                )
-            }
-        }
-    }
-}
-
-/**
- * The segmented input, one chip per token.
- *
- * This is the text-box stand-in for tapping a word on a photograph: the same
- * "here are the words, pick one" interaction the scan overlay will provide, with
- * the camera and coordinate mapping removed (Phase 5).
- *
- * Particles are shown but muted. They have to keep their place — leaving them
- * out would misrepresent how the sentence divides — while "case marking
- * particle" is not what someone photographing a sign wants explained.
- */
-@Composable
-private fun TokenStrip(
-    tokens: List<Token>,
-    selected: Token?,
-    onTokenSelected: (Token) -> Unit,
-) {
-    val spacing = SpotterTheme.tokens
-    Column(modifier = Modifier.padding(top = spacing.spaceMd)) {
-        Text(
-            text = "TAP A WORD",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(spacing.spaceSm),
-            modifier = Modifier.padding(top = spacing.spaceXs),
-        ) {
-            tokens.forEach { token ->
-                FilterChip(
-                    selected = token == selected,
-                    onClick = { onTokenSelected(token) },
-                    label = {
-                        Text(
-                            text = token.text,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontFamily = SpotterJapanese,
-                            color = if (token.isContentWord) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                    },
                 )
             }
         }
@@ -585,7 +542,7 @@ private fun NotFound(query: String) {
     val tokens = SpotterTheme.tokens
     Column(modifier = Modifier.padding(vertical = tokens.spaceLg)) {
         Text(
-            text = "“$query” is not in the dictionary.",
+            text = "“$query” is not in the dictionary.".withJapaneseFont(),
             style = MaterialTheme.typography.bodyLarge,
         )
         Text(

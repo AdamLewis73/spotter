@@ -8,7 +8,7 @@ The app's core interaction — tapping one specific word on a photograph — has
 
 | Term | Meaning |
 |---|---|
-| **Peek sheet** | The app's own sheet raised partway over the frozen scan, showing a one-line summary of the tapped word. Expanding it reveals the full word screen — they are the same component (D-30). *Not* a Material `ModalBottomSheet`: that dims the photograph the user is reading and owns no back stack, so Phase 5 wrote one (`scan/ScanSheet.kt`). |
+| **Peek sheet** | The app's own sheet raised partway over the frozen scan, showing a one-line summary of the tapped word, with the sign's other words in one swipeable row above it (D-99). Expanding it reveals the full word screen, without that row — they are the same component (D-30). It sits above the app's bottom bar, never under it. *Not* a Material `ModalBottomSheet`: that dims the photograph the user is reading and owns no back stack, so Phase 5 wrote one (`scan/ScanSheet.kt`). |
 | **Word screen** | The expanded sheet. Reading, meanings, component chips, examples. No tabs. |
 | **Kanji screen** | Reached by tapping a component chip. Three tabs. Swaps in place inside the sheet (D-32). |
 | **Component chips** | Small tappable elements on the word screen, one per constituent kanji, showing meanings only (D-06). |
@@ -172,6 +172,8 @@ Whole-word ruby only (D-14): せんせい positioned over 先生 as a unit, neve
 Include a **global furigana toggle.** Advanced learners find constant furigana distracting, and hiding it during review makes recall genuinely harder in a useful way.
 
 **Bundle Noto Sans JP (D-34).** Without an explicit Japanese font, Android may render kanji using Chinese glyph forms — 直, 骨, 令, and 化 all differ visibly between the two. In an app that teaches people to read and write kanji, that is a correctness bug rather than a polish issue.
+
+**And mark the text Japanese (D-98).** Bundling the font covers text the app knows is Japanese. Text the user types — a list name — went through IBM Plex, which has no kanji, and Android filled them in from the system CJK font in Chinese forms. Every typography style now carries the `ja` locale so any such fallback picks the Japanese design, and user text takes Noto Sans JP for its Japanese runs (`withJapaneseFont()`). The bottom bar's labels are the one place the app uses the system font on purpose (D-97).
 
 ## Context of use
 

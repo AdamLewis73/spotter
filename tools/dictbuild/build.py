@@ -138,7 +138,8 @@ def write_meta(db: sqlite3.Connection, sources: dict, bid: str) -> None:
 
 
 def write_build_info(out: Path, sources: dict, bid: str,
-                     builder: dict[str, str]) -> Path:
+                     builder: dict[str, str],
+                     partial: list[str] | None = None) -> Path:
     """Wall-clock provenance, deliberately OUTSIDE the database (D-64).
 
     Answers "when was this built, and from what?" without putting a
@@ -149,6 +150,11 @@ def write_build_info(out: Path, sources: dict, bid: str,
     `builder` is published here so that check can compare hashes against the
     exact file set this build used, instead of keeping its own list of what
     counts as the builder and comparing timestamps (D-65).
+
+    `partial` names the stages an `--only` build ran. Such a database is
+    missing whole tables' worth of data while carrying the same build id as a
+    full build, so without this the Gradle check would stage it into the APK
+    as though it were complete. The check refuses any build that has it.
     """
     info = out.parent / "build-info.json"
     info.write_text(
@@ -158,6 +164,7 @@ def write_build_info(out: Path, sources: dict, bid: str,
                 "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 "database": out.name,
                 "builder": builder,
+                **({"partial": sorted(partial)} if partial else {}),
                 "sources": {
                     name: {"header_date": s.get("header_date"),
                            "version": s.get("version"), "sha256": s["sha256"]}
@@ -219,7 +226,7 @@ def main() -> int:
 
     db = create(args.out)
     write_meta(db, sources, bid)
-    info = write_build_info(args.out, sources, bid, builder)
+    info = write_build_info(args.out, sources, bid, builder, partial=args.only)
 
     for name in stages:
         fn, source_name = STAGES[name]

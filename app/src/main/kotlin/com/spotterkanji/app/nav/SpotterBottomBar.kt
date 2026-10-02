@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
 /**
@@ -60,7 +61,13 @@ internal fun SpotterBottomBar(
                 selected = selected,
                 onClick = { onSelect(destination) },
                 icon = { NavGlyphIcon(glyph = destination.glyph, selected = selected) },
-                label = { Text(stringResource(destination.label)) },
+                label = {
+                    // The phone's own UI font (Roboto on a Pixel), by the project
+                    // owner's choice over IBM Plex: it reads better at this size
+                    // (D-97). Named rather than left to the style, so giving
+                    // labelMedium a typeface later cannot change it by accident.
+                    Text(stringResource(destination.label), fontFamily = FontFamily.Default)
+                },
                 colors = NavigationBarItemDefaults.colors(
                     selectedTextColor = MaterialTheme.colorScheme.primary,
                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,

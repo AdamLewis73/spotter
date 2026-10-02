@@ -62,7 +62,9 @@ jobs:
         # The trailing wildcard catches the *OnDowngrade and *From variants
         # Room added later, which destroy data the same way.
         run: |
-          if grep -rnE '\.fallbackToDestructiveMigration[A-Za-z]*\s*\('                --include='*.kt' --include='*.java'                app/src data/src domain/src 2>/dev/null; then
+          if grep -rnE '\.fallbackToDestructiveMigration[A-Za-z]*\s*\(' \
+               --include='*.kt' --include='*.java' \
+               app/src data/src domain/src 2>/dev/null; then
             echo "::error::fallbackToDestructiveMigration() is banned in all"
             echo "build types (D-17). It deletes the user's saved words to make"
             echo "a migration error go away. Write the migration instead."

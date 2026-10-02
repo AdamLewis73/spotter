@@ -61,8 +61,11 @@ jobs:
             If the diff touches those paths, note only that they changed and
             move on. Never open one to inspect its contents.
 
-            Review the Python under tools/dictbuild/*.py, the SQL in
-            schema.sql, the workflows, and the Markdown in docs/. The project's
+            Review the Kotlin under app/, data/ and domain/ (the Android app,
+            and most of the code), the Python under tools/dictbuild/*.py, the
+            SQL in schema.sql, the workflows, and the Markdown in docs/. The
+            layering rule matters most in Kotlin: data/ and domain/ must not
+            import android.* (D-60). The project's
             conventions are in CLAUDE.md; design decisions are referenced by id
             (D-##) in docs/decisions.md and verification cases (V-##) in
             docs/verification.md.

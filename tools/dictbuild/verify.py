@@ -361,7 +361,7 @@ def main() -> int:
     print(f"{len(CASES) - len(failures)} of {len(CASES)} cases pass"
           + (f"   FAILED: {', '.join(failures)}" if failures else ""))
     print("V-05 is a review check (no dictionary row ids in any user-facing "
-          "contract) and\nhas no user database to check against yet.")
+          "contract):\nthe user database lives on the device, so it is not checked here.")
     return 1 if failures else 0
 
 

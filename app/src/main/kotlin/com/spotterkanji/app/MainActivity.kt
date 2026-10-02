@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -205,7 +206,13 @@ private fun ScanRoute(
                     stage = stage,
                     onStageChanged = { stage = it },
                     onDismiss = words::onSelectionCleared,
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    // Above the app's bottom bar, not under it (D-90). The scan
+                    // screen runs the full height so the photo reaches the
+                    // edges, and the bar is drawn over its foot — which hid the
+                    // peek's Save and Full details behind it.
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = bottomBarHeight),
                 ) { shown ->
                     when {
                         shown == SheetStage.Peek -> PeekContents(
@@ -218,6 +225,9 @@ private fun ScanRoute(
                             canSave = wordState.saveTarget != null,
                             onSave = words::onSaveRequested,
                             onFullDetails = { stage = SheetStage.Full },
+                            tokens = wordState.tokens,
+                            selected = selected,
+                            onTokenSelected = words::onTokenSelected,
                         )
 
                         openKanji != null -> KanjiScreen(

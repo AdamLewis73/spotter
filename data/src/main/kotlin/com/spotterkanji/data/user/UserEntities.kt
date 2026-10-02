@@ -53,7 +53,7 @@ data class StudyItemRow(
     @ColumnInfo(name = "id")
     val id: String,
 
-    /** `WORD` | `KANJI` (D-27). v1 only ever writes `WORD`. */
+    /** `WORD` | `KANJI` (D-27). Both are written in v1 (D-92). */
     @ColumnInfo(name = "type")
     val type: String,
 

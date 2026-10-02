@@ -70,6 +70,15 @@ internal fun ScanOverlay(
     // glyph, so the seams between them do not show.
     val runs = remember(layout) { layout.runs() }
 
+    // The selected word's own runs, built from its characters alone. A run is a
+    // whole line, so the band cannot be one of [runs]: that framed the entire
+    // line when the word began it, and nothing at all when the word sat
+    // further along — 生産 in 先生と生産 got no band. Usually one run; two when
+    // V-28 joined lines and the word crosses the break.
+    val selectedRuns = remember(layout, selection) {
+        if (selection == null) emptyList() else layout.runs { it.offset in selection }
+    }
+
     Canvas(
         modifier = modifier
             .fillMaxSize()
@@ -95,13 +104,9 @@ internal fun ScanOverlay(
         // as "band then patch" in sequence let a *later* run erase an *earlier*
         // run's band — the selection showing up with a side missing.
         //
-        // Every unselected patch first, then every band, then the selected
-        // patches over their own bands.
-        val (selectedRuns, rest) = runs.partition { run ->
-            selection != null && run.offsets.first in selection
-        }
-
-        for (run in rest) drawPatch(frame, run, projection)
+        // Every patch first, then the band, then the selected word's patches
+        // over its band.
+        for (run in runs) drawPatch(frame, run, projection)
         for (run in selectedRuns) drawSelectionBand(colors.primary, run, projection)
         for (run in selectedRuns) drawPatch(frame, run, projection)
     }
@@ -118,8 +123,12 @@ private data class TextRun(val offsets: IntRange, val box: TextBox)
  * a line with the last. The second test is the one that is easy to miss: when
  * V-28 joins two columns into one flow their offsets *are* consecutive, and
  * unioning across them would repaint a rectangle covering everything between.
+ *
+ * [include] narrows it to some characters — the selected word's, for its band.
  */
-private fun ScanLayout.runs(): List<TextRun> {
+private fun ScanLayout.runs(
+    include: (CharacterPlacement) -> Boolean = { true },
+): List<TextRun> {
     val runs = mutableListOf<TextRun>()
     var start: CharacterPlacement? = null
     var previous: CharacterPlacement? = null
@@ -132,7 +141,7 @@ private fun ScanLayout.runs(): List<TextRun> {
         start = null
     }
 
-    for (placement in placements) {
+    for (placement in placements.filter(include)) {
         val last = previous
         val continues = last != null &&
             start != null &&
