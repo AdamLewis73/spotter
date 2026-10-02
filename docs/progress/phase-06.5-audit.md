@@ -11,12 +11,13 @@ anything that changes design or flow to the owner first. Eight bugs are fixed,
 four decisions were taken with the owner (D-97 to D-100), and three verification
 cases came out of it (V-32 to V-34).
 
-**None of the Kotlin was compiled in the session that did this.** It ran in a
-cloud container where Google's Maven repository is blocked, so `:app` and
-`:data` could not build. `:domain` was tested through a scratch Gradle project
-(107 of 107 pass), the dictionary builder ran in full (12 of 12 `verify.py`
-cases), and the trickier Kotlin patterns were checked in isolation. CI is the
-first real build of `:app` and `:data`.
+**It all builds, and the tests run in CI pass.** The session that did the work
+ran in a cloud container where Google's Maven repository is blocked, so it
+could not build `:app` or `:data` itself, but CI built every push: the last
+code commit (`f2bb69c`, run 138) passed the `:domain` and `:data` unit tests,
+assembled the app and compiled the instrumented tests. What CI does not do is
+*run* the instrumented tests — they need a device — so the new cases in
+`DictionaryReadTest` and `WordLookupViewModelTest` have compiled but not run.
 
 ## Next action
 
