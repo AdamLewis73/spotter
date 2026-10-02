@@ -112,7 +112,7 @@ they need holds — scheduling hangs off `study_item`, never off a list (V-13).
 
 An aside the project owner asked for between Phases 6 and 7: read everything, fix what is broken or messy, change no design or flow without asking. The full record is `progress/phase-06.5-audit.md`.
 
-What it found that mattered: **a scan of a long sign crashed the app on Android 8–11** (more than 999 SQL variables in one query); **the jade selection band framed the whole line or nothing** (V-33); **kanji past the basic plane were not kanji** (V-34); **user-typed Japanese rendered in Chinese letterforms** (V-32, D-98); and **on a long sign the full-height sheet's word strip pushed the word out of reach**, and **the peek's buttons sat behind the bottom bar** (D-99). The camera now releases itself behind a frozen frame (D-100).
+What it found that mattered: **a scan of a long sign crashed the app on Android 8–11** (more than 999 SQL variables in one query); **the jade selection band framed the whole line or nothing** (V-33); **kanji past the basic plane were not kanji** (V-34); **user-typed Japanese rendered in Chinese letterforms** (V-32, D-98); and **on a long sign the full-height sheet's word strip pushed the word out of reach**, and **the scan sheet ran under the bottom bar**, hiding the word screen's kanji boxes (D-99). The camera now releases itself behind a frozen frame (D-100).
 
 ### Phase 9 — Release prep
 

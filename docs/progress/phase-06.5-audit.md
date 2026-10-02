@@ -61,10 +61,14 @@ screen shows** — listed under *Owed on a device* below. Then Phase 7.
 - [x] **User-typed Japanese could render in Chinese forms** (V-32, D-98).
 - [x] **On a long sign the full-height sheet's word strip pushed the word out of
       reach** (D-99). 63 chips, 528 dp; 0 dp left for the word on a short phone.
-- [x] **The peek's Save and Full details sat behind the bottom bar.** Since D-90
-      put the bar on the camera, the scan screen runs under it and only the
-      shutter was lifted clear. Found while fitting the word strip into the peek;
-      read from the layout code, not yet seen on a screen.
+- [x] **The scan sheet ran under the bottom bar.** Since D-90 put the bar on
+      the camera, the scan screen runs under it and only the shutter was lifted
+      clear. Measured at Pixel 9 size: the peek's buttons cleared the bar with
+      gesture navigation but were half hidden with three-button navigation or a
+      three-line meaning, and on a word screen long enough to scroll, the
+      component boxes stayed behind the bar even scrolled to the end. First
+      reported as "the buttons are always hidden", which was wrong — the peek's
+      contents stack from its top, so short content cleared the bar.
 
 ### Decided with the owner
 
