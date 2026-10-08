@@ -129,6 +129,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-98 | No kanji may render in Chinese forms: every text style is tagged Japanese, and user text takes Noto Sans JP | UI |
 | D-99 | Only words are chips; the word strip is one swipeable row, in the peek but not the full-height word screen | UI |
 | D-100 | A frozen frame releases the camera after 10 seconds; the photo covers the rebind | UI |
+| D-101 | The bottom bar is raised chrome — `surfaceVariant` with a top hairline — so sheets don't run into it | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1460,6 +1461,18 @@ Phase 4 kept the camera bound for as long as a frame was frozen, because rebindi
 *Not verified on a device yet* (`progress/phase-06.5-audit.md`). 10 s is a starting guess, to be tuned against real use.
 
 *Cost to reverse:* low; one composable.
+
+**D-101 — The bottom bar is raised chrome: `surfaceVariant`, with a hairline in `outline` along its top edge.**
+
+Settled by the project owner on 2026-10-07, from the Phase 6.5 device checks. The bar was drawn in `surface`, which is also the scan sheet's colour, so the peek ran straight into the bar with nothing between them — the sheet's buttons appeared to sit on the bar rather than above it. Three treatments were mocked on a real screenshot: raised (`surfaceVariant` plus a hairline), recessed (the ground colour plus a hairline), and a hairline alone. Raised was chosen because it brings the bar *forward*, which is what was asked for, and `surfaceVariant` is the palette's existing "raised chrome" step (D-67), so no colour was added.
+
+The hairline is not decoration. The Saved cards are `surfaceVariant` too, and a list scrolled to the bar would otherwise meet it edge-on in the same colour.
+
+In the light theme the raised step is slightly *darker* than the sheet, not lighter; it reads correctly there, and was checked on the emulator in both themes.
+
+Not checked against the Claude Design project — the bar there may be drawn differently. The owner expects to **redesign the bar later**; this is the interim treatment, not a final design.
+
+*Cost to reverse:* near zero. One composable, no stored state.
 
 ---
 

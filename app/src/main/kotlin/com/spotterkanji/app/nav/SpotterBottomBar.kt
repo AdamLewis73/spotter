@@ -13,8 +13,10 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -47,13 +49,24 @@ internal fun SpotterBottomBar(
     onSelect: (SpotterDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val hairline = MaterialTheme.colorScheme.outline
     NavigationBar(
-        modifier = modifier,
-        // The bar sits over a photograph on the Scan destination, so it needs an
-        // opaque ground of its own — the default container colour is derived
-        // from the surface and would let the viewfinder show through behind the
-        // labels.
-        containerColor = MaterialTheme.colorScheme.surface,
+        // A hairline along the top edge, so the bar stays distinct from anything
+        // above it drawn in its own colour — the Saved cards are surfaceVariant
+        // too (D-101).
+        modifier = modifier.drawWithContent {
+            drawContent()
+            val y = 0.5.dp.toPx()
+            drawLine(hairline, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+        },
+        // Raised chrome, one step off the sheets and cards (D-101). It was
+        // `surface`, which is the scan sheet's colour, so the peek ran straight
+        // into the bar with no edge between them. Opaque either way: on Scan it
+        // sits over the viewfinder.
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        // Material tints a bar by its elevation; the colour above is the one
+        // chosen, so nothing is added to it.
+        tonalElevation = 0.dp,
     ) {
         SpotterDestination.entries.forEach { destination ->
             val selected = destination == current
@@ -73,7 +86,8 @@ internal fun SpotterBottomBar(
                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     // The jade pill behind a selected item would fight the dot,
                     // which is already carrying selection. Colour does the work.
-                    indicatorColor = MaterialTheme.colorScheme.surface,
+                    // Same colour as the bar, so the pill is not drawn at all.
+                    indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
                 ),
             )
         }
