@@ -129,7 +129,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-98 | No kanji may render in Chinese forms: every text style is tagged Japanese, and user text takes Noto Sans JP | UI |
 | D-99 | Only words are chips; the word strip is one swipeable row, in the peek but not the full-height word screen | UI |
 | D-100 | A frozen frame releases the camera after 10 seconds; the photo covers the rebind | UI |
-| D-101 | The bottom bar is raised chrome — `surfaceVariant` with a top hairline — so sheets don't run into it | UI |
+| D-101 | The bottom bar is raised chrome — `surfaceVariant` with a top hairline — 70dp, overlapping a gesture strip | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1462,7 +1462,7 @@ Phase 4 kept the camera bound for as long as a frame was frozen, because rebindi
 
 *Cost to reverse:* low; one composable.
 
-**D-101 — The bottom bar is raised chrome: `surfaceVariant`, with a hairline in `outline` along its top edge.**
+**D-101 — The bottom bar is raised chrome: `surfaceVariant`, with a hairline in `outline` along its top edge. Its row is 70dp, and on gesture navigation it overlaps the gesture strip by 16dp.**
 
 Settled by the project owner on 2026-10-07, from the Phase 6.5 device checks. The bar was drawn in `surface`, which is also the scan sheet's colour, so the peek ran straight into the bar with nothing between them — the sheet's buttons appeared to sit on the bar rather than above it. Three treatments were mocked on a real screenshot: raised (`surfaceVariant` plus a hairline), recessed (the ground colour plus a hairline), and a hairline alone. Raised was chosen because it brings the bar *forward*, which is what was asked for, and `surfaceVariant` is the palette's existing "raised chrome" step (D-67), so no colour was added.
 
@@ -1470,7 +1470,16 @@ The hairline is not decoration. The Saved cards are `surfaceVariant` too, and a 
 
 In the light theme the raised step is slightly *darker* than the sheet, not lighter; it reads correctly there, and was checked on the emulator in both themes.
 
-Not checked against the Claude Design project — the bar there may be drawn differently. The owner expects to **redesign the bar later**; this is the interim treatment, not a final design.
+**Height, settled 2026-10-08.** The owner found the bar too tall, with far more space below the labels than above the icons. Measured, it was two empty margins stacked: Material's 80dp row left 24dp under the labels, and Android's 23dp gesture strip sat under that — 17dp above the icons against ~33dp below the labels, 103dp in all. Two fixes were tried and measured on the emulator:
+
+- A **64dp row** (Material's short-bar height) trimmed both ends equally, so the imbalance stayed — 9dp above against ~25dp below.
+- **Overlapping the gesture strip.** On gesture navigation the row's bottom margin now sits inside the strip; taps there still reach the app, since the system only takes the upward swipe. At 64dp this gave 9dp each side and read as scrunched; the owner asked for about 12dp, which a **70dp** row gives: 12.2dp above the icons, 11.8dp from the labels to the handle, 77dp in all.
+
+The overlap applies only where the strip is not tappable. `WindowInsets.tappableElement` is the full button strip on three-button navigation and zero for a gesture handle, so on a three-button phone the bar sits wholly above the buttons — checked on the emulator in that mode. The scan sheet needed no change: it measures the bar's height through the Scaffold rather than assuming one.
+
+The 16dp overlap and the 12dp clearance are measured against a Pixel 9 emulator's strip. Another phone's handle may sit a little higher or lower; it has not been checked on a real device.
+
+Not checked against the Claude Design project — the bar there may be drawn differently. The owner expects to **redesign the bar later**; this is the interim treatment, not a final design, and the owner expects another pass on its spacing too.
 
 *Cost to reverse:* near zero. One composable, no stored state.
 
