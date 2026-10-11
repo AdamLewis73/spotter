@@ -99,7 +99,7 @@ Saved lists, then FSRS review, then export/import.
 
 **Settled before Phase 6, as it had to be (D-79):** Spotter schedules reviews itself *and* exports to Anki — the scheduler first, because building export first hands the retention loop away before there is one, and the beginner this app is aimed at does not run Anki. So Phase 7 is unchanged and Phase 8 gains a second export format.
 
-~~**Open for Phase 7:** what goes on the **back of a review card** for a word with several senses.~~ — **settled 2026-10-11 (D-102):** the main sense leads and the learner grades on it; the other senses sit smaller beneath. The front, the graded reading and the photo followed the same day (D-103, D-104), and reading and writing keep separate schedules (D-105). Still open: what a **kanji** card shows, and whether every word gets a write card.
+~~**Open for Phase 7:** what goes on the **back of a review card** for a word with several senses.~~ — **settled 2026-10-11 (D-102):** the main sense leads and the learner grades on it; the other senses sit smaller beneath. The front, the graded reading and the photo followed the same day (D-103, D-104), and reading and writing keep separate schedules (D-105). A kanji card's back is its meanings in KANJIDIC2's order, cut to fit (D-106). Still open: the rest of the kanji card, and whether every word gets a write card.
 
 **Phase 6 closed 2026-09-22.** The study loop has a front half: words are saved
 only by being filed (D-88, D-89), through a picker that writes nothing until

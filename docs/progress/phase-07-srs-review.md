@@ -63,11 +63,15 @@ written and tested.
 
 - **Does every saved word get a write card, or does the learner opt in?**
   D-105 gives writing its own schedule; whether it exists for every word is
-  open.
+  open. A write card is drawn by hand on a canvas and self-graded after
+  *Check* (artboard 2c, D-72) — there is no handwriting recognition. Its prompt
+  needs the reading as well as the meaning, since "teacher" alone is 先生 or
+  教師; confirm against the artboard.
 
-- **What does a kanji card's back show?** D-92 makes kanji study items, and
-  KANJIDIC2 gives a kanji a list of meanings rather than senses, so D-102 does
-  not carry over directly.
+- ~~**What does a kanji card's back show?**~~ — **resolved 2026-10-11
+  (D-106):** its meanings in KANJIDIC2's order, cut to fit with a count of the
+  rest. Still open for kanji: the front, whether readings appear or are graded,
+  and what a pass means.
 
 - **The `srs_state` / `review_log` schema** — a checkpoint (see Next action).
 

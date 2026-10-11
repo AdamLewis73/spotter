@@ -134,6 +134,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-103 | A word card's front is the written form; a pass means recalling the reading **and** the main sense | SRS |
 | D-104 | The scan photo is on the back of a card, never the front | SRS |
 | D-105 | **Each card kind has its own schedule: `srs_state` is keyed by item and kind** | SRS |
+| D-106 | A kanji card's back is its meanings in KANJIDIC2's order, cut to fit with a count of the rest | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -986,6 +987,16 @@ What does not change: **scheduling never hangs off a list** (D-29, V-13). A word
 *Still open:* whether every saved word gets a write card automatically or the learner opts in — writing every word is heavy for a beginner — and which kinds a **kanji** item has.
 
 *Cost to reverse:* **high once review history exists.** Merging two schedules into one, or splitting one into two, means inventing state the learner never earned. This is the decision the schema draft builds on.
+
+**D-106 — A kanji card's back is the kanji's meanings in KANJIDIC2's order, cut to the space available with a count of the rest.**
+
+Settled by the project owner on 2026-10-11. D-92 makes kanji study items, and D-102 could not carry over as written: KANJIDIC2 gives a kanji one flat list of meanings, not separate senses. So the kanji card does the same thing by other means — the leading meanings, as many as fit, then "+N" for the rest — the same shape as a many-sense word. KANJIDIC2's lists are short (手 has one meaning, 先 five), so the cut will rarely show.
+
+*"Most common" means KANJIDIC2's order.* The dictionary carries no per-meaning frequency; its editors list the principal meanings first (生: "life, genuine, birth"; 先: "before, ahead, previous, future, precedence"), and that order is what the card follows. It is also the order the kanji screen and `snapshot_gloss` already use (D-43), so the card agrees with what the learner saw when they saved it.
+
+*Not decided here:* the front (presumably the kanji alone, as D-103 does for words), whether the kanji's readings appear or are graded, and what a pass means for a list of meanings. Open Phase 7 questions.
+
+*Cost to reverse:* near zero. Display only.
 
 ---
 
