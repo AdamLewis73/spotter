@@ -99,7 +99,7 @@ Saved lists, then FSRS review, then export/import.
 
 **Settled before Phase 6, as it had to be (D-79):** Spotter schedules reviews itself *and* exports to Anki — the scheduler first, because building export first hands the retention loop away before there is one, and the beginner this app is aimed at does not run Anki. So Phase 7 is unchanged and Phase 8 gains a second export format.
 
-**Open for Phase 7:** what goes on the **back of a review card** for a word with several senses. 甘い is "sweet; sugary; mild; naive; lenient" — all of it, or the primary sense only, or something the user chooses? This is a flashcard design question, not a data or scanning one (D-44), and it is the only part of the sense-disambiguation discussion that remains unresolved.
+~~**Open for Phase 7:** what goes on the **back of a review card** for a word with several senses.~~ — **settled 2026-10-11 (D-102):** the main sense leads and the learner grades on it; the other senses sit smaller beneath. Still open: the card's **front**, and what a **kanji** card's back shows.
 
 **Phase 6 closed 2026-09-22.** The study loop has a front half: words are saved
 only by being filed (D-88, D-89), through a picker that writes nothing until

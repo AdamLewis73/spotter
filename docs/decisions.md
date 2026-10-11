@@ -130,6 +130,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-99 | Only words are chips; the word strip is one swipeable row, in the peek but not the full-height word screen | UI |
 | D-100 | A frozen frame releases the camera after 10 seconds; the photo covers the rebind | UI |
 | D-101 | The bottom bar is raised chrome — `surfaceVariant` with a top hairline — 70dp, overlapping a gesture strip | UI |
+| D-102 | A word card's back leads with its main sense, the rest smaller beneath; graded on the main sense | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -932,6 +933,28 @@ So the staleness problem needs no mechanism, and what is left is a choice about 
 - **Re-filing through the picker puts it at the top.** That is a new decision to keep the word here, made later, and the user will look for it where the newest things are — the same reasoning D-82 applied to the Saved list.
 
 Both revive the same membership row, so the unique index is satisfied and nothing is orphaned; they differ only in whether `added_at` moves. In code they are two methods, `restoreToList` and `addToList`, rather than one method and a flag, so every call site says which of the two it means. Settled by the project owner.
+
+**D-102 — A word card's back leads with its main sense; the other senses sit smaller beneath it. The learner grades on the main sense alone.**
+
+Settled by the project owner on 2026-10-11, opening Phase 7. This was the question D-44 left open: what a review card shows for a word with several senses.
+
+How often it arises, measured on the dictionary: of 44,311 common words, **65% have one sense**, so the question does not exist for them. 20% have two, 7% three, and 7% four or more — and the many-sense words are the everyday ones on signage: 甘い has 9, 手 13, 取る 18.
+
+- **The main sense is the first sense of the saved `(text, reading)` entry**, after D-54's filters — the same line the peek shows and the same one `snapshot_gloss` records at save (D-43). The card and the moment of saving agree on what the word means.
+- **The other senses are shown, smaller, beneath it**, cut after a few with a count of the rest. Nothing is hidden: the senses that make a word worth learning in context (D-44) stay on the card. The full word screen remains one tap away.
+- **The grade is about the main sense only.** Remembering 甘い as "sweet" is a pass; nobody is marked down for not recalling "lightly salted". Without this rule a many-sense card has no clear pass, and self-graded SRS degrades when the learner cannot tell what they are grading.
+
+Three alternatives were shown on the 甘い card and declined:
+
+- **Every sense, equally.** Complete, but 取る is an 18-line scroll with no clear pass.
+- **The main sense alone.** Cleanest, but hides exactly what D-44 says the app is for.
+- **Senses the learner picks at save.** Most faithful to the sign they saw, but it adds a step to Save, which D-61 wants as light as possible, and the picker carries no reading to anchor a sense choice (D-47).
+
+*Read live, not from the snapshot.* JMdict editors reorder senses between releases, so the main sense is looked up when the card is shown. `snapshot_gloss` is the fallback only when the entry can no longer be found (D-40, D-43) — a card never goes blank.
+
+*Not decided here:* the **front** of the card, and what a **kanji** card's back shows (D-92 makes kanji study items; KANJIDIC2 gives a kanji meanings, not senses). Both are open Phase 7 questions.
+
+*Cost to reverse:* low. A display and grading rule; `srs_state` and `review_log` record grades, not which senses were shown.
 
 ---
 
