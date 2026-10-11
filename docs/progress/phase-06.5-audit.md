@@ -1,7 +1,7 @@
 # Phase 6.5 — Audit
 
-**Status:** done — four checks owed on a device
-**Updated:** 2026-10-01
+**Status:** done — the four device checks passed on 2026-10-04
+**Updated:** 2026-10-07
 
 ## Current state
 
@@ -21,24 +21,42 @@ assembled the app and compiled the instrumented tests. What CI does not do is
 
 ## Next action
 
-**Run it on the emulator with `/launch` and look at the four things only a
-screen shows** — listed under *Owed on a device* below. Then Phase 7.
+**Phase 7.** The four things only a screen shows were checked on the Pixel 9
+emulator (English locale) on 2026-10-04 and all pass — below. The instrumented
+cases above have still only compiled; nothing in that session ran
+`connectedAndroidTest`.
 
-## Owed on a device
+## Checked on a device
 
-- [ ] **The camera handover (D-100).** Freeze a frame, wait more than 10 s,
+Driven by hanging `sign-horizontal.png` in the emulator's virtual scene, as
+`phase-04-camera.md` describes.
+
+- [x] **The camera handover (D-100).** Freeze a frame, wait more than 10 s,
       press Retake: the photo should hold, then fade into the live picture —
       never black. `adb shell dumpsys media.camera` while idle should show the
       camera closed. Tune the 10 s there.
-- [ ] **The selection band (V-33).** Tap a word in the middle of a line: it gets
+      *Passed:* released 10–11 s after the shutter; four Retakes sampled at
+      0.12–0.87 s showed the photo, then the live view, never black. Emulator
+      screencaps are ~0.8 s apart, so a flash far shorter could slip past.
+- [x] **The selection band (V-33).** Tap a word in the middle of a line: it gets
       the band, and only it. The band reaches about a fifth of a glyph past the
       word and may nick the neighbours' edges — judge whether that reads.
-- [ ] **Japanese forms in user text (V-32)**, on an emulator set to English.
-- [ ] **The peek (D-99).** Tap a word on a scan: the peek sits on top of the
+      *Passed:* 生産 and 学生 mid-line framed alone. 先生's band touches と; the
+      owner judged that acceptable for now.
+- [x] **Japanese forms in user text (V-32)**, on an emulator set to English.
+      *Passed:* 令 in the Japanese form on the Saved card, picker row, rename
+      field while typing, and the not-in-the-dictionary line. *Food* on the
+      Saved card is the system font, not Plex — `titleMedium` has no family;
+      that is the open question below, not a V-32 fault.
+- [x] **The peek (D-99).** Tap a word on a scan: the peek sits on top of the
       bottom bar with Save and Full details visible, and the word strip across
       its top. Swipe the strip; tap a chip and the band moves on the photo. Drag
       up — the strip is gone; Back — it returns. Try a short emulator too
       (640 dp): the peek grows to fit rather than clipping its buttons.
+      *Passed,* all of it. At 640 dp the taller peek covers the sign's lower
+      line, so a word tapped there is hidden behind the sheet — nothing breaks.
+      The peek also ran into the bottom bar in the same colour, which became
+      D-101.
 
 ## Done
 
