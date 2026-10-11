@@ -57,7 +57,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-26 | FSRS, not SM-2 or a custom algorithm | SRS |
 | D-27 | Study items polymorphic (`type`) from day one | SRS |
 | D-28 | Saved lists are many-to-many via a join table | SRS |
-| D-29 | **Scheduling belongs to the item; lists only filter** | SRS |
+| D-29 | **Scheduling belongs to the item; lists only filter** *(one row per item SUPERSEDED by D-105)* | SRS |
 | D-30 | Peek sheet and word screen are one expanding component | UI |
 | D-31 | Peek state only on the scan screen | UI |
 | D-32 | Kanji screen swaps in place inside the sheet | UI |
@@ -130,7 +130,10 @@ Scan for the relevant entry rather than reading the whole file.
 | D-99 | Only words are chips; the word strip is one swipeable row, in the peek but not the full-height word screen | UI |
 | D-100 | A frozen frame releases the camera after 10 seconds; the photo covers the rebind | UI |
 | D-101 | The bottom bar is raised chrome — `surfaceVariant` with a top hairline — 70dp, overlapping a gesture strip | UI |
-| D-102 | A word card's back leads with its main sense, the rest smaller beneath; graded on the main sense | SRS |
+| D-102 | A word card's back leads with its main sense, the rest smaller beneath; only the main sense is graded | SRS |
+| D-103 | A word card's front is the written form; a pass means recalling the reading **and** the main sense | SRS |
+| D-104 | The scan photo is on the back of a card, never the front | SRS |
+| D-105 | **Each card kind has its own schedule: `srs_state` is keyed by item and kind** | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -852,7 +855,7 @@ The `study_item` table carries a `type` discriminator (`WORD` | `KANJI`) from th
 **D-28 — Saved lists are many-to-many, via a join table.**
 Users can create named lists ("Street Signs", "Food Menu"). A `list_id` column on the study item would restrict each word to a single list — but the same word genuinely appears on both a restaurant menu and a street sign, and the user will want it in both.
 
-**D-29 — Scheduling belongs to the study item; lists only filter review sessions.**
+**D-29 — Scheduling belongs to the study item; lists only filter review sessions.** *"Exactly one `srs_state` row per study item" is **SUPERSEDED by D-105**: one row per item per card kind. That lists never schedule still stands.*
 
 There is exactly one `srs_state` row per study item. It hangs off `study_item`, **not** off list membership.
 
@@ -934,7 +937,7 @@ So the staleness problem needs no mechanism, and what is left is a choice about 
 
 Both revive the same membership row, so the unique index is satisfied and nothing is orphaned; they differ only in whether `added_at` moves. In code they are two methods, `restoreToList` and `addToList`, rather than one method and a flag, so every call site says which of the two it means. Settled by the project owner.
 
-**D-102 — A word card's back leads with its main sense; the other senses sit smaller beneath it. The learner grades on the main sense alone.**
+**D-102 — A word card's back leads with its main sense; the other senses sit smaller beneath it. Of the senses, only the main one is graded.**
 
 Settled by the project owner on 2026-10-11, opening Phase 7. This was the question D-44 left open: what a review card shows for a word with several senses.
 
@@ -942,7 +945,7 @@ How often it arises, measured on the dictionary: of 44,311 common words, **65% h
 
 - **The main sense is the first sense of the saved `(text, reading)` entry**, after D-54's filters — the same line the peek shows and the same one `snapshot_gloss` records at save (D-43). The card and the moment of saving agree on what the word means.
 - **The other senses are shown, smaller, beneath it**, cut after a few with a count of the rest. Nothing is hidden: the senses that make a word worth learning in context (D-44) stay on the card. The full word screen remains one tap away.
-- **The grade is about the main sense only.** Remembering 甘い as "sweet" is a pass; nobody is marked down for not recalling "lightly salted". Without this rule a many-sense card has no clear pass, and self-graded SRS degrades when the learner cannot tell what they are grading.
+- **Of the senses, the grade is about the main one only.** Remembering 甘い as "sweet" is a pass; nobody is marked down for not recalling "lightly salted". Without this rule a many-sense card has no clear pass, and self-graded SRS degrades when the learner cannot tell what they are grading.
 
 Three alternatives were shown on the 甘い card and declined:
 
@@ -952,9 +955,37 @@ Three alternatives were shown on the 甘い card and declined:
 
 *Read live, not from the snapshot.* JMdict editors reorder senses between releases, so the main sense is looked up when the card is shown. `snapshot_gloss` is the fallback only when the entry can no longer be found (D-40, D-43) — a card never goes blank.
 
-*Not decided here:* the **front** of the card, and what a **kanji** card's back shows (D-92 makes kanji study items; KANJIDIC2 gives a kanji meanings, not senses). Both are open Phase 7 questions.
+*Not decided here:* what a **kanji** card's back shows (D-92 makes kanji study items; KANJIDIC2 gives a kanji meanings, not senses) — an open Phase 7 question. The card's front, and that the reading is graded too, are D-103.
 
 *Cost to reverse:* low. A display and grading rule; `srs_state` and `review_log` record grades, not which senses were shown.
+
+**D-103 — A word card's front is the written form alone. To pass, the learner recalls the reading *and* the main sense.**
+
+Settled by the project owner on 2026-10-11, with D-102. Front: 先生, nothing else. Back: the reading, せんせい, then the senses as D-102 lays them out. A pass means both were recalled.
+
+The reading is graded because it is the app's core idea, not a detail: 生 is せい in 先生 and なま on a beer tap, and the kanji screen's Examples tab exists to teach exactly that (D-04). A card that showed the reading on the front, or revealed it ungraded, would never practise it. Both were offered and declined: furigana on the front makes the card easier and the reading unpractised; an ungraded reading on the back is seen every time and never tested.
+
+The reading is the saved one — the `reading` half of the item's `(text, reading)` identity (D-12) — so a learner who saved 上手 as じょうず is tested on じょうず.
+
+*Cost to reverse:* low. A display and grading rule; grades already recorded stay valid as history.
+
+**D-104 — The scan photo appears on the back of a card, not the front.**
+
+Settled by the project owner on 2026-10-11. The crop of the sign a word was filed from (D-95) is revealed with the answer, as a memory hook — "the ramen shop sign" — which is principle 6's case for keeping the photo at all.
+
+Not on the front, because a photo can carry the answer: a beer tap beside 生 says "draft" before anything has been recalled, and grades inflate. A word with no photo — saved by search (D-96), or whose photo write failed (D-94) — shows the back without one; that is a normal card, not a degraded one. Which photo shows when a word has several (D-83) is decided when the card is built.
+
+*Cost to reverse:* near zero. Display only.
+
+**D-105 — Each kind of review card has its own schedule. `srs_state` is keyed by study item *and* card kind.** *Supersedes D-29's "exactly one `srs_state` row per study item"; D-29's point that lists never schedule stands.*
+
+Settled by the project owner on 2026-10-11, before the schema is drafted. Phase 7 builds two kinds of card: **read it** (D-103 — see 先生, recall its reading and meaning) and **write it** (artboard 2c, D-72 — see the meaning, write the word, then check). They are different memories at very different difficulties: a learner can read 先生 at sight for months and still be unable to write 先. One FSRS state serving both would have to give one interval to two difficulties, and would get both wrong. Separate state gives each its own: 先生 might be due to read in 30 days and to write in 2.
+
+What does not change: **scheduling never hangs off a list** (D-29, V-13). A word in three lists still has one schedule per card kind, not three. And the kind is a column in the key, not a table per kind, so a third kind later is a new value rather than a migration. That is also why "reading only now, writing later" was offered and not needed: with the kind in the key from the start, either order costs the same.
+
+*Still open:* whether every saved word gets a write card automatically or the learner opts in — writing every word is heavy for a beginner — and which kinds a **kanji** item has.
+
+*Cost to reverse:* **high once review history exists.** Merging two schedules into one, or splitting one into two, means inventing state the learner never earned. This is the decision the schema draft builds on.
 
 ---
 

@@ -392,11 +392,11 @@ Two guards sit on top of it, both paid for by a failing test:
 
 ## Phase 6–7 — Study loop
 
-### V-13 · One schedule per item across multiple lists (D-29)
+### V-13 · One schedule per item across multiple lists (D-29, D-105)
 
 Setup: save 先生, add it to two lists ("Street Signs" and "Food Menu"), review it once.
 
-Expect **one** `srs_state` row and **one** due date. If the word appears twice in a review session, or has two independent schedules, scheduling has been attached to list membership instead of to the study item — which doubles the user's workload and corrupts FSRS's model of their retention.
+Expect **one** `srs_state` row and **one** due date **per card kind** — with only read cards, exactly one. *Corrected 2026-10-11:* this said one row per item; D-105 gives each card kind its own schedule. Lists still never multiply it. If the word appears twice for the same card kind in a review session, or has two independent schedules for one kind, scheduling has been attached to list membership instead of to the study item — which doubles the user's workload and corrupts FSRS's model of their retention.
 
 ### V-14 · Study item type discriminator populated (D-27, D-92)
 

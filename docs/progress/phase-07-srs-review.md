@@ -5,17 +5,18 @@
 
 ## Current state
 
-No code yet. The first design question is settled: a word card's back leads
-with the main sense and is graded on it, with the other senses smaller beneath
-(D-102).
+No code yet. The card is settled: the front is the written form alone; the
+back gives the reading, then the main sense with the others smaller beneath it,
+and the scan photo; a pass means recalling the reading and the main sense
+(D-102, D-103, D-104). Reading and writing a word keep separate schedules, so
+`srs_state` is keyed by item and card kind (D-105).
 
 ## Next action
 
-**Settle the card's front, then the schema.** The front decides what is being
-recalled — meaning, reading, or both — and so what a grade means. Then
-`srs_state` and `review_log`: the schema is the phase's checkpoint, because once
-learners have review history its shape can only change by migrating it. Bring a
-draft to the owner before writing the entities.
+**Draft the `srs_state` and `review_log` schema and bring it to the owner
+before writing any entity.** It is the phase's checkpoint: once learners have
+review history its shape can only change by migrating it. D-105 fixes the key —
+item and card kind.
 
 What Phase 6 leaves ready: `study_item` exists with `(text, reading, type)`
 identity, saved words are the filed ones (D-88, D-89), and `srs_state` hangs off
@@ -56,9 +57,13 @@ written and tested.
   senses?**~~ — **resolved 2026-10-11 (D-102):** the main sense leads and is
   what the learner grades; the other senses sit smaller beneath it.
 
-- **What is on the front of a card?** The written form alone, or with the
-  scan photo — principle 6 calls the photo a memory hook, but it may give the
-  answer away. And is the reading recalled, shown, or part of the back?
+- ~~**What is on the front of a card?**~~ — **resolved 2026-10-11:** the
+  written form alone; the reading and main sense are both recalled (D-103);
+  the photo is on the back (D-104).
+
+- **Does every saved word get a write card, or does the learner opt in?**
+  D-105 gives writing its own schedule; whether it exists for every word is
+  open.
 
 - **What does a kanji card's back show?** D-92 makes kanji study items, and
   KANJIDIC2 gives a kanji a list of meanings rather than senses, so D-102 does
@@ -70,7 +75,7 @@ written and tested.
 
 - FSRS, not SM-2 or anything hand-rolled (D-26).
 - Lists only filter; they never own scheduling (D-29). A word in three lists is
-  still one schedule.
+  still one schedule per card kind (D-105).
 - Kanji are study items in v1 (D-92, superseding D-01), so review has to handle
   `KANJI` cards as well as `WORD` ones. The kanji screen's Save already files
   them, keyed `(character, "", KANJI)`.
