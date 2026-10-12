@@ -80,6 +80,17 @@ fun String.isSingleKanji(): Boolean {
     return points.size == 1 && isKanji(points[0].first)
 }
 
+/**
+ * Whether this string contains at least one kanji — the test for whether a word
+ * can be saved in v1 (D-110).
+ *
+ * A kana-only word (トイレ, これ) has no kanji for the app to teach and nothing
+ * for the review card's reading field to test (D-107), so it stays a lookup.
+ * Code-point aware like [isKanji]: 𠮟る contains a kanji although neither half
+ * of 𠮟 is one.
+ */
+fun String.containsKanji(): Boolean = codePointsWithIndex().any { (codePoint, _) -> isKanji(codePoint) }
+
 /** Whether this string contains any kana or kanji — Japanese *writing*, as opposed to punctuation. */
 fun String.hasKanaOrKanji(): Boolean = codePointsWithIndex().any { (codePoint, _) ->
     isKanji(codePoint) || isKana(codePoint)

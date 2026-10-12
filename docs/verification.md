@@ -445,6 +445,19 @@ The trap: the query that finds words by prefix orders them by frequency, and an 
 
 **Test it on 孝, not on 上手.** 上手 was the canonical example of this family and stopped exhibiting it when D-84 added the reading-level tiebreak. A case written on 上手 passes with the status rule deleted — confirmed by doing exactly that on 2026-09-16, which is how this case came to be written on a different word.
 
+### V-35 · A kana-only word is found but cannot be saved (D-110)
+
+Setup: look up トイレ, then 先生. On a scan, tap a kana word and then a kanji word on the same sign.
+
+| Check | Expected |
+|---|---|
+| トイレ on the word screen | meanings shown; **no ✚** — an empty space keeps the word centred |
+| トイレ on the peek | meaning shown; **no Save**, *Full details* fills the row |
+| 先生 on both | Save present, as before |
+| 生きる, 𠮟る | saveable — kana around a kanji, or a kanji past the basic plane, still counts |
+
+The trap is the other direction: hiding Save must not hide the word. A kana word still resolves and still shows its meaning — the lookup answers, only Save goes. A rule written as "no entries for kana" would pass the Save check and quietly turn every kana word into "not in the dictionary". `WordLookupViewModelTest` holds both halves; `JapaneseTest` holds the character rule.
+
 ### V-20 · An orphaned saved item renders and stays reviewable (D-40, D-43)
 
 Setup: save a word, then swap in a dictionary build where that `(text, reading)` no longer resolves.
@@ -455,7 +468,7 @@ Setup: save a word, then swap in a dictionary build where that `(text, reading)`
 | Card content | Text, reading, `snapshot_gloss`, and an explanation |
 | Review queue | The item still appears and is answerable |
 
-The review check is the one that matters and the one most likely to be missed. A card with no back is unanswerable, so the natural implementation quietly excludes it from the queue — and unlike a missing list entry, the user has no screen on which to notice. Their review count simply drops by one.
+The review check is the one that matters and the one most likely to be missed. A card with no senses to check a typed meaning against looks unanswerable, so the natural implementation quietly excludes it from the queue — it should check against `snapshot_gloss` instead (D-107, D-108) — and unlike a missing list entry, the user has no screen on which to notice. Their review count simply drops by one.
 
 Test with `changes` **empty** as well as populated. D-40 must hold on its own; D-39 only improves the wording.
 
