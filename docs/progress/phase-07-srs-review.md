@@ -5,18 +5,23 @@
 
 ## Current state
 
-No code yet. The card is settled: the front is the written form alone; the
-back gives the reading, then the main sense with the others smaller beneath it,
-and the scan photo; a pass means recalling the reading and the main sense
-(D-102, D-103, D-104). Reading and writing a word keep separate schedules, so
-`srs_state` is keyed by item and card kind (D-105).
+No code yet. The card is settled (D-107), after a clickable prototype of two
+candidates (the *Spotter Review Cards* artifact): **one card per word** — title,
+the word, the scan photo, a meaning field and a reading field — with one
+schedule, passing only when both answers are right. Answers are typed and
+checked by the app, right or wrong, never Again/Hard/Good/Easy. Meanings match
+loosely against any listed sense, and "I was right" saves the learner's own
+synonym; readings are typed as romaji and converted to kana (D-108).
+Handwriting is a separate, opt-in queue (D-109). Kana-only words cannot be
+saved in v1 (D-110).
 
 ## Next action
 
-**Draft the `srs_state` and `review_log` schema and bring it to the owner
-before writing any entity.** It is the phase's checkpoint: once learners have
-review history its shape can only change by migrating it. D-105 fixes the key —
-item and card kind.
+**Get the owner's approval of the schema draft** — `srs_state`,
+`review_log` and `user_synonym` — before writing any entity. It is the phase's
+checkpoint: once learners have review history its shape can only change by
+migrating it. D-105 fixes the key — item and card kind — and D-107 asks the log
+to keep the meaning and reading outcomes apart.
 
 What Phase 6 leaves ready: `study_item` exists with `(text, reading, type)`
 identity, saved words are the filed ones (D-88, D-89), and `srs_state` hangs off
@@ -59,19 +64,20 @@ written and tested.
 
 - ~~**What is on the front of a card?**~~ — **resolved 2026-10-11:** the
   written form alone; the reading and main sense are both recalled (D-103);
-  the photo is on the back (D-104).
+  the photo is on the back (D-104). *Both superseded 2026-10-12 by D-107: one
+  card with typed meaning and reading fields, photo on the question screen.*
 
-- **Does every saved word get a write card, or does the learner opt in?**
-  D-105 gives writing its own schedule; whether it exists for every word is
-  open. A write card is drawn by hand on a canvas and self-graded after
+- ~~**Does every saved word get a write card, or does the learner opt
+  in?**~~ — **resolved 2026-10-12 (D-109):** opt-in, with its own queue and
+  button. Still open: *how* the learner opts in. A write card is drawn by hand on a canvas and self-graded after
   *Check* (artboard 2c, D-72) — there is no handwriting recognition. Its prompt
   needs the reading as well as the meaning, since "teacher" alone is 先生 or
   教師; confirm against the artboard.
 
 - ~~**What does a kanji card's back show?**~~ — **resolved 2026-10-11
   (D-106):** its meanings in KANJIDIC2's order, cut to fit with a count of the
-  rest. Still open for kanji: the front, whether readings appear or are graded,
-  and what a pass means.
+  rest. Kanji use D-107's card; still open: what a kanji's **reading** field
+  accepts (生 has せい, しょう, い.きる, なま…). Deferred by the owner.
 
 - **The `srs_state` / `review_log` schema** — a checkpoint (see Next action).
 
