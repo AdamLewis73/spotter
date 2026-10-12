@@ -17,11 +17,11 @@ saved in v1 (D-110).
 
 ## Next action
 
-**Get the owner's approval of the schema draft** — `srs_state`,
-`review_log` and `user_synonym` — before writing any entity. It is the phase's
-checkpoint: once learners have review history its shape can only change by
-migrating it. D-105 fixes the key — item and card kind — and D-107 asks the log
-to keep the meaning and reading outcomes apart.
+**The schema checkpoint is discharged (D-112, 2026-10-12)** — `srs_state`,
+`review_log` and `user_synonym` are drawn in `data-model.md`. Build order: FSRS
+in `:domain` (D-26), then the v3 entities and `AutoMigration` with its
+`MigrationTestHelper` test, then the review screen. D-110's Save rule for
+kana-only words is independent and small.
 
 What Phase 6 leaves ready: `study_item` exists with `(text, reading, type)`
 identity, saved words are the filed ones (D-88, D-89), and `srs_state` hangs off
@@ -79,7 +79,9 @@ written and tested.
   rest. Kanji use D-107's card; still open: what a kanji's **reading** field
   accepts (生 has せい, しょう, い.きる, なま…). Deferred by the owner.
 
-- **The `srs_state` / `review_log` schema** — a checkpoint (see Next action).
+- ~~**The `srs_state` / `review_log` schema**~~ — **approved 2026-10-12
+  (D-112):** an append-only log is the truth, `srs_state` a cache keyed by
+  (item, kind), times in UTC, and no undo in v1.
 
 ## Notes
 

@@ -140,6 +140,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-109 | Handwriting review is opt-in, with its own queue and button | SRS |
 | D-110 | Kana-only words cannot be saved in v1 | Product |
 | D-111 | Anki export: one note per word per list, front and back, no review history | SRS |
+| D-112 | **Review schema: append-only log is the truth; `srs_state` a cache keyed (item, kind); no undo in v1** | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1059,6 +1060,26 @@ The same ruling covers a related gap found on 2026-10-11: JMdict words usually w
 Settled by the project owner on 2026-10-12, for Phase 8 (D-79). Spotter's grading is right or wrong and its card is two typed fields, neither of which maps onto Anki's four buttons and flip cards, so the export does not try: a plain front-and-back note per word, grouped by list, which Anki then schedules from new.
 
 *Cost to reverse:* near zero until Phase 8 is built.
+
+**D-112 — The review schema: an append-only `review_log` is the source of truth, and `srs_state` is a cache of it keyed by (study item, card kind). There is no undo in v1.**
+
+Approved by the project owner on 2026-10-12 — the Phase 7 checkpoint. The tables are in `data-model.md`; the principles are what is expensive to change once learners have history:
+
+1. **The log is the truth; the schedule is a cache.** FSRS's state for a card is a function of its ordered answers and their times, so `srs_state` can always be rebuilt by replaying `review_log` — the way a balance is rebuilt from a ledger. That makes three things cheap that would otherwise be hard: merging two devices' history (combine the logs, replay), retuning FSRS to a learner's own memory (recompute), and recovering from a scheduler bug (replay with the fix). The reverse is not true: an answer that was never logged can never be recovered.
+2. **`srs_state`'s key is (study_item_id, card_kind), not a UUID.** This departs from the letter of D-15 and keeps its intent: the key is built from the item's UUID and a fixed name, so it cannot collide, and two offline devices that both create 先生's schedule produce the *same* key and merge rather than leaving two rows. It also lets the v2 → v3 migration create rows in plain SQL. Every other new table keeps a UUID.
+3. **No undo in v1, so the log is purely append-only** and carries no `deleted_at`. An undo for the answer just given was offered — it would mostly serve reading typos, which "I was right" does not cover — and deferred by the owner until after 1.0; romaji shows as kana before Submit, so most typos are visible in advance. Adding the column later is a cheap migration, since no history depends on it.
+4. **Times are UTC epoch milliseconds.** "Due today" and the day's rollover are computed in local time when the queue is built; stored local dates break when a learner travels or the clocks change.
+
+Also settled with it:
+
+- **The log keeps the meaning and reading outcomes apart** although one pass decides the schedule (D-107). That keeps the choice of one card over two reversible by replay, and records which answers were overridden and which readings are missed — the evidence for tuning D-108's matching.
+- **`passed`, not a rating.** The log stores what happened; the mapping to FSRS's internal grades (1 for a failed recall, 3 for a successful one) lives in code.
+- **`user_synonym` is user data:** UUID key, tombstoned, backed up with the database.
+- **The migration gives every filed word a `REVIEW` schedule, due at once,** so words already saved become reviewable immediately. `WRITING` rows exist only once a learner opts in (D-109).
+
+*Deliberately left out, each a cheap addition later:* FSRS parameters tuned to the learner (Phase 7 starts on FSRS's defaults; tuning needs a few hundred reviews to help), a target-retention setting, suspending or burying cards, and leech counts, which the log can produce at any time.
+
+*Cost to reverse:* **high** for principles 1, 2 and 4 once history exists; low for 3.
 
 ---
 

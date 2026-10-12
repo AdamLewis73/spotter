@@ -240,22 +240,41 @@ study_item
   created_at, updated_at, deleted_at             (D-16)
   UNIQUE(text, reading, type)
 
-srs_state                       PHASE 7. one row per study_item per card kind (D-105)
+srs_state                       SCHEMA v3 (Phase 7). A CACHE of review_log (D-112)
   study_item_id      FK, ON DELETE CASCADE — no tombstone (D-80)
-  due_at             when this item should next be reviewed
-  stability          FSRS: days until recall probability falls to ~90%
-  difficulty         FSRS: intrinsic difficulty of this item, ~1–10
-  review_count
-  last_reviewed_at   FSRS needs elapsed time since this to compute recall
-  updated_at                                     (D-80 — universal)
+  card_kind          REVIEW | WRITING                          (D-105, D-107, D-109)
+  PRIMARY KEY (study_item_id, card_kind) — natural, not a UUID (D-112)
+  fsrs_state         LEARNING | REVIEW | RELEARNING
+  step               position in the short learning steps; NULL in REVIEW
+  stability          FSRS: days until recall probability falls to ~90%;
+                     NULL until the first answer
+  difficulty         FSRS: intrinsic difficulty, ~1–10; NULL until the first answer
+  due_at             epoch ms, UTC — "due today" is local, computed at query time
+  last_reviewed_at   epoch ms, UTC; NULL = never reviewed
+  created_at, updated_at                          (D-80 — universal)
 
-review_log                      PHASE 7.
+review_log                      SCHEMA v3. APPEND-ONLY, the source of truth (D-112)
   id UUID, study_item_id        ON DELETE CASCADE — no tombstone (D-80)
-  rating             the user's self-assessment: Again | Hard | Good | Easy
-  reviewed_at, elapsed_ms
-                     kept as history so the schedule can be recomputed if
-                     the algorithm is ever retuned or replaced
+  card_kind          REVIEW | WRITING
+  reviewed_at        epoch ms, UTC
+  duration_ms        time on the card
+  passed             1 right, 0 wrong — what FSRS is fed (D-107)
+  meaning_answer     what was typed; NULL on a writing card
+  meaning_correct    the meaning half's outcome, kept apart from the
+                     reading's so a future split into two schedules can be
+                     replayed rather than invented (D-107)
+  meaning_overridden 1 if "I was right" turned it right (D-108)
+  reading_answer     the kana, after romaji conversion
+  reading_correct
   updated_at                                     (D-80 — universal)
+  — no deleted_at: there is no undo in v1, so nothing is ever removed (D-112)
+  — a retry after a different-word nudge (D-108) is not graded and not logged
+
+user_synonym                    SCHEMA v3. the learner's own meanings (D-108)
+  id UUID, study_item_id        ON DELETE CASCADE
+  text               as typed when "I was right" was pressed
+  created_at, updated_at, deleted_at   TOMBSTONED — user data (D-80)
+  UNIQUE(study_item_id, text)
 
 saved_list
   id UUID, name, created_at, updated_at, deleted_at
