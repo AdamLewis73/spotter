@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -134,7 +135,7 @@ fun WordScreen(
 
             else -> LazyColumn(contentPadding = PaddingValues(bottom = tokens.spaceLg)) {
                 if (state.entries.isNotEmpty()) {
-                    item { WordHeader(state.entries, onSave, onDismiss, showHandle = standalone) }
+                    item { WordHeader(state.entries, state.canSave, onSave, onDismiss, showHandle = standalone) }
                 }
                 // One section per reading. 上手 produces five, and the app does
                 // not choose between them — it cannot know which one a
@@ -166,6 +167,7 @@ fun WordScreen(
 @Composable
 private fun WordHeader(
     entries: List<DictionaryEntry>,
+    canSave: Boolean,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
     showHandle: Boolean,
@@ -222,13 +224,17 @@ private fun WordHeader(
             // saved state, because there is none to report: a word can be filed
             // in some lists and not others (D-89). It opens the picker, which
             // shows which lists already hold this word.
-            OutlinedGlyphButton(
+            //
+            // Absent for a kana-only word, which cannot be saved in v1 (D-110).
+            // An empty square of the same size takes its place, so the word
+            // stays centred between it and the back button.
+            if (canSave) OutlinedGlyphButton(
                 glyph = "✚",
                 contentDescription = "Save",
                 tint = MaterialTheme.colorScheme.primary,
                 border = MaterialTheme.colorScheme.primary,
                 onClick = onSave,
-            )
+            ) else Spacer(Modifier.size(44.dp))
         }
 
         Text(

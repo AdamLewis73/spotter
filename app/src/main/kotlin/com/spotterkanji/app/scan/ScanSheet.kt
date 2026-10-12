@@ -38,6 +38,7 @@ import com.spotterkanji.app.R
 import com.spotterkanji.app.ui.theme.SpotterJapanese
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.app.word.WordStrip
+import com.spotterkanji.domain.text.containsKanji
 import com.spotterkanji.domain.tokenize.Token
 
 /**
@@ -246,7 +247,12 @@ internal fun PeekContents(
             // still running, or when it found nothing. Saving a word with no
             // gloss and no reading creates exactly the unresolvable row D-40
             // then has to render forever.
-            Button(
+            //
+            // Absent, not disabled, for a kana-only word: those cannot be saved
+            // in v1 (D-110), and a greyed button would read as "not yet". Tested
+            // on the tapped word itself, which is known before the lookup ends,
+            // so the button never appears and then vanishes.
+            if (word.containsKanji()) Button(
                 onClick = onSave,
                 enabled = canSave,
                 modifier = Modifier.weight(1f).height(44.dp),

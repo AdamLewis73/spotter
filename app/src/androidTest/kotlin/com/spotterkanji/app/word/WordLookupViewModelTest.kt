@@ -51,6 +51,30 @@ class WordLookupViewModelTest {
     }
 
     /**
+     * D-110, V-35: a kana-only word is found and shown, but cannot be saved.
+     * Found is the half that matters — the lookup still answers, only Save goes.
+     */
+    @Test
+    fun a_kana_only_word_is_shown_but_cannot_be_saved() = runBlocking {
+        val model = viewModel()
+        model.onQueryChanged("トイレ")
+
+        val settled = model.awaitSettled { it.entries.isNotEmpty() }
+        assertNotNull("トイレ should still be looked up", settled)
+        assertFalse("トイレ has no kanji, so no Save", settled!!.canSave)
+    }
+
+    @Test
+    fun a_word_with_kanji_can_be_saved() = runBlocking {
+        val model = viewModel()
+        model.onQueryChanged("先生")
+
+        val settled = model.awaitSettled { it.entries.isNotEmpty() }
+        assertNotNull("lookup never settled", settled)
+        assertTrue(settled!!.canSave)
+    }
+
+    /**
      * D-49: a lone kanji opens the kanji screen rather than a word screen headed
      * by the same character.
      */

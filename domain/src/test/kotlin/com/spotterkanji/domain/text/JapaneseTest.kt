@@ -36,4 +36,22 @@ class JapaneseTest {
             assertFalse("$it should not be kanji", it.isKanji())
         }
     }
+
+    /**
+     * Saveable in v1 means "contains a kanji" (D-110). A word with kana around
+     * its kanji is saveable; a word of kana alone is not, whichever script.
+     */
+    @Test
+    fun `words with a kanji can be saved`() {
+        listOf("先生", "生きる", "お茶", "上手", "𠮟る", "𩸽").forEach {
+            assertTrue("$it contains a kanji", it.containsKanji())
+        }
+    }
+
+    @Test
+    fun `kana-only words and non-words cannot be saved`() {
+        listOf("トイレ", "これ", "すごい", "ラーメン", "ｶﾀｶﾅ", "ＪＲ", "").forEach {
+            assertFalse("$it contains no kanji", it.containsKanji())
+        }
+    }
 }

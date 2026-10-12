@@ -17,6 +17,7 @@ import com.spotterkanji.data.tokenize.KuromojiTokenizer
 import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.dictionary.KanjiDetail
 import com.spotterkanji.domain.dictionary.KanjiSummary
+import com.spotterkanji.domain.text.containsKanji
 import com.spotterkanji.domain.text.hasKanaOrKanji
 import com.spotterkanji.domain.text.isSingleKanji
 import com.spotterkanji.domain.tokenize.LongestMatch
@@ -77,6 +78,14 @@ data class WordLookupState(
      * looking at.
      */
     val saveTarget: DictionaryEntry? get() = entries.firstOrNull()
+
+    /**
+     * Whether Save is offered at all. Not the same as [saveTarget] being
+     * present: a kana-only word is found and shown, but cannot be saved in v1
+     * (D-110). Callers hide the button rather than disable it — disabled means
+     * "not yet", while the lookup is still running.
+     */
+    val canSave: Boolean get() = saveTarget?.text?.containsKanji() == true
     val hasSearched: Boolean get() = query.isNotBlank() && !searching
     val notFound: Boolean get() = hasSearched && selected != null && entries.isEmpty()
     /** A single word needs no token strip — it would just repeat the input. */
@@ -363,6 +372,9 @@ class WordLookupViewModel(application: Application) : AndroidViewModel(applicati
      * the unresolvable row D-40 has to render forever.
      */
     fun onSaveRequested() {
+        // The buttons are hidden for a kana-only word; this keeps any other
+        // caller from filing one anyway (D-110).
+        if (!_state.value.canSave) return
         val entry = _state.value.saveTarget ?: return
         openPicker(
             PickerTarget(

@@ -1,7 +1,7 @@
 # Phase 7 — SRS review
 
 **Status:** not started — **unblocked**, Phase 6 closed 2026-09-22
-**Updated:** 2026-10-11
+**Updated:** 2026-10-12
 
 ## Current state
 
@@ -32,6 +32,12 @@ written and tested.
 
 ## Done
 
+- [x] **No Save for kana-only words (D-110, V-35)** — 2026-10-12. The rule is
+      `containsKanji()` in `:domain`; the peek drops its Save button (tested on
+      the tapped word, so it never flickers) and the word screen its ✚, with an
+      empty square keeping the word centred. The word itself is still looked up
+      and shown. `JapaneseTest` and `WordLookupViewModelTest` (9 of 9 on the
+      emulator) cover it; seen on screen for トイレ, と and 生産.
 - [ ] FSRS ported into `:domain`, free of `android.*` (D-26)
 - [ ] Scheduling attached to the item, not to any list (D-29)
 - [ ] Review tab in the bottom nav (D-36)
