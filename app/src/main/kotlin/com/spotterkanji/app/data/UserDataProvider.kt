@@ -2,10 +2,12 @@ package com.spotterkanji.app.data
 
 import android.content.Context
 import androidx.room.Room
+import com.spotterkanji.data.user.RoomReviewRepository
 import com.spotterkanji.data.user.RoomSavedItemsRepository
 import com.spotterkanji.data.user.RoomSavedListRepository
 import com.spotterkanji.data.user.RoomScanRepository
 import com.spotterkanji.data.user.UserDatabase
+import com.spotterkanji.domain.review.ReviewRepository
 import com.spotterkanji.domain.user.SavedItemsRepository
 import com.spotterkanji.domain.user.SavedListRepository
 import com.spotterkanji.domain.user.ScanRepository
@@ -48,6 +50,9 @@ object UserDataProvider {
 
     fun scans(context: Context): ScanRepository =
         RoomScanRepository(database(context))
+
+    fun reviews(context: Context): ReviewRepository =
+        RoomReviewRepository(database(context))
 
     private fun build(context: Context): UserDatabase =
         Room.databaseBuilder(context, UserDatabase::class.java, UserDatabase.FILE_NAME)

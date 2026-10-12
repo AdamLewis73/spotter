@@ -76,8 +76,37 @@
 
     <!-- Review destination. Says review is unbuilt rather than showing an empty
          queue — they look identical and mean opposite things (Phase 7, D-79). -->
-    <string name="review_not_yet_title">Review is not built yet</string>
-    <string name="review_not_yet_body">Saved words will start coming back for review once the scheduler lands. Nothing you file now will be lost.</string>
+    <!-- Review (D-107, D-108). -->
+    <plurals name="review_due">
+        <item quantity="one">%d word due</item>
+        <item quantity="other">%d words due</item>
+    </plurals>
+    <string name="review_start">Start review</string>
+    <string name="review_caught_up_title">All caught up</string>
+    <string name="review_caught_up_next">Next review %1$s</string>
+    <string name="review_nothing_yet_title">Nothing to review yet</string>
+    <string name="review_nothing_yet_body">File a word into a list and it comes up here.</string>
+    <string name="review_card_kind">Meaning · Reading</string>
+    <string name="review_meaning_label">Meaning</string>
+    <string name="review_meaning_hint">in English</string>
+    <string name="review_reading_label">Reading</string>
+    <string name="review_reading_hint">type romaji, it becomes kana</string>
+    <string name="review_submit">Submit</string>
+    <string name="review_next">Next</string>
+    <string name="review_i_was_right">I was right</string>
+    <string name="review_synonym_saved">“%1$s” now counts as a meaning of %2$s.</string>
+    <string name="review_other_word">%1$s read %2$s is a different word, “%3$s”. This card is the one meaning “%4$s”. Try again.</string>
+    <string name="review_answer_meaning">Meaning</string>
+    <string name="review_answer_reading">Reading</string>
+    <string name="review_also">also: %1$s</string>
+    <string name="review_more">+%1$d more</string>
+    <string name="review_done_title">Session complete</string>
+    <plurals name="review_done_body">
+        <item quantity="one">%d answer recorded.</item>
+        <item quantity="other">%d answers recorded.</item>
+    </plurals>
+    <string name="review_done_back">Done</string>
+    <string name="review_close">End review</string>
 
     <!-- The list picker (D-88, D-91). No artboard: the wireflow marks it
          "NOT DESIGNED", so this follows the owner's spec. -->

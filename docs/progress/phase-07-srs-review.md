@@ -17,14 +17,11 @@ saved in v1 (D-110).
 
 ## Next action
 
-**The review screen** (D-107, D-108): the queue — due `REVIEW` cards of
-filed words (D-89), new ones in the order saved — the two-field card with the
-scan photo, loose meaning matching, romaji-to-kana conversion, the
-different-word nudge, "I was right" writing a `user_synonym`, and each answer
-appended to `review_log` with `srs_state` updated through `Fsrs.review`. The
-prototype artifact is the behavioural reference; its matching logic was
-checked on sample inputs and ports to `:domain` with tests. FSRS (D-113),
-schema v3 (D-112) and D-110 are done.
+**The owner tries the review screen on a device**, and its learning steps
+(1 and 10 minutes, D-113) are judged in use. Then: compare the card with the
+Claude Design project's review artboards, which were not consulted (D-114);
+decide what a kanji card's reading accepts so kanji join the queue (D-106);
+and the opt-in handwriting queue (D-109).
 
 What Phase 6 leaves ready: `study_item` exists with `(text, reading, type)`
 identity, saved words are the filed ones (D-88, D-89), and `srs_state` hangs off
@@ -61,8 +58,21 @@ written and tested.
       emulator database with 先生 filed upgraded in place, checks clean.
 - [x] Scheduling attached to the item, not to any list (D-29) — `srs_state` is
       keyed by (item, kind) and has no list column at all
-- [ ] Review tab in the bottom nav (D-36)
-- [ ] Quiz flow over due items
+- [x] **Review tab and the review session (D-107, D-108, D-114)** — 2026-10-12.
+      The tab shows words due, all caught up, or nothing yet. The card is
+      D-107's: word, photo, meaning and reading fields, one Submit, green and
+      red borders, the answer beneath, Next, and "I was right" for a meaning
+      marked wrong, which saves a synonym. Romaji becomes kana as it is typed;
+      a reading of a different word gets a note and a retry. Answers are
+      recorded at Next; a card still learning comes back before the session
+      ends. Answer checking lives in `:domain/review` (`ReviewTest`, 18 cases);
+      the queue and recording in `RoomReviewRepository`
+      (`ReviewRepositoryTest`, 7 cases, including V-37's replay check).
+      Driven on the emulator end to end: 先生 graduated to REVIEW due in two
+      days, matching FSRS's reference sequence; 生産's override and synonym
+      reached the database. Two faults found by looking and fixed: the theme's
+      focus border is the same jade as "right", so a field looked graded while
+      typing; and a trailing n stayed a letter in the field after Submit.
 - [ ] **Handwriting review — design artboard 2c, "Review — write it"** (D-72): a
       canvas the learner writes the word on, a *Clear* control, a **Check**
       button that reveals the answer beside their attempt, then the four grades.
