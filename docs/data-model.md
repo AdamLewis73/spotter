@@ -241,6 +241,8 @@ study_item
   UNIQUE(text, reading, type)
 
 srs_state                       SCHEMA v3 (Phase 7). A CACHE of review_log (D-112)
+                                EVERY study_item has exactly one REVIEW row —
+                                created with it, never replaced (V-36)
   study_item_id      FK, ON DELETE CASCADE — no tombstone (D-80)
   card_kind          REVIEW | WRITING                          (D-105, D-107, D-109)
   PRIMARY KEY (study_item_id, card_kind) — natural, not a UUID (D-112)

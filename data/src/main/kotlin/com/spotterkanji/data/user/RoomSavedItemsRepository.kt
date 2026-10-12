@@ -60,7 +60,7 @@ class RoomSavedItemsRepository(
         val now = Instant.now(clock).toEpochMillisLong()
         val existing = dao.findIncludingDeleted(key.text, key.reading, key.type.name)
 
-        if (existing == null) {
+        val saved = if (existing == null) {
             val row = StudyItemRow(
                 id = newId(),
                 type = key.type.name,
@@ -97,6 +97,12 @@ class RoomSavedItemsRepository(
                 updatedAt = now,
             ).toModel()
         }
+
+        // Every study item has its REVIEW schedule (D-107, D-112), created in the
+        // same transaction so no word ever exists without one. A no-op when it
+        // already has one — a revived or re-saved word keeps its history (D-93).
+        db.srsDao().insertIfAbsent(newReviewSchedule(saved.id.value, dueAt = now, now = now))
+        saved
     }
 
     /**
