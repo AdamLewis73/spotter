@@ -39,8 +39,9 @@ import androidx.room.RoomDatabase
  * - **v2** — adds `scan` and `scan_word`: the photos words were filed from and
  *   where each word sat on them (D-22, D-94). Added tables only, so it is an
  *   `AutoMigration`, proven against a real v1 database in `UserMigrationTest`.
- *
- * `srs_state` and `review_log` are Phase 7's (D-79) and will arrive the same way.
+ * - **v3** — adds `srs_state`, `review_log` and `user_synonym`: review (D-112).
+ *   Added tables again, plus one data step Room cannot infer — every existing
+ *   study item gets its REVIEW schedule ([UserMigration2To3]).
  *
  * Note this class takes no `Context` and imports nothing from `android.*`. The
  * construction that needs one lives in `:app` (D-60).
@@ -52,6 +53,9 @@ import androidx.room.RoomDatabase
         ListMembershipRow::class,
         ScanRow::class,
         ScanWordRow::class,
+        SrsStateRow::class,
+        ReviewLogRow::class,
+        UserSynonymRow::class,
     ],
     version = UserDatabase.SCHEMA_VERSION,
     exportSchema = true,
@@ -64,15 +68,20 @@ import androidx.room.RoomDatabase
         // already exists, which is the case Room can write by itself. Anything
         // that changes an existing column is hand-written instead.
         AutoMigration(from = 1, to = 2),
+        // v2 → v3 adds the three review tables (D-112), then the spec gives every
+        // existing study item a REVIEW schedule so saved words are reviewable at
+        // once.
+        AutoMigration(from = 2, to = 3, spec = UserMigration2To3::class),
     ],
 )
 abstract class UserDatabase : RoomDatabase() {
     abstract fun studyItemDao(): StudyItemDao
     abstract fun savedListDao(): SavedListDao
     abstract fun scanDao(): ScanDao
+    abstract fun srsDao(): SrsDao
 
     companion object {
-        const val SCHEMA_VERSION: Int = 2
+        const val SCHEMA_VERSION: Int = 3
 
         /**
          * The file name under the app's database directory.

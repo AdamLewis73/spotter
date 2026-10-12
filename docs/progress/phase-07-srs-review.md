@@ -17,11 +17,14 @@ saved in v1 (D-110).
 
 ## Next action
 
-**Schema v3**: the `srs_state`, `review_log` and `user_synonym` entities
-drawn in `data-model.md` (D-112), an `AutoMigration` from v2 whose spec gives
-every filed word a `REVIEW` schedule due at once, and a `MigrationTestHelper`
-test that a v2 database with filed words comes through with them reviewable.
-FSRS is built (D-113) and D-110 is done; the review screen follows the schema.
+**The review screen** (D-107, D-108): the queue — due `REVIEW` cards of
+filed words (D-89), new ones in the order saved — the two-field card with the
+scan photo, loose meaning matching, romaji-to-kana conversion, the
+different-word nudge, "I was right" writing a `user_synonym`, and each answer
+appended to `review_log` with `srs_state` updated through `Fsrs.review`. The
+prototype artifact is the behavioural reference; its matching logic was
+checked on sample inputs and ports to `:domain` with tests. FSRS (D-113),
+schema v3 (D-112) and D-110 are done.
 
 What Phase 6 leaves ready: `study_item` exists with `(text, reading, type)`
 identity, saved words are the filed ones (D-88, D-89), and `srs_state` hangs off
@@ -46,7 +49,18 @@ written and tested.
       `roundToInt()` would put intervals a day out; and py-fsrs's fuzz can land a
       day past its own range, so the port floors as ts-fsrs does. MIT notice in
       the file and in `assets/licenses/`.
-- [ ] Scheduling attached to the item, not to any list (D-29)
+- [x] **Schema v3 (D-112, V-36)** — 2026-10-12. `srs_state`, `review_log` and
+      `user_synonym` (`data/user/SrsEntities.kt`), by `AutoMigration` 2 → 3 with
+      `UserMigration2To3` giving every existing study item its REVIEW schedule;
+      saving creates one in the same transaction and never replaces it.
+      `3.json` committed; Room's generated migration read and confirmed to only
+      create. Room 2.8 calls the **connection** form of `onPostMigrate` — the
+      `SupportSQLiteDatabase` form is reached only through a bridge, so the spec
+      overrides the former. Tests: `UserMigrationTest` 3/3 (both migration
+      cases fail with the backfill removed), `UserDataTest` 28/28. A real v2
+      emulator database with 先生 filed upgraded in place, checks clean.
+- [x] Scheduling attached to the item, not to any list (D-29) — `srs_state` is
+      keyed by (item, kind) and has no list column at all
 - [ ] Review tab in the bottom nav (D-36)
 - [ ] Quiz flow over due items
 - [ ] **Handwriting review — design artboard 2c, "Review — write it"** (D-72): a

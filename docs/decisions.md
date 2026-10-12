@@ -1080,6 +1080,8 @@ Also settled with it:
 
 *Deliberately left out, each a cheap addition later:* FSRS parameters tuned to the learner (Phase 7 starts on FSRS's defaults; tuning needs a few hundred reviews to help), a target-retention setting, suspending or burying cards, and leech counts, which the log can produce at any time.
 
+*As built (2026-10-12):* the rule is wider than "every filed word". **Every study item has exactly one `REVIEW` schedule** — created in the same transaction as the item, and given by the migration to every item that existed, unfiled and tombstoned ones included. An unfiled word is kept out of review by the queue's membership filter (D-89), not by lacking a schedule, so re-filing it or reviving it (D-82) brings back its history rather than a blank card. Saving again never replaces a schedule (D-93). V-36 holds it.
+
 *Cost to reverse:* **high** for principles 1, 2 and 4 once history exists; low for 3.
 
 **D-113 — FSRS is a line-for-line port of py-fsrs v6.3.2, checked against its own tests, with its default settings. Fuzz is seeded per review.**

@@ -458,6 +458,21 @@ Setup: look up トイレ, then 先生. On a scan, tap a kana word and then a kan
 
 The trap is the other direction: hiding Save must not hide the word. A kana word still resolves and still shows its meaning — the lookup answers, only Save goes. A rule written as "no entries for kana" would pass the Save check and quietly turn every kana word into "not in the dictionary". `WordLookupViewModelTest` holds both halves; `JapaneseTest` holds the character rule.
 
+### V-36 · Every saved word has one review schedule, and keeps it (D-112, D-93)
+
+Setup: on a v2 install, file 先生 and delete a second word. Install the v3 build over it. Then save 先生 again, and save the deleted word again.
+
+| Check | Expected |
+|---|---|
+| After the upgrade | one `srs_state` row per `study_item`, the deleted one included: `REVIEW`, `LEARNING`, step 0, no stability, due at the word's own `created_at` |
+| `review_log`, `user_synonym` | exist, empty |
+| Saving 先生 again | its schedule is unchanged — progress is kept, not reset |
+| Saving the deleted word again | revived with its id (D-82), with the schedule it had |
+
+The trap is a word that exists and can never be reviewed. Nothing errors: it sits in its list looking saved, and simply never comes due. A migration that backfilled only filed words, or a save that created the item but not its schedule, produces exactly that — and the reverse mistake, a save that *replaces* the schedule, silently resets a learner's progress whenever they re-save a word.
+
+`UserMigrationTest` holds the upgrade, from every old version; `UserDataTest` holds the save path. Both migration cases were confirmed to fail with the backfill removed (2026-10-12). Driven once for real as well: a v2 emulator database with 先生 filed upgraded in place to v3 with its schedule, integrity and foreign-key checks clean.
+
 ### V-20 · An orphaned saved item renders and stays reviewable (D-40, D-43)
 
 Setup: save a word, then swap in a dictionary build where that `(text, reading)` no longer resolves.

@@ -16,6 +16,8 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -552,6 +554,57 @@ class UserDataTest {
 
         assertNotEquals(a.id, b.id)
         assertEquals(2, lists.observeLists().first().size)
+    }
+
+    // ---- Review schedules (schema v3, D-112)
+
+    private fun scheduleCount(itemId: String): Int =
+        db.query("SELECT COUNT(*) FROM srs_state WHERE study_item_id = ?", arrayOf(itemId)).use {
+            it.moveToFirst()
+            it.getInt(0)
+        }
+
+    /** Every study item has exactly one REVIEW schedule, created with it, new and due. */
+    @Test
+    fun saving_a_word_gives_it_a_new_review_schedule() = runBlocking {
+        val saved = items.save(sensei, "teacher")
+
+        val schedule = db.srsDao().find(saved.id.value, "REVIEW")
+        assertNotNull("a saved word must be reviewable", schedule)
+        assertEquals("LEARNING", schedule!!.fsrsState)
+        assertEquals(0, schedule.step)
+        assertNull(schedule.stability)
+        assertNull(schedule.lastReviewedAt)
+        assertEquals(1, scheduleCount(saved.id.value))
+    }
+
+    /**
+     * Re-saving or reviving a word must keep the schedule it has. Replacing it
+     * would reset a learner's progress on a word they happened to save again —
+     * D-93 says removal and return never reset progress, and this is the same
+     * promise from the other side.
+     */
+    @Test
+    fun saving_again_or_reviving_keeps_review_progress() = runBlocking {
+        val saved = items.save(sensei, "teacher")
+        val id = saved.id.value
+        // Stand in for real review history.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE srs_state SET fsrs_state = 'REVIEW', step = NULL, stability = 12.5 WHERE study_item_id = ?",
+            arrayOf(id),
+        )
+
+        items.save(sensei, "teacher; instructor")
+        assertEquals(12.5, db.srsDao().find(id, "REVIEW")!!.stability!!, 0.0)
+
+        // Tombstone the word, then save it again: it is revived with its id (D-82).
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE study_item SET deleted_at = 1 WHERE id = ?", arrayOf(id),
+        )
+        val revived = items.save(sensei, "teacher")
+        assertEquals(id, revived.id.value)
+        assertEquals(12.5, db.srsDao().find(id, "REVIEW")!!.stability!!, 0.0)
+        assertEquals(1, scheduleCount(id))
     }
 }
 

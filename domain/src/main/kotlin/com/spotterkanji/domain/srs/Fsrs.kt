@@ -362,6 +362,21 @@ enum class Rating(val value: Int) {
     }
 }
 
+/**
+ * Which card of a word is being scheduled (D-105). Each kind keeps its own
+ * schedule; a list never does (D-29).
+ *
+ * The names are stored in `srs_state.card_kind` and `review_log.card_kind`, so
+ * they are part of the schema: renaming one is a migration.
+ */
+enum class CardKind {
+    /** The two-field card, meaning and reading, in the main review (D-107). */
+    REVIEW,
+
+    /** Handwriting, opt-in, in its own queue (D-109). */
+    WRITING,
+}
+
 /** Where a card is in FSRS's cycle. A new card is LEARNING with no stability. */
 enum class SrsState { LEARNING, REVIEW, RELEARNING }
 

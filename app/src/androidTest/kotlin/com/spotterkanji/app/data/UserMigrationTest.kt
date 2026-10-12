@@ -86,6 +86,49 @@ class UserMigrationTest {
     }
 
     /**
+     * v2 → v3 (D-112): every existing study item gains a REVIEW schedule, new
+     * and due at once — the tombstoned one too, so a deleted word that is saved
+     * again comes back with a schedule (D-82). The two other new tables arrive
+     * empty, and `runMigrationsAndValidate` checks the result against `3.json`.
+     */
+    @Test
+    fun v2_to_v3_gives_every_study_item_a_review_schedule() {
+        helper.createDatabase(DB, 2).use { v2 -> seedVersion1(v2) }
+
+        helper.runMigrationsAndValidate(DB, 3, true).use { v3 ->
+            v3.query(
+                """SELECT study_item_id, card_kind, fsrs_state, step, stability, difficulty,
+                          due_at, last_reviewed_at
+                   FROM srs_state ORDER BY study_item_id"""
+            ).use {
+                assertEquals("one schedule per study item, deleted ones included", 2, it.count)
+                it.moveToFirst()
+                assertEquals("item-1", it.getString(0))
+                assertEquals("REVIEW", it.getString(1))
+                assertEquals("LEARNING", it.getString(2))
+                assertEquals(0, it.getInt(3))
+                assertTrue("a new card has no stability yet", it.isNull(4))
+                assertTrue("a new card has no difficulty yet", it.isNull(5))
+                // Due at the word's own created_at: in the past, so due now,
+                // and in the order the words were saved.
+                assertEquals(1000L, it.getLong(6))
+                assertTrue("never reviewed", it.isNull(7))
+            }
+            for (table in listOf("review_log", "user_synonym")) {
+                v3.query("SELECT COUNT(*) FROM $table").use {
+                    it.moveToFirst()
+                    assertEquals("$table should arrive empty", 0, it.getInt(0))
+                }
+            }
+            // Nothing that existed is touched.
+            v3.query("SELECT COUNT(*) FROM study_item").use {
+                it.moveToFirst()
+                assertEquals(2, it.getInt(0))
+            }
+        }
+    }
+
+    /**
      * Every historical version upgrades to the current one, through Room's real
      * open path — and the app's own repositories then read the old data.
      *
@@ -111,6 +154,11 @@ class UserMigrationTest {
                     items.observeIsSaved(StudyItemKey("先生", "せんせい")).first(),
                 )
                 assertEquals(1, lists.observeListSummaries().first().single().wordCount)
+                // And it is reviewable: the v3 step ran in the chain (D-112).
+                assertTrue(
+                    "a word saved before the upgrade must have a REVIEW schedule (from v$from)",
+                    db.srsDao().find("item-1", "REVIEW") != null,
+                )
             } finally {
                 db.close()
                 context.deleteDatabase(name)
