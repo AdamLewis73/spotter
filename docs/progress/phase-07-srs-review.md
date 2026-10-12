@@ -1,19 +1,27 @@
 # Phase 7 — SRS review
 
 **Status:** not started — **unblocked**, Phase 6 closed 2026-09-22
-**Updated:** 2026-09-22
+**Updated:** 2026-10-11
 
 ## Current state
 
-Not started.
+No code yet. The card is settled (D-107), after a clickable prototype of two
+candidates (the *Spotter Review Cards* artifact): **one card per word** — title,
+the word, the scan photo, a meaning field and a reading field — with one
+schedule, passing only when both answers are right. Answers are typed and
+checked by the app, right or wrong, never Again/Hard/Good/Easy. Meanings match
+loosely against any listed sense, and "I was right" saves the learner's own
+synonym; readings are typed as romaji and converted to kana (D-108).
+Handwriting is a separate, opt-in queue (D-109). Kana-only words cannot be
+saved in v1 (D-110).
 
 ## Next action
 
-**Start by settling the back of a review card** (`roadmap.md`, still open): for
-a word with several senses — 甘い is "sweet; sugary; mild; naive; lenient" — does
-the card show all of them, the primary only, or something the user chooses? It
-is a flashcard design question, not a data one (D-44), and it shapes what the
-review screen renders before any FSRS code is written.
+**The schema checkpoint is discharged (D-112, 2026-10-12)** — `srs_state`,
+`review_log` and `user_synonym` are drawn in `data-model.md`. Build order: FSRS
+in `:domain` (D-26), then the v3 entities and `AutoMigration` with its
+`MigrationTestHelper` test, then the review screen. D-110's Save rule for
+kana-only words is independent and small.
 
 What Phase 6 leaves ready: `study_item` exists with `(text, reading, type)`
 identity, saved words are the filed ones (D-88, D-89), and `srs_state` hangs off
@@ -50,17 +58,36 @@ written and tested.
   and would be handed a dead end. So this phase proceeds exactly as D-26 and
   D-29 describe, and Anki export becomes a second format in Phase 8 (D-20).
 
-- **What goes on the back of a review card for a word with several senses?**
-  甘い is "sweet; sugary; mild; naive; lenient" — all of it, the primary sense
-  only, or something the user chooses? This is a flashcard design question, not
-  a data or scanning one (D-44), and it is the last unresolved part of the
-  sense-disambiguation discussion.
+- ~~**What goes on the back of a review card for a word with several
+  senses?**~~ — **resolved 2026-10-11 (D-102):** the main sense leads and is
+  what the learner grades; the other senses sit smaller beneath it.
+
+- ~~**What is on the front of a card?**~~ — **resolved 2026-10-11:** the
+  written form alone; the reading and main sense are both recalled (D-103);
+  the photo is on the back (D-104). *Both superseded 2026-10-12 by D-107: one
+  card with typed meaning and reading fields, photo on the question screen.*
+
+- ~~**Does every saved word get a write card, or does the learner opt
+  in?**~~ — **resolved 2026-10-12 (D-109):** opt-in, with its own queue and
+  button. Still open: *how* the learner opts in. A write card is drawn by hand on a canvas and self-graded after
+  *Check* (artboard 2c, D-72) — there is no handwriting recognition. Its prompt
+  needs the reading as well as the meaning, since "teacher" alone is 先生 or
+  教師; confirm against the artboard.
+
+- ~~**What does a kanji card's back show?**~~ — **resolved 2026-10-11
+  (D-106):** its meanings in KANJIDIC2's order, cut to fit with a count of the
+  rest. Kanji use D-107's card; still open: what a kanji's **reading** field
+  accepts (生 has せい, しょう, い.きる, なま…). Deferred by the owner.
+
+- ~~**The `srs_state` / `review_log` schema**~~ — **approved 2026-10-12
+  (D-112):** an append-only log is the truth, `srs_state` a cache keyed by
+  (item, kind), times in UTC, and no undo in v1.
 
 ## Notes
 
 - FSRS, not SM-2 or anything hand-rolled (D-26).
 - Lists only filter; they never own scheduling (D-29). A word in three lists is
-  still one schedule.
+  still one schedule per card kind (D-105).
 - Kanji are study items in v1 (D-92, superseding D-01), so review has to handle
   `KANJI` cards as well as `WORD` ones. The kanji screen's Save already files
   them, keyed `(character, "", KANJI)`.

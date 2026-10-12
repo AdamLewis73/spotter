@@ -57,7 +57,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-26 | FSRS, not SM-2 or a custom algorithm | SRS |
 | D-27 | Study items polymorphic (`type`) from day one | SRS |
 | D-28 | Saved lists are many-to-many via a join table | SRS |
-| D-29 | **Scheduling belongs to the item; lists only filter** | SRS |
+| D-29 | **Scheduling belongs to the item; lists only filter** *(one row per item SUPERSEDED by D-105)* | SRS |
 | D-30 | Peek sheet and word screen are one expanding component | UI |
 | D-31 | Peek state only on the scan screen | UI |
 | D-32 | Kanji screen swaps in place inside the sheet | UI |
@@ -130,6 +130,17 @@ Scan for the relevant entry rather than reading the whole file.
 | D-99 | Only words are chips; the word strip is one swipeable row, in the peek but not the full-height word screen | UI |
 | D-100 | A frozen frame releases the camera after 10 seconds; the photo covers the rebind | UI |
 | D-101 | The bottom bar is raised chrome — `surfaceVariant` with a top hairline — 70dp, overlapping a gesture strip | UI |
+| D-102 | A word card's back leads with its main sense, the rest smaller beneath *(flip card SUPERSEDED by D-107; grading by D-108)* | SRS |
+| D-103 | ~~A word card's front is the written form; a pass means recalling the reading **and** the main sense~~ — SUPERSEDED by D-107 | SRS |
+| D-104 | ~~The scan photo is on the back of a card, never the front~~ — SUPERSEDED by D-107 | SRS |
+| D-105 | **Each card kind has its own schedule: `srs_state` is keyed by item and kind** | SRS |
+| D-106 | A kanji card's back is its meanings in KANJIDIC2's order, cut to fit with a count of the rest | SRS |
+| D-107 | **One card per word: meaning and reading fields, one schedule, pass only if both are right** | SRS |
+| D-108 | Answers checked loosely and offline; any sense counts; "I was right" saves a synonym | SRS |
+| D-109 | Handwriting review is opt-in, with its own queue and button | SRS |
+| D-110 | Kana-only words cannot be saved in v1 | Product |
+| D-111 | Anki export: one note per word per list, front and back, no review history | SRS |
+| D-112 | **Review schema: append-only log is the truth; `srs_state` a cache keyed (item, kind); no undo in v1** | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -851,7 +862,7 @@ The `study_item` table carries a `type` discriminator (`WORD` | `KANJI`) from th
 **D-28 — Saved lists are many-to-many, via a join table.**
 Users can create named lists ("Street Signs", "Food Menu"). A `list_id` column on the study item would restrict each word to a single list — but the same word genuinely appears on both a restaurant menu and a street sign, and the user will want it in both.
 
-**D-29 — Scheduling belongs to the study item; lists only filter review sessions.**
+**D-29 — Scheduling belongs to the study item; lists only filter review sessions.** *"Exactly one `srs_state` row per study item" is **SUPERSEDED by D-105**: one row per item per card kind. That lists never schedule still stands.*
 
 There is exactly one `srs_state` row per study item. It hangs off `study_item`, **not** off list membership.
 
@@ -932,6 +943,143 @@ So the staleness problem needs no mechanism, and what is left is a choice about 
 - **Re-filing through the picker puts it at the top.** That is a new decision to keep the word here, made later, and the user will look for it where the newest things are — the same reasoning D-82 applied to the Saved list.
 
 Both revive the same membership row, so the unique index is satisfied and nothing is orphaned; they differ only in whether `added_at` moves. In code they are two methods, `restoreToList` and `addToList`, rather than one method and a flag, so every call site says which of the two it means. Settled by the project owner.
+
+**D-102 — A word card's back leads with its main sense; the other senses sit smaller beneath it. Of the senses, only the main one is graded.** *The flip card is **SUPERSEDED by D-107**, which keeps this layout for the answer shown after Submit; "only the main sense is graded" is **SUPERSEDED by D-108**: any listed sense is accepted.*
+
+Settled by the project owner on 2026-10-11, opening Phase 7. This was the question D-44 left open: what a review card shows for a word with several senses.
+
+How often it arises, measured on the dictionary: of 44,311 common words, **65% have one sense**, so the question does not exist for them. 20% have two, 7% three, and 7% four or more — and the many-sense words are the everyday ones on signage: 甘い has 9, 手 13, 取る 18.
+
+- **The main sense is the first sense of the saved `(text, reading)` entry**, after D-54's filters — the same line the peek shows and the same one `snapshot_gloss` records at save (D-43). The card and the moment of saving agree on what the word means.
+- **The other senses are shown, smaller, beneath it**, cut after a few with a count of the rest. Nothing is hidden: the senses that make a word worth learning in context (D-44) stay on the card. The full word screen remains one tap away.
+- **Of the senses, the grade is about the main one only.** Remembering 甘い as "sweet" is a pass; nobody is marked down for not recalling "lightly salted". Without this rule a many-sense card has no clear pass, and self-graded SRS degrades when the learner cannot tell what they are grading.
+
+Three alternatives were shown on the 甘い card and declined:
+
+- **Every sense, equally.** Complete, but 取る is an 18-line scroll with no clear pass.
+- **The main sense alone.** Cleanest, but hides exactly what D-44 says the app is for.
+- **Senses the learner picks at save.** Most faithful to the sign they saw, but it adds a step to Save, which D-61 wants as light as possible, and the picker carries no reading to anchor a sense choice (D-47).
+
+*Read live, not from the snapshot.* JMdict editors reorder senses between releases, so the main sense is looked up when the card is shown. `snapshot_gloss` is the fallback only when the entry can no longer be found (D-40, D-43) — a card never goes blank.
+
+*Not decided here:* what a **kanji** card's back shows (D-92 makes kanji study items; KANJIDIC2 gives a kanji meanings, not senses) — an open Phase 7 question. The card's front, and that the reading is graded too, are D-103.
+
+*Cost to reverse:* low. A display and grading rule; `srs_state` and `review_log` record grades, not which senses were shown.
+
+**D-103 — SUPERSEDED by D-107. A word card's front is the written form alone. To pass, the learner recalls the reading *and* the main sense.** *Typed answers on one card replace the flip card; that a pass needs both the reading and the meaning carries over.*
+
+Settled by the project owner on 2026-10-11, with D-102. Front: 先生, nothing else. Back: the reading, せんせい, then the senses as D-102 lays them out. A pass means both were recalled.
+
+The reading is graded because it is the app's core idea, not a detail: 生 is せい in 先生 and なま on a beer tap, and the kanji screen's Examples tab exists to teach exactly that (D-04). A card that showed the reading on the front, or revealed it ungraded, would never practise it. Both were offered and declined: furigana on the front makes the card easier and the reading unpractised; an ungraded reading on the back is seen every time and never tested.
+
+The reading is the saved one — the `reading` half of the item's `(text, reading)` identity (D-12) — so a learner who saved 上手 as じょうず is tested on じょうず.
+
+*Cost to reverse:* low. A display and grading rule; grades already recorded stay valid as history.
+
+**D-104 — SUPERSEDED by D-107. The scan photo appears on the back of a card, not the front.** *The card has no back; the photo is on the question screen, with the hint risk accepted.*
+
+Settled by the project owner on 2026-10-11. The crop of the sign a word was filed from (D-95) is revealed with the answer, as a memory hook — "the ramen shop sign" — which is principle 6's case for keeping the photo at all.
+
+Not on the front, because a photo can carry the answer: a beer tap beside 生 says "draft" before anything has been recalled, and grades inflate. A word with no photo — saved by search (D-96), or whose photo write failed (D-94) — shows the back without one; that is a normal card, not a degraded one. Which photo shows when a word has several (D-83) is decided when the card is built.
+
+*Cost to reverse:* near zero. Display only.
+
+**D-105 — Each kind of review card has its own schedule. `srs_state` is keyed by study item *and* card kind.** *Supersedes D-29's "exactly one `srs_state` row per study item"; D-29's point that lists never schedule stands.*
+
+Settled by the project owner on 2026-10-11, before the schema is drafted. Phase 7 builds two kinds of card: **read it** (D-103 — see 先生, recall its reading and meaning) and **write it** (artboard 2c, D-72 — see the meaning, write the word, then check). They are different memories at very different difficulties: a learner can read 先生 at sight for months and still be unable to write 先. One FSRS state serving both would have to give one interval to two difficulties, and would get both wrong. Separate state gives each its own: 先生 might be due to read in 30 days and to write in 2.
+
+What does not change: **scheduling never hangs off a list** (D-29, V-13). A word in three lists still has one schedule per card kind, not three. And the kind is a column in the key, not a table per kind, so a third kind later is a new value rather than a migration. That is also why "reading only now, writing later" was offered and not needed: with the kind in the key from the start, either order costs the same.
+
+*Still open:* whether every saved word gets a write card automatically or the learner opts in — writing every word is heavy for a beginner — and which kinds a **kanji** item has. *(Answered 2026-10-12: writing is opt-in, D-109; the "read it" kind is now D-107's two-field card.)*
+
+*Cost to reverse:* **high once review history exists.** Merging two schedules into one, or splitting one into two, means inventing state the learner never earned. This is the decision the schema draft builds on.
+
+**D-106 — A kanji card's back is the kanji's meanings in KANJIDIC2's order, cut to the space available with a count of the rest.**
+
+Settled by the project owner on 2026-10-11. D-92 makes kanji study items, and D-102 could not carry over as written: KANJIDIC2 gives a kanji one flat list of meanings, not separate senses. So the kanji card does the same thing by other means — the leading meanings, as many as fit, then "+N" for the rest — the same shape as a many-sense word. KANJIDIC2's lists are short (手 has one meaning, 先 five), so the cut will rarely show.
+
+*"Most common" means KANJIDIC2's order.* The dictionary carries no per-meaning frequency; its editors list the principal meanings first (生: "life, genuine, birth"; 先: "before, ahead, previous, future, precedence"), and that order is what the card follows. It is also the order the kanji screen and `snapshot_gloss` already use (D-43), so the card agrees with what the learner saw when they saved it.
+
+*Not decided here:* the front (presumably the kanji alone, as D-103 does for words), whether the kanji's readings appear or are graded, and what a pass means for a list of meanings. Open Phase 7 questions.
+
+*Cost to reverse:* near zero. Display only.
+
+**D-107 — A word is reviewed on one card with two fields, meaning and reading, under one schedule. It passes only when both are right.** *Supersedes D-103 and D-104, and D-102's flip-card layout.*
+
+Settled by the project owner on 2026-10-12, after trying both candidates in a clickable prototype (the *Spotter Review Cards* artifact, `https://claude.ai/artifact/XZsqw6VNJBFm9GQqjsk34A`). D-102 to D-104 described a flip card the learner grades themselves; the owner then moved review to **typed answers the app checks**, in the manner WaniKani users already know, and two shapes were prototyped on six real words:
+
+- **A — two cards**, meaning and reading asked separately, each with its own schedule.
+- **B — one card**, both fields together, one schedule.
+
+B was chosen. The card, top to bottom: a **title** naming the card, the **word** in kanji, the **scan photo** (D-95), a **meaning** field, a **reading** field, and **Submit**. After Submit each field's border turns green or red; the answer appears beneath — the main sense large and the others smaller (D-102's layout, kept), then the reading; and Submit becomes **Next**. There is no back.
+
+*What B costs, and why it was accepted.* One schedule means a reading the learner keeps missing holds the meaning back with it — the owner had asked earlier that this not happen, and A was built to honour it. Having tried both, the owner preferred testing the word as a unit: the meaning and the reading are learned together, and a learner never passes on half of a word. That trade was made knowingly.
+
+*Right or wrong, nothing else.* No Again / Hard / Good / Easy: the owner judged those too vague. To FSRS a wrong answer is a failed recall (its rating 1, which Anki happens to label "Again") and a right one a successful recall (rating 3). The learner sees only right and wrong.
+
+*The photo is on the question screen,* reversing D-104. It can hint the meaning — a beer tap beside 生 says "draft" — and the owner accepted that: learners scan words they do not know, and a word with an English translation beside it is rarely scanned at all. A word without a photo (D-94, D-96) shows the card without one.
+
+*Kept reachable.* The review log records the meaning and reading outcomes **separately** (see the schema draft), so if B is ever replaced by A, each part's history can be replayed into its own schedule rather than invented.
+
+*Kanji items* (D-92) use the same card. Their meaning list follows D-106; what their reading field accepts is open.
+
+*Cost to reverse:* **high once review history exists** for the schedule, mitigated by the separate outcomes above; near zero for the layout.
+
+**D-108 — Answers are checked loosely, offline, and the learner can overrule a wrong meaning.** *Supersedes D-102's "only the main sense is graded".*
+
+Settled by the project owner on 2026-10-12. Nothing here needs a network or a model (D-46).
+
+- **Meaning.** Accepted if it matches a gloss of **any listed sense** after D-54's filters — typing "lenient" for 甘い shows real knowledge, so it passes even though it is not the main sense. Matching ignores case, a leading "to", "a" or "the", and bracketed parts, and also tries each gloss with its brackets kept, so "good" and "good at" both match "good (at)". Small typos pass in longer words: none up to 3 letters, one up to 6, two beyond, so "skilful" matches "skillful". JMdict already carries most synonyms — 上手's first sense lists "skilled" beside "skillful".
+- **"I was right."** Shown only when a meaning is marked wrong. It turns the answer right and saves what the learner typed as **their own synonym** for that word, accepted from then on. This is the escape hatch for everything the matching misses.
+- **Reading.** Typed as romaji and converted to kana in the field as the learner types (jouzu → じょうず), so no Japanese keyboard is needed; a Japanese keyboard works too. Hiragana and katakana are treated alike.
+- **Every reading of the saved word counts.** 上手 saved as じょうず also accepts じょうしゅ and じょうて, which JMdict records as the same word with the same meaning.
+- **A reading of a different word is not graded.** 上手 read うわて is another word, "upper part". The card says so — that word, its meaning, and that this card is the one meaning "skillful" — and lets the learner try again without penalty. The card shows only 上手, so the learner could not have known; marking it wrong would be unfair, and accepting it would reward exactly the wrong pairing.
+
+*Cost to reverse:* low for the matching rules. User synonyms are user data and need a table (see the schema draft).
+
+**D-109 — Handwriting review is opt-in, has its own queue, and is started from its own button.**
+
+Settled by the project owner on 2026-10-12. A writing card is artboard 2c: the learner draws the word on a canvas by hand, presses **Check** to see the correct form beside their drawing, and grades themselves right or wrong (D-107's grading). There is no handwriting recognition. Its prompt must carry the reading as well as the meaning, since "teacher" alone could be 先生 or 教師.
+
+Many learners do not care about handwriting, so it is never forced on them: no writing card exists until the learner opts in, writing reviews never appear in the main review, and they are started from a separate button. Each writing card has its own schedule (D-105), so practising writing neither helps nor hurts the main review.
+
+*Still open:* how the learner opts in — the owner wants to find the best way rather than default to a settings switch.
+
+*Cost to reverse:* low. Writing cards are rows of their own kind; none exist until someone opts in.
+
+**D-110 — Kana-only words cannot be saved in v1.**
+
+Settled by the project owner on 2026-10-12. A word with no kanji — トイレ, タクシー, これ — gets no Save in v1, anywhere: not on the peek, not on the word screen, not in search results. The app teaches kanji in context, and a kana word has nothing for the reading field to test. Kana words remain lookups.
+
+The same ruling covers a related gap found on 2026-10-11: JMdict words usually written in kana are stored under their kanji spelling only, so 1,525 common words — おにぎり, おしぼり, ありがとう — come back "not in the dictionary" when scanned in kana, and ラーメン finds only a loanword meaning "rigid frame". The owner accepts that for v1: kana is out of scope until after 1.0, when both are revisited together.
+
+*Cost to reverse:* low. A Save button hidden by a test on the text; no data model change.
+
+**D-111 — Anki export writes one note per word for each list: the word on the front, its meaning and reading on the back. No review history.**
+
+Settled by the project owner on 2026-10-12, for Phase 8 (D-79). Spotter's grading is right or wrong and its card is two typed fields, neither of which maps onto Anki's four buttons and flip cards, so the export does not try: a plain front-and-back note per word, grouped by list, which Anki then schedules from new.
+
+*Cost to reverse:* near zero until Phase 8 is built.
+
+**D-112 — The review schema: an append-only `review_log` is the source of truth, and `srs_state` is a cache of it keyed by (study item, card kind). There is no undo in v1.**
+
+Approved by the project owner on 2026-10-12 — the Phase 7 checkpoint. The tables are in `data-model.md`; the principles are what is expensive to change once learners have history:
+
+1. **The log is the truth; the schedule is a cache.** FSRS's state for a card is a function of its ordered answers and their times, so `srs_state` can always be rebuilt by replaying `review_log` — the way a balance is rebuilt from a ledger. That makes three things cheap that would otherwise be hard: merging two devices' history (combine the logs, replay), retuning FSRS to a learner's own memory (recompute), and recovering from a scheduler bug (replay with the fix). The reverse is not true: an answer that was never logged can never be recovered.
+2. **`srs_state`'s key is (study_item_id, card_kind), not a UUID.** This departs from the letter of D-15 and keeps its intent: the key is built from the item's UUID and a fixed name, so it cannot collide, and two offline devices that both create 先生's schedule produce the *same* key and merge rather than leaving two rows. It also lets the v2 → v3 migration create rows in plain SQL. Every other new table keeps a UUID.
+3. **No undo in v1, so the log is purely append-only** and carries no `deleted_at`. An undo for the answer just given was offered — it would mostly serve reading typos, which "I was right" does not cover — and deferred by the owner until after 1.0; romaji shows as kana before Submit, so most typos are visible in advance. Adding the column later is a cheap migration, since no history depends on it.
+4. **Times are UTC epoch milliseconds.** "Due today" and the day's rollover are computed in local time when the queue is built; stored local dates break when a learner travels or the clocks change.
+
+Also settled with it:
+
+- **The log keeps the meaning and reading outcomes apart** although one pass decides the schedule (D-107). That keeps the choice of one card over two reversible by replay, and records which answers were overridden and which readings are missed — the evidence for tuning D-108's matching.
+- **`passed`, not a rating.** The log stores what happened; the mapping to FSRS's internal grades (1 for a failed recall, 3 for a successful one) lives in code.
+- **`user_synonym` is user data:** UUID key, tombstoned, backed up with the database.
+- **The migration gives every filed word a `REVIEW` schedule, due at once,** so words already saved become reviewable immediately. `WRITING` rows exist only once a learner opts in (D-109).
+
+*Deliberately left out, each a cheap addition later:* FSRS parameters tuned to the learner (Phase 7 starts on FSRS's defaults; tuning needs a few hundred reviews to help), a target-retention setting, suspending or burying cards, and leech counts, which the log can produce at any time.
+
+*Cost to reverse:* **high** for principles 1, 2 and 4 once history exists; low for 3.
 
 ---
 
