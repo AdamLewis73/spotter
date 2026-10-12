@@ -17,11 +17,11 @@ saved in v1 (D-110).
 
 ## Next action
 
-**The schema checkpoint is discharged (D-112, 2026-10-12)** — `srs_state`,
-`review_log` and `user_synonym` are drawn in `data-model.md`. Build order: FSRS
-in `:domain` (D-26), then the v3 entities and `AutoMigration` with its
-`MigrationTestHelper` test, then the review screen. D-110's Save rule for
-kana-only words is independent and small.
+**Schema v3**: the `srs_state`, `review_log` and `user_synonym` entities
+drawn in `data-model.md` (D-112), an `AutoMigration` from v2 whose spec gives
+every filed word a `REVIEW` schedule due at once, and a `MigrationTestHelper`
+test that a v2 database with filed words comes through with them reviewable.
+FSRS is built (D-113) and D-110 is done; the review screen follows the schema.
 
 What Phase 6 leaves ready: `study_item` exists with `(text, reading, type)`
 identity, saved words are the filed ones (D-88, D-89), and `srs_state` hangs off
@@ -38,7 +38,14 @@ written and tested.
       empty square keeping the word centred. The word itself is still looked up
       and shown. `JapaneseTest` and `WordLookupViewModelTest` (9 of 9 on the
       emulator) cover it; seen on screen for トイレ, と and 生産.
-- [ ] FSRS ported into `:domain`, free of `android.*` (D-26)
+- [x] **FSRS ported into `:domain`, free of `android.*` (D-26, D-113)** —
+      2026-10-12. `domain/srs/Fsrs.kt`, a line-for-line port of py-fsrs v6.3.2:
+      `review(card, rating, at, fuzzSeed)` and `replay(createdAt, answers)`, on
+      epoch milliseconds. `FsrsTest` (25 cases) asserts the reference suite's own
+      numbers. Two things the port taught: Python's `round()` is half-to-even, so
+      `roundToInt()` would put intervals a day out; and py-fsrs's fuzz can land a
+      day past its own range, so the port floors as ts-fsrs does. MIT notice in
+      the file and in `assets/licenses/`.
 - [ ] Scheduling attached to the item, not to any list (D-29)
 - [ ] Review tab in the bottom nav (D-36)
 - [ ] Quiz flow over due items

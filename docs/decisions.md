@@ -141,6 +141,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-110 | Kana-only words cannot be saved in v1 | Product |
 | D-111 | Anki export: one note per word per list, front and back, no review history | SRS |
 | D-112 | **Review schema: append-only log is the truth; `srs_state` a cache keyed (item, kind); no undo in v1** | SRS |
+| D-113 | FSRS is a port of py-fsrs v6.3.2, held to its tests, on default settings; fuzz seeded per review | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1080,6 +1081,18 @@ Also settled with it:
 *Deliberately left out, each a cheap addition later:* FSRS parameters tuned to the learner (Phase 7 starts on FSRS's defaults; tuning needs a few hundred reviews to help), a target-retention setting, suspending or burying cards, and leech counts, which the log can produce at any time.
 
 *Cost to reverse:* **high** for principles 1, 2 and 4 once history exists; low for 3.
+
+**D-113 — FSRS is a line-for-line port of py-fsrs v6.3.2, checked against its own tests, with its default settings. Fuzz is seeded per review.**
+
+Built 2026-10-12 as `domain/srs/Fsrs.kt`, the first Phase 7 code. D-26 chose FSRS; this records which FSRS and how it is held to the reference.
+
+- **Source:** py-fsrs v6.3.2 (commit `9446cb06605c`), the reference Python implementation of FSRS-6, MIT-licensed — its notice travels with the port (`attribution.md`). Ported rather than depended on because there is no maintained Kotlin library, and because `:domain` must stay plain Kotlin (D-60).
+- **Checked against the reference's own tests.** Where py-fsrs's suite states a number, `FsrsTest` asserts the same number — the canonical interval history `[0, 2, 11, 46, 163, 498, 0, 0, 2, 4, 7, 12, 21]` days, stability 53.62691 and difficulty 6.3574867 to four places. A mistranscribed formula fails rather than scheduling plausibly and wrongly, which is the failure D-26 warns about.
+- **Settings are py-fsrs's defaults:** FSRS-6's 21 default weights, 90% desired retention, learning steps of 1 and 10 minutes, one relearning step of 10 minutes, a 100-year maximum interval, fuzz on. None is a commitment: because `srs_state` is a cache of the log (D-112), changing any of them later is a replay, not a migration. Whether 1- and 10-minute learning steps suit typed two-field cards is worth judging on a device once the review screen exists.
+- **Fuzz is seeded per review**, not drawn from a global random source as py-fsrs does. Fuzz spreads due dates so words learned together do not all fall due on one day; drawn afresh on every replay, it would make a learner's schedule depend on when it was last rebuilt. The app derives the seed from the review itself, so replaying the log reproduces it exactly (D-112).
+- **One correction to the reference:** py-fsrs *rounds* the fuzzed interval, which lets the top draw land a day past the range it describes; ts-fsrs, the TypeScript reference, floors it. The port floors. Found by a test, not by reading; it moves due dates only within the spread fuzz already allows.
+
+*Cost to reverse:* low. A pure module behind two functions, `review` and `replay`; nothing stored depends on its internals, and every setting is recoverable by replay.
 
 ---
 

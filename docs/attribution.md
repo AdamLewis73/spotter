@@ -70,10 +70,16 @@ This is a statement of what the licences say, not legal advice — worth a prope
 > begin and end, bundled with its IPADIC dictionary (D-07).
 > © Atilika Inc. Licensed under the Apache License, Version 2.0.
 > https://www.atilika.org/
+>
+> **FSRS** — the review scheduler, ported to Kotlin from py-fsrs (D-26).
+> © 2022 Open Spaced Repetition. Licensed under the MIT License.
+> https://github.com/open-spaced-repetition/py-fsrs
 
 KanjiVG's terms are the most prescriptive: attribution must state the use of KanjiVG **and link to the site**, both of which the wording above does.
 
 **Bundled software is a third category, separate again from the datasets and the font.** Kuromoji is Apache 2.0, which requires the licence and any NOTICE to be distributed with the binary. Its jars each carry `META-INF/LICENSE.md`, and the Android packaging step is configured to keep one copy rather than drop both — dropping them would be the easy accident, since the merge error that forces the decision reads like a build annoyance rather than a licensing one.
+
+**The FSRS scheduler is a port, not a bundled library** — py-fsrs v6.3.2 rewritten in Kotlin in `domain/srs/Fsrs.kt` — and the MIT License covers "substantial portions", which a line-for-line port is. So its notice travels twice: in full at the top of `Fsrs.kt`, and as `assets/licenses/py-fsrs-MIT.txt` for this screen. Nothing in a build flags a missing notice for code that was translated rather than imported, which is why it is written down here.
 
 **The fonts are a separate obligation from the datasets**, and easy to overlook because they are not part of the dictionary. The SIL Open Font License permits bundling and redistribution, but requires the copyright notice and licence to travel with the font — so the full OFL text ships in the app alongside this notice, not merely a link. Both licences live in `app/src/main/assets/licenses/`.
 
