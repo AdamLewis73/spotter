@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.tappableElement
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarDefaults
@@ -75,6 +77,8 @@ internal fun SpotterBottomBar(
     current: SpotterDestination?,
     onSelect: (SpotterDestination) -> Unit,
     modifier: Modifier = Modifier,
+    /** Words due for review, badged on the Review tab (artboard 2d). Nothing at zero. */
+    reviewDue: Int = 0,
 ) {
     val hairline = MaterialTheme.colorScheme.outline
     // Raised chrome, one step off the sheets and cards (D-101). It was `surface`,
@@ -124,7 +128,21 @@ internal fun SpotterBottomBar(
                 NavigationBarItem(
                     selected = selected,
                     onClick = { onSelect(destination) },
-                    icon = { NavGlyphIcon(glyph = destination.glyph, selected = selected) },
+                    icon = {
+                        val due = if (destination == SpotterDestination.Review) reviewDue else 0
+                        if (due > 0) {
+                            BadgedBox(
+                                badge = {
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                                    ) { Text(if (due > 99) "99+" else due.toString()) }
+                                },
+                            ) { NavGlyphIcon(glyph = destination.glyph, selected = selected) }
+                        } else {
+                            NavGlyphIcon(glyph = destination.glyph, selected = selected)
+                        }
+                    },
                     label = {
                         // The phone's own UI font (Roboto on a Pixel), by the project
                         // owner's choice over IBM Plex: it reads better at this size

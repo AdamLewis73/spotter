@@ -4,7 +4,9 @@ import com.spotterkanji.domain.dictionary.DictionaryEntry
 import com.spotterkanji.domain.srs.CardKind
 import com.spotterkanji.domain.srs.SrsCard
 import com.spotterkanji.domain.user.StudyItem
+import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.StudyItemId
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Everything one review card needs to ask and to check its answers (D-107,
@@ -89,6 +91,13 @@ private fun List<DictionaryEntry>.toOtherReadings(): List<OtherReading> =
     }
 
 /**
+ * A list's review state on Saved (artboard 2d). **Learned** means out of FSRS's
+ * learning steps and into its REVIEW state — a word that has been seen once is
+ * not yet learned, and one that has lapsed back into relearning is not either.
+ */
+data class ListReviewState(val due: Int, val learned: Int)
+
+/**
  * What a learner answered, as `review_log` records it (D-112). [passed] is what
  * FSRS sees; the two halves are kept apart so a later change to one card per
  * word can be replayed rather than invented (D-107).
@@ -135,6 +144,18 @@ interface ReviewRepository {
 
     /** Due REVIEW cards' items, most overdue first, new words in the order saved. */
     suspend fun dueItems(nowMs: Long, limit: Int): List<StudyItem>
+
+    /** [dueCount], live: changes as words are filed, answered or removed. */
+    fun observeDueCount(nowMs: Long): Flow<Int>
+
+    /** Due and learned counts per list (artboard 2d). Lists with no reviewable words are absent. */
+    fun observeListReviewState(nowMs: Long): Flow<Map<SavedListId, ListReviewState>>
+
+    /** Answers given at or after [sinceMs]. */
+    suspend fun answeredSince(sinceMs: Long): Int
+
+    /** Due times of reviewable cards after [fromMs] and up to [untilMs], earliest first. */
+    suspend fun dueTimesBetween(fromMs: Long, untilMs: Long): List<Long>
 
     suspend fun synonyms(itemId: StudyItemId): List<String>
 

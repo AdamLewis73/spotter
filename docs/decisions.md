@@ -143,6 +143,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-112 | **Review schema: append-only log is the truth; `srs_state` a cache keyed (item, kind); no undo in v1** | SRS |
 | D-113 | FSRS is a port of py-fsrs v6.3.2, held to its tests, on default settings; fuzz seeded per review | SRS |
 | D-114 | A review session records at Next, brings learning cards back, stops at 50; kanji not yet reviewed | SRS |
+| D-115 | From the design: review state on Saved, a tab badge, a caught-up forecast, the reading over the word; no review-ahead | UI |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1110,6 +1111,23 @@ Built 2026-10-12 with the review screen; recorded because each is a choice the s
 *Not consulted:* the Claude Design project's review screens — the wireflow's "all caught up" (D5) at least exists. The card follows the owner's description and the prototype (D-107); the design should be checked against it, and the design may predate typed answers.
 
 *Cost to reverse:* low. All of it lives in `ReviewViewModel` and one query; nothing stored depends on it.
+
+**D-115 — Review takes four things from the design project: review state on Saved, a due badge on the Review tab, a forecast when caught up, and the reading revealed over the word. It declines "review ahead".**
+
+Settled 2026-10-12 after the design project was read (artboards 1m–1o "E · Review card", 2c, 2d, 4h, and the wireflow's review lane D1–D5), on the owner's instruction to treat it as inspiration rather than specification. The designs predate typed answers (D-107), so their Show-answer flip and four grade buttons do not apply; three of the lane's screens are marked NOT DESIGNED there.
+
+Taken:
+
+- **Saved shows review state** (2d): "N due" in the header, and on each list a jade **N DUE** pill and "X learned". *Learned* means out of FSRS's learning steps and in its REVIEW state. All absent at zero — a new user has nothing to review, not a debt. These were held back until Phase 7 on purpose; Phase 7 is here.
+- **The Review tab carries a due-count badge** (2d), on every destination since the bar is (D-90).
+- **"All caught up" says more** (4h): a check, when the next word is due, how many answers were given today, and a *Coming up* forecast — the next three local days with anything due, as Later today / Tomorrow / weekday.
+- **The reading appears over the word, in jade, once answered** (1n), like furigana; the answer box keeps the meaning and lists only the other readings that also counted. A thin progress bar runs under the card's header (1o).
+
+Declined: **"Review ahead anyway"** (4h). Reviewing before FSRS's due time spends effort where recall is still likely, which is what the schedule exists to avoid; adding it would need its own decision about how early answers count. Deferred, not built: the scan's date on the photo (1m), which needs the scan's time carried to the card, and "Review this list" (2d, wireflow entry), a list-filtered session D-29 already allows.
+
+*Two consequences found while building:* due counts on Saved and the tab are live queries that hold the time they were started with, so they re-query once a minute — and **a card never reviewed counts as due whatever that time says**, because its due time is its save time; otherwise a word filed just after a tick stayed uncounted for up to a minute.
+
+*Cost to reverse:* low. Display only; nothing stored.
 
 ---
 

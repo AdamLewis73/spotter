@@ -26,6 +26,7 @@ The app's core interaction — tapping one specific word on a photograph — has
 
 ```
 Bottom nav: Scan · Saved · Review          (three — resist a fourth, D-36)
+                             ▲ badged with the due count (D-115)
              ▲ start destination (D-61); the bar is drawn here too (D-90)
                system back exits the app — no back control on the camera
 
@@ -53,8 +54,9 @@ Scan
                         lists already holding the word are shown locked
                         filing here is what keeps the photo (D-94)
 
-Saved
- └─ the user's lists — name · word count; create, rename, delete
+Saved                                         "3 words · 2 lists · 1 due" (D-115)
+ └─ the user's lists — name · word count · learned; a jade "N DUE" pill
+    when any are due; create, rename, delete
      └─ one list → "Add a word from search" at the top      (D-86, D-96)
         │            └─ type → results → tap one → the SAME word and kanji
         │               screens as a scan; Save opens the picker with this
@@ -66,10 +68,13 @@ Saved
 
 Review
  └─ "12 words due" + [Start review]                 (filed WORD items, D-89)
-    │  or "All caught up · Next review in 3 h"     — something is scheduled
+    │  or ✓ "All caught up · Next review in 3 h"   — something is scheduled;
+    │       today's answers and a Coming up forecast (D-115)
     │  or "Nothing to review yet"                  — nothing is filed at all
     └─ ONE CARD PER WORD                            (D-107)
          MEANING · READING        3 / 12      End review
+         ────────────────── progress
+                  じょうず        — in jade, only once answered (D-115)
                     上手
               [photo of the sign]               — absent when there is none
          Meaning  [ skilled            ]        — English, checked loosely (D-108)

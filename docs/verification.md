@@ -484,6 +484,17 @@ Setup: file 先生 and answer it right, right, wrong, right, right, each at its 
 
 The trap is drift. D-112 makes the log the truth and the schedule a cache — that is what makes syncing, retuning FSRS and fixing a scheduler bug possible. If the schedule is ever moved by anything other than an answer the log records — or the fuzz seed is drawn from somewhere a replay cannot reproduce — the cache stops matching the log, every rebuild silently changes the learner's due dates, and nothing says so. `ReviewRepositoryTest.the_stored_schedule_is_a_replay_of_the_log` holds it.
 
+### V-38 · Romaji typed through a composing keyboard keeps every letter (D-108)
+
+Setup: on Gboard's English layout, type the reading of 学生 one letter at a time — g, a, k, u, s, e, i — and submit.
+
+| Check | Expected |
+|---|---|
+| The field while typing | がくせい, every letter accounted for |
+| After Submit | がくせい, marked right |
+
+The trap: converting by rewriting the field's text on each keystroke. Gboard keeps a *composing region* — the word being typed — and expects to own it; replace the text under it and the two disagree about where the word starts, and letters vanish. Found on 2026-10-12: "gakusei" arrived as がうせい and was marked wrong, while "sensei" and "seisan" had happened to survive. The field now keeps the typed romaji and only *draws* it as kana (`RomajiAsKana`, a visual transformation); conversion happens at Submit. Only a real keyboard shows this — unit tests of `romajiToKana` pass either way.
+
 ### V-20 · An orphaned saved item renders and stays reviewable (D-40, D-43)
 
 Setup: save a word, then swap in a dictionary build where that `(text, reading)` no longer resolves.

@@ -3,13 +3,16 @@ package com.spotterkanji.app.nav
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -17,13 +20,17 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.spotterkanji.app.data.UserDataProvider
 import com.spotterkanji.app.review.ReviewScreen
+import com.spotterkanji.app.review.minuteTicks
 import com.spotterkanji.app.saved.ListDetailScreen
 import com.spotterkanji.app.saved.ListDetailViewModel
 import com.spotterkanji.app.saved.SavedScreen
 import com.spotterkanji.app.saved.SavedViewModel
 import com.spotterkanji.app.search.SearchRoute
 import com.spotterkanji.domain.user.SavedListId
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
 
 /**
  * The app shell: three destinations under one bottom bar (D-36, D-90).
@@ -45,6 +52,7 @@ import com.spotterkanji.domain.user.SavedListId
  * half-finished input to lose, and restoring a stale scroll offset onto a list
  * that has changed underneath is worse than starting at the top.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @Composable
 internal fun SpotterApp(
     scanContent: @Composable (bottomBarHeight: androidx.compose.ui.unit.Dp) -> Unit,
@@ -59,12 +67,21 @@ internal fun SpotterApp(
     val current = SpotterDestination.forRoute(route)
         ?: SpotterDestination.Saved.takeIf { route?.startsWith(LIST_ROUTE_PREFIX) == true }
 
+    // The Review tab's badge (artboard 2d): how many words are due now, re-read
+    // as the clock passes due times. Collected here because the bar is drawn on
+    // every destination (D-90), not only on Review.
+    val context = LocalContext.current
+    val reviewDue by remember {
+        minuteTicks().flatMapLatest { now -> UserDataProvider.reviews(context).observeDueCount(now) }
+    }.collectAsState(initial = 0)
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             SpotterBottomBar(
                 current = current,
                 onSelect = { destination -> navController.navigateToTab(destination) },
+                reviewDue = reviewDue,
             )
         },
         // The Scaffold applies no window insets of its own. Every destination

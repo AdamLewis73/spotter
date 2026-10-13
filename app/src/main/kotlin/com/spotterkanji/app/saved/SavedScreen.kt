@@ -1,5 +1,6 @@
 package com.spotterkanji.app.saved
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,8 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spotterkanji.app.R
 import com.spotterkanji.app.ui.theme.JapaneseFontTransformation
+import com.spotterkanji.app.ui.theme.SpotterMono
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.app.ui.theme.withJapaneseFont
+import com.spotterkanji.domain.review.ListReviewState
 import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.SavedListSummary
 
@@ -99,6 +102,7 @@ internal fun SavedScreen(
                 SavedHeader(
                     listCount = state.lists.size,
                     totalWords = state.totalWords,
+                    dueTotal = state.dueTotal,
                 )
             }
 
@@ -108,6 +112,7 @@ internal fun SavedScreen(
                 items(state.lists, key = { it.list.id.value }) { summary ->
                     ListCard(
                         summary = summary,
+                        review = state.review[summary.list.id],
                         onOpen = { onListOpened(summary.list.id) },
                         onRename = { name -> onRenamed(summary.list.id, name) },
                         onDelete = { onDeleted(summary.list.id) },
@@ -131,7 +136,7 @@ internal fun SavedScreen(
 }
 
 @Composable
-private fun SavedHeader(listCount: Int, totalWords: Int) {
+private fun SavedHeader(listCount: Int, totalWords: Int, dueTotal: Int) {
     val tokens = SpotterTheme.tokens
     Column(
         modifier = Modifier
@@ -154,9 +159,12 @@ private fun SavedHeader(listCount: Int, totalWords: Int) {
         // Words first, then lists — the words are what the user is keeping; the
         // lists are only how they are arranged.
         Text(
+            // And what is due, once anything is (artboard 2d). Absent at zero
+            // rather than "0 due": a new user has nothing to review, not a debt.
             text = pluralStringResource(R.plurals.saved_word_count, totalWords, totalWords) +
                 " · " +
-                pluralStringResource(R.plurals.saved_list_count, listCount, listCount),
+                pluralStringResource(R.plurals.saved_list_count, listCount, listCount) +
+                if (dueTotal > 0) " · " + stringResource(R.string.saved_due_count, dueTotal) else "",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = tokens.spaceXs),
@@ -201,6 +209,7 @@ private fun EmptySaved() {
 @Composable
 private fun ListCard(
     summary: SavedListSummary,
+    review: ListReviewState?,
     onOpen: () -> Unit,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
@@ -239,14 +248,34 @@ private fun ListCard(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
+                    // "34 words · 19 learned" (artboard 2d): learned is out of
+                    // FSRS's learning steps. Shown only once there are any.
                     text = pluralStringResource(
                         R.plurals.saved_word_count,
                         summary.wordCount,
                         summary.wordCount,
-                    ),
+                    ) + if ((review?.learned ?: 0) > 0) {
+                        " · " + stringResource(R.string.saved_learned_count, review!!.learned)
+                    } else "",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = tokens.spaceXs),
+                )
+            }
+
+            // The list's due words, as a jade pill (artboard 2d). Nothing at zero.
+            val due = review?.due ?: 0
+            if (due > 0) {
+                Text(
+                    text = stringResource(R.string.saved_due_badge, due),
+                    fontFamily = SpotterMono,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.5.sp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50))
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
                 )
             }
 

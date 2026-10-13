@@ -1,14 +1,17 @@
 package com.spotterkanji.data.user
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import androidx.room.migration.AutoMigrationSpec
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import com.spotterkanji.domain.srs.CardKind
 import com.spotterkanji.domain.srs.SrsState
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Schedules and answers (D-112).
@@ -58,7 +61,63 @@ interface SrsDao {
     )
     suspend fun dueItems(cardKind: String, now: Long, limit: Int): List<StudyItemRow>
 
-    @androidx.room.Upsert
+    /**
+     * As [dueCount], kept live: re-emits whenever schedules or memberships change.
+     *
+     * A card never reviewed counts as due whatever [now] says. Its due time is
+     * the moment it was saved, so it is always due — but a live query holds the
+     * [now] it was started with, and a word filed a few seconds after that would
+     * otherwise stay uncounted until the next tick.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM srs_state AS s
+        JOIN study_item AS i ON i.id = s.study_item_id
+        WHERE s.card_kind = :cardKind
+          AND (s.due_at <= :now OR s.last_reviewed_at IS NULL)
+          AND $REVIEWABLE
+        """
+    )
+    fun observeDueCount(cardKind: String, now: Long): Flow<Int>
+
+    /**
+     * Per list: how many of its words are due, and how many are **learned** —
+     * out of FSRS's learning steps and in its REVIEW state (artboard 2d). A word
+     * in two lists counts in both, which is what each list's badge should say;
+     * it is still one schedule (D-29). New cards count as due at once, as in
+     * [observeDueCount].
+     */
+    @Query(
+        """
+        SELECT m.list_id AS list_id,
+               SUM(CASE WHEN s.due_at <= :now OR s.last_reviewed_at IS NULL THEN 1 ELSE 0 END) AS due,
+               SUM(CASE WHEN s.fsrs_state = 'REVIEW' THEN 1 ELSE 0 END) AS learned
+        FROM list_membership AS m
+        JOIN study_item AS i ON i.id = m.study_item_id
+        JOIN srs_state AS s ON s.study_item_id = i.id AND s.card_kind = :cardKind
+        WHERE m.deleted_at IS NULL AND i.deleted_at IS NULL AND i.type = 'WORD'
+        GROUP BY m.list_id
+        """
+    )
+    fun observeListReviewState(cardKind: String, now: Long): Flow<List<ListReviewRow>>
+
+    /** Answers given since [since] — "you reviewed 14 today" (artboard 4h). */
+    @Query("SELECT COUNT(*) FROM review_log WHERE card_kind = :cardKind AND reviewed_at >= :since")
+    suspend fun answeredSince(cardKind: String, since: Long): Int
+
+    /** Due times of reviewable cards in (from, until] — the "Coming up" forecast (artboard 4h). */
+    @Query(
+        """
+        SELECT s.due_at FROM srs_state AS s
+        JOIN study_item AS i ON i.id = s.study_item_id
+        WHERE s.card_kind = :cardKind AND s.due_at > :from AND s.due_at <= :until
+          AND $REVIEWABLE
+        ORDER BY s.due_at
+        """
+    )
+    suspend fun dueTimesBetween(cardKind: String, from: Long, until: Long): List<Long>
+
+    @Upsert
     suspend fun upsert(row: SrsStateRow)
 
     @Insert
@@ -88,6 +147,13 @@ interface SrsDao {
     @Query("SELECT * FROM srs_state WHERE study_item_id = :studyItemId AND card_kind = :cardKind")
     suspend fun find(studyItemId: String, cardKind: String): SrsStateRow?
 }
+
+/** One list's review state — a query result, not a table. */
+data class ListReviewRow(
+    @ColumnInfo(name = "list_id") val listId: String,
+    @ColumnInfo(name = "due") val due: Int,
+    @ColumnInfo(name = "learned") val learned: Int,
+)
 
 /** The test every review query shares: a live, filed WORD (D-89, D-106). */
 private const val REVIEWABLE = """
