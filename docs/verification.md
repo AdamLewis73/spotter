@@ -473,6 +473,17 @@ The trap is a word that exists and can never be reviewed. Nothing errors: it sit
 
 `UserMigrationTest` holds the upgrade, from every old version; `UserDataTest` holds the save path. Both migration cases were confirmed to fail with the backfill removed (2026-10-12). Driven once for real as well: a v2 emulator database with 先生 filed upgraded in place to v3 with its schedule, integrity and foreign-key checks clean.
 
+### V-37 · The stored schedule is a replay of the answer log (D-112, D-113)
+
+Setup: file 先生 and answer it right, right, wrong, right, right, each at its due time. Then replay its `review_log` through `Fsrs.replay`, seeding each answer with `fuzzSeed(item, kind, reviewed_at)`.
+
+| Check | Expected |
+|---|---|
+| Replayed state, step, stability, difficulty, due | **equal** to the row in `srs_state` |
+| Each answer | one `review_log` row, meaning and reading outcomes kept apart |
+
+The trap is drift. D-112 makes the log the truth and the schedule a cache — that is what makes syncing, retuning FSRS and fixing a scheduler bug possible. If the schedule is ever moved by anything other than an answer the log records — or the fuzz seed is drawn from somewhere a replay cannot reproduce — the cache stops matching the log, every rebuild silently changes the learner's due dates, and nothing says so. `ReviewRepositoryTest.the_stored_schedule_is_a_replay_of_the_log` holds it.
+
 ### V-20 · An orphaned saved item renders and stays reviewable (D-40, D-43)
 
 Setup: save a word, then swap in a dictionary build where that `(text, reading)` no longer resolves.

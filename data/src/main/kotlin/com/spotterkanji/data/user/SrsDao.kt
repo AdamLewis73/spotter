@@ -11,11 +11,71 @@ import com.spotterkanji.domain.srs.CardKind
 import com.spotterkanji.domain.srs.SrsState
 
 /**
- * Schedules and answers (D-112). Only what saving and the migration need so
- * far; the review queue's queries arrive with the review screen.
+ * Schedules and answers (D-112).
+ *
+ * **The queue reviews filed words only** (D-89): a live study item with at least
+ * one live list membership — the same test `StudyItemDao.observeFiledCount`
+ * uses, so a word counts as reviewable exactly when Saved shows it. And WORD
+ * items only for now: what a kanji card's reading field accepts is still open
+ * (D-106), so a kanji is kept out rather than asked a question with no rule.
  */
 @Dao
 interface SrsDao {
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM srs_state AS s
+        JOIN study_item AS i ON i.id = s.study_item_id
+        WHERE s.card_kind = :cardKind AND s.due_at <= :now
+          AND $REVIEWABLE
+        """
+    )
+    suspend fun dueCount(cardKind: String, now: Long): Int
+
+    @Query(
+        """
+        SELECT MIN(s.due_at) FROM srs_state AS s
+        JOIN study_item AS i ON i.id = s.study_item_id
+        WHERE s.card_kind = :cardKind AND $REVIEWABLE
+        """
+    )
+    suspend fun nextDueAt(cardKind: String): Long?
+
+    /**
+     * Due items, most overdue first. New words share their save time as due
+     * time (the v3 migration and `newReviewSchedule` both do that), so they come
+     * up in the order they were saved; `created_at` breaks exact ties.
+     */
+    @Query(
+        """
+        SELECT i.* FROM srs_state AS s
+        JOIN study_item AS i ON i.id = s.study_item_id
+        WHERE s.card_kind = :cardKind AND s.due_at <= :now
+          AND $REVIEWABLE
+        ORDER BY s.due_at, i.created_at
+        LIMIT :limit
+        """
+    )
+    suspend fun dueItems(cardKind: String, now: Long, limit: Int): List<StudyItemRow>
+
+    @androidx.room.Upsert
+    suspend fun upsert(row: SrsStateRow)
+
+    @Insert
+    suspend fun insertLog(row: ReviewLogRow)
+
+    @Query("SELECT * FROM review_log WHERE study_item_id = :studyItemId AND card_kind = :cardKind ORDER BY reviewed_at")
+    suspend fun logFor(studyItemId: String, cardKind: String): List<ReviewLogRow>
+
+    @Query("SELECT text FROM user_synonym WHERE study_item_id = :studyItemId AND deleted_at IS NULL ORDER BY created_at")
+    suspend fun synonyms(studyItemId: String): List<String>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSynonymIfAbsent(row: UserSynonymRow): Long
+
+    /** Brings back a synonym the learner removed and then earned again. */
+    @Query("UPDATE user_synonym SET deleted_at = NULL, updated_at = :now WHERE study_item_id = :studyItemId AND text = :text")
+    suspend fun reviveSynonym(studyItemId: String, text: String, now: Long)
 
     /**
      * Creates a schedule unless the card already has one. IGNORE rather than
@@ -28,6 +88,16 @@ interface SrsDao {
     @Query("SELECT * FROM srs_state WHERE study_item_id = :studyItemId AND card_kind = :cardKind")
     suspend fun find(studyItemId: String, cardKind: String): SrsStateRow?
 }
+
+/** The test every review query shares: a live, filed WORD (D-89, D-106). */
+private const val REVIEWABLE = """
+    i.deleted_at IS NULL
+    AND i.type = 'WORD'
+    AND EXISTS (
+        SELECT 1 FROM list_membership AS m
+        WHERE m.study_item_id = i.id AND m.deleted_at IS NULL
+    )
+"""
 
 /**
  * A REVIEW card that has never been answered, due at [dueAt] — FSRS's new card

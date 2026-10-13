@@ -142,6 +142,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-111 | Anki export: one note per word per list, front and back, no review history | SRS |
 | D-112 | **Review schema: append-only log is the truth; `srs_state` a cache keyed (item, kind); no undo in v1** | SRS |
 | D-113 | FSRS is a port of py-fsrs v6.3.2, held to its tests, on default settings; fuzz seeded per review | SRS |
+| D-114 | A review session records at Next, brings learning cards back, stops at 50; kanji not yet reviewed | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1095,6 +1096,20 @@ Built 2026-10-12 as `domain/srs/Fsrs.kt`, the first Phase 7 code. D-26 chose FSR
 - **One correction to the reference:** py-fsrs *rounds* the fuzzed interval, which lets the top draw land a day past the range it describes; ts-fsrs, the TypeScript reference, floors it. The port floors. Found by a test, not by reading; it moves due dates only within the spread fuzz already allows.
 
 *Cost to reverse:* low. A pure module behind two functions, `review` and `replay`; nothing stored depends on its internals, and every setting is recoverable by replay.
+
+**D-114 — A review session records each answer at Next, brings a still-learning card back before it ends, and stops at 50.**
+
+Built 2026-10-12 with the review screen; recorded because each is a choice the screen makes on the learner's behalf, not because any is hard to change.
+
+- **An answer is recorded at Next, not at Submit.** Between the two the learner may press "I was right", which changes the outcome, and the log is append-only (D-112) — so the one row written is the final one. Leaving between Submit and Next records nothing, which is the same as not having answered.
+- **A card that is still learning comes back in the same session.** FSRS puts a new or missed card on a short step — 1 or 10 minutes (D-113) — so it goes to the back of the session rather than waiting for the next visit. Shown before its step is up, it is an early review, which FSRS's same-day model already handles. A new word therefore needs two right answers in a session to leave learning.
+- **50 cards per session.** Enough for a sitting; the rest stay due for the next.
+- **The tab says which of three states it is in:** words due (with a Start button), all caught up (with when the next is due), or nothing filed yet. An empty queue and an empty app look alike and mean opposite things.
+- **Kanji items are not reviewed yet.** What a kanji card's reading field accepts is open (D-106), so a saved kanji is kept out of the queue rather than asked a question with no rule. It keeps its schedule, and joins the queue when the rule is settled.
+
+*Not consulted:* the Claude Design project's review screens — the wireflow's "all caught up" (D5) at least exists. The card follows the owner's description and the prototype (D-107); the design should be checked against it, and the design may predate typed answers.
+
+*Cost to reverse:* low. All of it lives in `ReviewViewModel` and one query; nothing stored depends on it.
 
 ---
 

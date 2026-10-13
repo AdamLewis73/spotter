@@ -63,6 +63,23 @@ Saved
                    each row: thumbnail of where the word was seen (D-95)
                              — an empty slot when it has no photo (D-94)
                    hold a row → remove, confirm, three seconds to undo (D-93)
+
+Review
+ └─ "12 words due" + [Start review]                 (filed WORD items, D-89)
+    │  or "All caught up · Next review in 3 h"     — something is scheduled
+    │  or "Nothing to review yet"                  — nothing is filed at all
+    └─ ONE CARD PER WORD                            (D-107)
+         MEANING · READING        3 / 12      End review
+                    上手
+              [photo of the sign]               — absent when there is none
+         Meaning  [ skilled            ]        — English, checked loosely (D-108)
+         Reading  [ じょうず            ]        — romaji turns to kana as typed
+         [Submit]
+         → each field's border green or red; the answer beneath
+           (main sense large, the rest smaller, then the reading)
+           [Next]   [I was right] — only when the meaning was marked wrong
+         a reading of a different word (うわて) → a note, retry, no grade
+         a card still learning comes back before the session ends (D-114)
 ```
 
 Both routes reach **the same** kanji screen. One kanji, one screen.
