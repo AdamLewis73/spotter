@@ -4,13 +4,17 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.spotterkanji.app.data.UserDataProvider
+import com.spotterkanji.app.review.minuteTicks
+import com.spotterkanji.domain.review.ListReviewState
 import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.SavedListSummary
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -24,6 +28,15 @@ class SavedViewModel(application: Application) : AndroidViewModel(application) {
 
     private val lists = UserDataProvider.savedLists(application)
     private val items = UserDataProvider.savedItems(application)
+    private val reviews = UserDataProvider.reviews(application)
+
+    /** Due and learned counts, re-read as the clock passes due times (artboard 2d). */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val reviewState = minuteTicks().flatMapLatest { now ->
+        combine(reviews.observeListReviewState(now), reviews.observeDueCount(now)) { perList, due ->
+            perList to due
+        }
+    }
 
     /**
      * `stateIn` rather than exposing the repository flows directly: the screen
@@ -37,8 +50,9 @@ class SavedViewModel(application: Application) : AndroidViewModel(application) {
         combine(
             lists.observeListSummaries(),
             items.observeSavedCount(),
-        ) { summaries, total ->
-            SavedUiState.Ready(lists = summaries, totalWords = total)
+            reviewState,
+        ) { summaries, total, (perList, due) ->
+            SavedUiState.Ready(lists = summaries, totalWords = total, review = perList, dueTotal = due)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -81,5 +95,8 @@ sealed interface SavedUiState {
     data class Ready(
         val lists: List<SavedListSummary>,
         val totalWords: Int,
+        /** Per list; a list with nothing reviewable is absent rather than zero. */
+        val review: Map<SavedListId, ListReviewState> = emptyMap(),
+        val dueTotal: Int = 0,
     ) : SavedUiState
 }

@@ -21,13 +21,24 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 /** What the Review tab is showing. */
 sealed interface ReviewUiState {
     data object Loading : ReviewUiState
 
-    /** The tab at rest: how much is due, or when the next word is. */
-    data class Home(val dueCount: Int, val nextDueAt: Long?) : ReviewUiState
+    /**
+     * The tab at rest: how much is due, or when the next word is — and, once
+     * caught up, what was done today and what is coming (artboard 4h).
+     */
+    data class Home(
+        val dueCount: Int,
+        val nextDueAt: Long?,
+        val answeredToday: Int = 0,
+        val comingUp: List<DayCount> = emptyList(),
+    ) : ReviewUiState
 
     /** One card of a session (D-107). */
     data class Card(
@@ -44,6 +55,9 @@ sealed interface ReviewUiState {
 
     data class Done(val answered: Int) : ReviewUiState
 }
+
+/** How many words fall due on one local day. */
+data class DayCount(val day: LocalDate, val count: Int)
 
 /** The outcome of one Submit, shown until Next. */
 data class Result(
@@ -94,13 +108,30 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
     /** Re-reads the counts; called whenever the tab comes back into view. */
     fun refreshHome() {
         if (_state.value is ReviewUiState.Card) return
-        viewModelScope.launch {
-            val now = System.currentTimeMillis()
-            _state.value = ReviewUiState.Home(
-                dueCount = reviews.dueCount(now),
-                nextDueAt = reviews.nextDueAt(),
-            )
-        }
+        viewModelScope.launch { _state.value = home() }
+    }
+
+    /**
+     * The home state. "Today" and the forecast's days are the phone's local
+     * days; every stored time is UTC (D-112), so this is the one place the
+     * conversion happens.
+     */
+    private suspend fun home(): ReviewUiState.Home {
+        val now = System.currentTimeMillis()
+        val zone = ZoneId.systemDefault()
+        val startOfToday = LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli()
+        val upcoming = reviews.dueTimesBetween(now, now + FORECAST_DAYS * DAY_MS)
+            .groupingBy { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+            .eachCount()
+            .map { (day, count) -> DayCount(day, count) }
+            .sortedBy { it.day }
+            .take(FORECAST_ROWS)
+        return ReviewUiState.Home(
+            dueCount = reviews.dueCount(now),
+            nextDueAt = reviews.nextDueAt(),
+            answeredToday = reviews.answeredSince(startOfToday),
+            comingUp = upcoming,
+        )
     }
 
     fun start() {
@@ -198,9 +229,7 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
         val item = queue.removeFirstOrNull()
         currentItem = item
         if (item == null) {
-            _state.value = if (answered > 0) ReviewUiState.Done(answered) else {
-                ReviewUiState.Home(reviews.dueCount(System.currentTimeMillis()), reviews.nextDueAt())
-            }
+            _state.value = if (answered > 0) ReviewUiState.Done(answered) else home()
             return
         }
         position++
@@ -218,5 +247,10 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
     private companion object {
         /** Enough for a sitting; the rest stay due for the next one. */
         const val SESSION_LIMIT = 50
+
+        /** The forecast looks a week ahead and shows its first three days with anything due. */
+        const val FORECAST_DAYS = 7L
+        const val FORECAST_ROWS = 3
+        const val DAY_MS = 86_400_000L
     }
 }

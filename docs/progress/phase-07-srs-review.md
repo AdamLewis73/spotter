@@ -83,6 +83,15 @@ written and tested.
       makes a grade mean anything.
       Most of the drawing machinery exists — `StrokeOrder.kt` already parses the
       paths, scales them, captures gestures and hit-tests strokes.
+- [x] **From the design project (D-115)** — 2026-10-12. Saved shows due and
+      learned counts per list and in its header; the Review tab carries a due
+      badge; "all caught up" gains a check, today's answer count and a
+      *Coming up* forecast; the card reveals the reading in jade over the word
+      and has a progress bar. "Review ahead" declined. Found while building:
+      live due counts hold their start time, so a never-reviewed card counts
+      as due regardless; and **rewriting the reading field on each keystroke
+      lost letters on Gboard** — "gakusei" became がうせい — so the field now
+      only *draws* romaji as kana (V-38). `ReviewRepositoryTest` 10/10.
 - [ ] Relevant `V-##` cases from `verification.md` added to this list
 
 ## Open questions
@@ -121,6 +130,17 @@ written and tested.
   (item, kind), times in UTC, and no undo in v1.
 
 ## Notes
+
+- **Reading the Claude Design project**, as it worked on 2026-10-12: the
+  `DesignSync` tool's read methods (`list_files`, `get_file`) need a one-time
+  `/design-login` from an interactive `claude` terminal; the browser pane is a
+  separate sign-in and does not help. `get_file` on `Kanji Lens.dc.html`
+  (~137 KB) and `Kanji Lens Wireflow.dc.html` saves to a file; cut one artboard
+  out by its `id` (balanced `<div>`s), wrap it with the Google Fonts link, and
+  render it with headless Edge (`msedge --headless=new --screenshot`) — the
+  browser pane will not screenshot a local file. Review lives in "E · Review
+  card" (1m–1o), 2c, 2d, 4h, and wireflow lane D. **`/design-sync` is not a
+  reader** — it uploads a code component library into a new design project.
 
 - FSRS, not SM-2 or anything hand-rolled (D-26).
 - Lists only filter; they never own scheduling (D-29). A word in three lists is

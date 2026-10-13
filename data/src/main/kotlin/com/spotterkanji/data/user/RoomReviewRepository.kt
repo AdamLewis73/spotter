@@ -1,6 +1,7 @@
 package com.spotterkanji.data.user
 
 import androidx.room.withTransaction
+import com.spotterkanji.domain.review.ListReviewState
 import com.spotterkanji.domain.review.ReviewAnswer
 import com.spotterkanji.domain.review.ReviewRepository
 import com.spotterkanji.domain.review.fuzzSeed
@@ -9,8 +10,11 @@ import com.spotterkanji.domain.srs.Fsrs
 import com.spotterkanji.domain.srs.Rating
 import com.spotterkanji.domain.srs.SrsCard
 import com.spotterkanji.domain.srs.SrsState
+import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.StudyItem
 import com.spotterkanji.domain.user.StudyItemId
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -38,6 +42,18 @@ class RoomReviewRepository(
 
     override suspend fun dueItems(nowMs: Long, limit: Int): List<StudyItem> =
         dao.dueItems(CardKind.REVIEW.name, nowMs, limit).map { it.toModel() }
+
+    override fun observeDueCount(nowMs: Long): Flow<Int> = dao.observeDueCount(CardKind.REVIEW.name, nowMs)
+
+    override fun observeListReviewState(nowMs: Long): Flow<Map<SavedListId, ListReviewState>> =
+        dao.observeListReviewState(CardKind.REVIEW.name, nowMs).map { rows ->
+            rows.associate { SavedListId(it.listId) to ListReviewState(due = it.due, learned = it.learned) }
+        }
+
+    override suspend fun answeredSince(sinceMs: Long): Int = dao.answeredSince(CardKind.REVIEW.name, sinceMs)
+
+    override suspend fun dueTimesBetween(fromMs: Long, untilMs: Long): List<Long> =
+        dao.dueTimesBetween(CardKind.REVIEW.name, fromMs, untilMs)
 
     override suspend fun synonyms(itemId: StudyItemId): List<String> = dao.synonyms(itemId.value)
 

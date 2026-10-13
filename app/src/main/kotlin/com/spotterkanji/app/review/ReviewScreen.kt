@@ -2,6 +2,7 @@ package com.spotterkanji.app.review
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,13 +14,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -38,14 +45,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,6 +67,9 @@ import com.spotterkanji.app.ui.theme.SpotterMono
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.app.ui.theme.withJapaneseFont
 import com.spotterkanji.domain.review.romajiToKana
+import java.time.LocalDate
+import java.time.format.TextStyle as DayNameStyle
+import java.util.Locale
 
 /**
  * The Review destination (D-36, D-90): how much is due, and the session itself.
@@ -121,17 +134,80 @@ private fun ReviewHome(state: ReviewUiState.Home, onStart: () -> Unit) {
             }
             // Something is scheduled, just not yet. An empty queue and an empty
             // app look alike and mean opposite things, so they are told apart.
-            state.nextDueAt != null -> {
-                Title(stringResource(R.string.review_caught_up_title))
-                Spacer(Modifier.height(tokens.spaceSm))
-                Body(stringResource(R.string.review_caught_up_next, untilText(state.nextDueAt)))
-            }
+            state.nextDueAt != null -> CaughtUp(state)
             else -> {
                 Title(stringResource(R.string.review_nothing_yet_title))
                 Spacer(Modifier.height(tokens.spaceSm))
                 Body(stringResource(R.string.review_nothing_yet_body))
             }
         }
+    }
+}
+
+/**
+ * Nothing due right now (artboard 4h): a check, when the next word comes back,
+ * what was done today, and the days ahead. No "review ahead anyway" — reviewing
+ * before FSRS's due time spends effort where recall is still likely, which is
+ * exactly what the schedule exists to avoid.
+ */
+@Composable
+private fun CaughtUp(state: ReviewUiState.Home) {
+    val tokens = SpotterTheme.tokens
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(48.dp)
+            .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+    ) {
+        // The icon rather than a "✓" character: none of the bundled fonts has the
+        // glyph, and the fallback drew it as a square-root sign.
+        Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+    }
+    Spacer(Modifier.height(tokens.spaceMd))
+    Title(stringResource(R.string.review_caught_up_title))
+    Spacer(Modifier.height(tokens.spaceSm))
+    Body(stringResource(R.string.review_caught_up_next, untilText(state.nextDueAt!!)))
+    if (state.answeredToday > 0) {
+        Body(pluralStringResource(R.plurals.review_answered_today, state.answeredToday, state.answeredToday))
+    }
+    if (state.comingUp.isNotEmpty()) {
+        Spacer(Modifier.height(tokens.spaceLg))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                .padding(tokens.spaceMd),
+            verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
+        ) {
+            Label(stringResource(R.string.review_coming_up))
+            state.comingUp.forEach { (day, count) ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = dayLabel(day),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = count.toString(),
+                        fontFamily = SpotterMono,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** "Later today", "Tomorrow", or the weekday — a forecast reads in days, not dates. */
+@Composable
+private fun dayLabel(day: LocalDate): String {
+    val today = LocalDate.now()
+    return when (day) {
+        today -> stringResource(R.string.review_later_today)
+        today.plusDays(1) -> stringResource(R.string.review_tomorrow)
+        else -> day.dayOfWeek.getDisplayName(DayNameStyle.FULL, Locale.getDefault())
     }
 }
 
@@ -169,7 +245,9 @@ private fun ReviewCardScreen(
     // Keyed by position, so each card starts with empty fields — including a
     // card that comes back later in the same session.
     var meaning by rememberSaveable(state.position) { mutableStateOf("") }
-    var reading by remember(state.position) { mutableStateOf(TextFieldValue("")) }
+    // What was typed, untouched — romaji stays romaji here and is only *shown*
+    // as kana (RomajiAsKana). See that object for why.
+    var reading by rememberSaveable(state.position) { mutableStateOf("") }
     val meaningFocus = remember { FocusRequester() }
     val readingFocus = remember { FocusRequester() }
     LaunchedEffect(state.position) { meaningFocus.requestFocus() }
@@ -177,8 +255,8 @@ private fun ReviewCardScreen(
     val submit = {
         // A trailing n becomes ん only now (D-108), so the field shows the kana
         // that was actually checked rather than "せいさn".
-        val final = romajiToKana(reading.text, final = true)
-        reading = TextFieldValue(final, selection = TextRange(final.length))
+        val final = romajiToKana(reading, final = true)
+        reading = final
         onSubmit(meaning, final)
     }
 
@@ -210,7 +288,29 @@ private fun ReviewCardScreen(
             )
             TextButton(onClick = onClose) { Text(stringResource(R.string.review_close)) }
         }
+        // How far through the session (artboard 1o). The total grows when a card
+        // comes back, so the bar can step backwards — honest, if a little odd.
+        LinearProgressIndicator(
+            progress = { (state.position - 1).toFloat() / state.total },
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            drawStopIndicator = {},
+            gapSize = 0.dp,
+            modifier = Modifier.fillMaxWidth().height(3.dp),
+        )
 
+        // The reading, revealed over the word in jade once answered (artboard 1n)
+        // — like furigana. Drawn transparent while asking rather than left out,
+        // so the word does not jump down when the answer appears.
+        Text(
+            text = card.reading,
+            fontFamily = SpotterJapanese,
+            fontSize = 18.sp,
+            letterSpacing = 4.sp,
+            color = if (result != null) MaterialTheme.colorScheme.primary else Color.Transparent,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
         Text(
             text = card.text,
             fontFamily = SpotterJapanese,
@@ -251,14 +351,9 @@ private fun ReviewCardScreen(
 
         OutlinedTextField(
             value = reading,
-            onValueChange = { typed ->
-                if (result != null) return@OutlinedTextField
-                // Romaji becomes kana as it is typed (D-108); the cursor follows
-                // the end, which is where the learner is typing.
-                val converted = romajiToKana(typed.text)
-                reading = if (converted == typed.text) typed
-                else TextFieldValue(converted, selection = TextRange(converted.length))
-            },
+            onValueChange = { if (result == null) reading = it },
+            // Romaji is shown as kana as it is typed (D-108).
+            visualTransformation = RomajiAsKana,
             readOnly = result != null,
             label = { Text(stringResource(R.string.review_reading_label)) },
             placeholder = { Text(stringResource(R.string.review_reading_hint)) },
@@ -348,15 +443,16 @@ private fun Answer(state: ReviewUiState.Card) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Spacer(Modifier.height(tokens.spaceXs))
-        Label(stringResource(R.string.review_answer_reading))
+        // The reading itself is over the word now; here only the other readings
+        // that also counted (D-108), when there are any.
         val others = card.acceptedReadings.drop(1)
-        Text(
-            text = (card.reading + if (others.isEmpty()) "" else "　（${others.joinToString("、")}）")
-                .withJapaneseFont(),
-            fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        if (others.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.review_also_read, others.joinToString("、")).withJapaneseFont(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -412,9 +508,43 @@ private fun Body(text: String) = Text(
 @Composable
 private fun untilText(atMs: Long): String {
     val minutes = ((atMs - System.currentTimeMillis()) / 60_000).coerceAtLeast(1)
+    val days = (minutes + 12 * 60) / (24 * 60) // nearest whole day
     return when {
         minutes < 60 -> "in $minutes min"
-        minutes < 48 * 60 -> "in ${minutes / 60} h"
-        else -> "in ${minutes / (24 * 60)} days"
+        minutes < 24 * 60 -> "in ${minutes / 60} h"
+        days <= 1 -> "tomorrow"
+        else -> "in $days days"
+    }
+}
+
+
+/**
+ * Shows typed romaji as kana without changing what was typed (D-108).
+ *
+ * The obvious way — rewriting the field's text to kana on every keystroke —
+ * breaks on real keyboards. Gboard and its kind keep a *composing region*, the
+ * word being typed, and expect to own that text; replace it under them and the
+ * two disagree about where the word begins, and letters go missing: "gakusei"
+ * arrived as がうせい on the emulator. So the field keeps the romaji the keyboard
+ * typed, this draws it as kana, and the real conversion happens at Submit.
+ *
+ * Kana typed on a Japanese keyboard passes through unchanged.
+ */
+private object RomajiAsKana : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val original = text.text
+        val shown = romajiToKana(original)
+        return TransformedText(
+            AnnotatedString(shown).withJapaneseFont(),
+            object : OffsetMapping {
+                // A cursor after the first n typed characters sits after their kana.
+                override fun originalToTransformed(offset: Int): Int =
+                    romajiToKana(original.take(offset)).length.coerceIn(0, shown.length)
+
+                override fun transformedToOriginal(offset: Int): Int =
+                    (0..original.length).firstOrNull { originalToTransformed(it) >= offset }
+                        ?: original.length
+            },
+        )
     }
 }

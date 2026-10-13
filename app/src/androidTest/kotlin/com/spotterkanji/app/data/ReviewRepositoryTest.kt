@@ -7,6 +7,7 @@ import com.spotterkanji.data.user.RoomReviewRepository
 import com.spotterkanji.data.user.RoomSavedItemsRepository
 import com.spotterkanji.data.user.RoomSavedListRepository
 import com.spotterkanji.data.user.UserDatabase
+import com.spotterkanji.domain.review.ListReviewState
 import com.spotterkanji.domain.review.ReviewAnswer
 import com.spotterkanji.domain.review.fuzzSeed
 import com.spotterkanji.domain.srs.Answer
@@ -155,6 +156,49 @@ class ReviewRepositoryTest {
         assertEquals(replayed.stability!!, stored.stability!!, 0.0)
         assertEquals(replayed.difficulty!!, stored.difficulty!!, 0.0)
         assertEquals(replayed.dueMs, stored.dueAt)
+    }
+
+    // ---- Review state for Saved and the Review tab (artboards 2d, 4h)
+
+    /**
+     * A live count is started with one "now" and keeps it. A word filed after
+     * that is due (its due time is its save time), so it must count at once —
+     * not a minute later on the next tick.
+     */
+    @Test
+    fun a_word_filed_after_the_count_started_is_due_at_once() = runBlocking {
+        val countFrom = 0L // long before anything was saved
+        assertEquals(0, reviews.observeDueCount(countFrom).first())
+        filed("先生", "せんせい")
+        assertEquals(1, reviews.observeDueCount(countFrom).first())
+    }
+
+    /** Per list: due counts what is due; learned counts what has left learning. */
+    @Test
+    fun each_list_reports_its_due_and_learned_words() = runBlocking {
+        val sensei = filed("先生", "せんせい")
+        filed("生産", "せいさん")
+        val list = lists.observeListsOnce().single()
+
+        assertEquals(ListReviewState(due = 2, learned = 0), reviews.observeListReviewState(later).first()[list.id])
+
+        // Two right answers take a new card out of learning (D-113's steps).
+        val first = reviews.record(sensei.id, CardKind.REVIEW, right, later, null)
+        reviews.record(sensei.id, CardKind.REVIEW, right, first.dueMs, null)
+
+        val state = reviews.observeListReviewState(later).first()[list.id]!!
+        assertEquals(1, state.learned)
+        assertEquals("先生 is no longer due; 生産 still is", 1, state.due)
+    }
+
+    @Test
+    fun the_forecast_and_todays_count_come_from_the_log_and_schedules() = runBlocking {
+        val sensei = filed("先生", "せんせい")
+        val after = reviews.record(sensei.id, CardKind.REVIEW, right, later, null)
+
+        assertEquals(1, reviews.answeredSince(later))
+        assertEquals(0, reviews.answeredSince(later + 1))
+        assertEquals(listOf(after.dueMs), reviews.dueTimesBetween(later, later + 7 * 86_400_000L))
     }
 
     // ---- Synonyms
