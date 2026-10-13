@@ -10,7 +10,7 @@ Where it differs from a translation app: it keeps the Japanese and explains it, 
 
 ## Status
 
-**Phases 1–6 complete; Phase 7 (review) not started.** The app opens on the camera: freeze a frame, and the Japanese on it is read, laid out (vertical text and furigana included) and made tappable on the photograph itself. Tap a word for its readings, meanings, example sentences and component kanji; tap a kanji for its own screen, with example words grouped by reading and stroke order. Save words and kanji into your own lists, each kept with the patch of the photo it was found in.
+**Phases 1–6 complete; Phase 7 (review) in progress — saved words can be reviewed.** The app opens on the camera: freeze a frame, and the Japanese on it is read, laid out (vertical text and furigana included) and made tappable on the photograph itself. Tap a word for its readings, meanings, example sentences and component kanji; tap a kanji for its own screen, with example words grouped by reading and stroke order. Save words and kanji into your own lists, each kept with the patch of the photo it was found in. Review saved words by typing their meaning and reading, scheduled by FSRS.
 
 The bundled dictionary is built from four pinned open datasets — 100.1 MB, byte-reproducible from identical sources, 12 of 12 verification cases passing. `docs/roadmap.md` has the phase table and what is still owed.
 
