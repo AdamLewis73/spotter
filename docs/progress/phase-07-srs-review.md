@@ -1,7 +1,7 @@
 # Phase 7 — SRS review
 
-**Status:** in progress — the main review loop is built and merged (PRs #48–#53)
-**Updated:** 2026-10-12
+**Status:** in progress — the main review loop and "Review this list" are built; kanji in review is what remains
+**Updated:** 2026-10-15
 
 ## Current state
 
@@ -16,20 +16,31 @@ recall; an append-only `review_log` is the truth and `srs_state` a cache of it
 (D-112). Session rules are D-114; what was taken from the design project is
 D-115.
 
+**"Review this list" is built (D-117).** From a list's ⋯ menu on Saved, or
+*Review* at the top of the list, the list's due words are reviewed as usual;
+once none are due, its other words can be **practised**, checked the same way
+but **never recorded**. Every session now ends on a summary: words, right first
+time, missed, and when they come back.
+
 **Not built yet:** saved **kanji are kept out of review** until their reading
-rule is settled (D-106, D-114); the **handwriting** queue (D-109); "Review this
-list" and a per-session summary (D-115 deferred them); the scan date on the
-card's photo.
+rule is settled (D-106, D-114), and that is in 1.0 (D-116). The scan date on
+the card's photo. The **handwriting** queue (D-109) is after 1.0 (D-116).
 
 ## Next action
 
-1. **The owner tries review on a real phone.** Judge FSRS's 1- and 10-minute
-   learning steps (D-113) and the card itself in use. Nothing here has been on
-   a physical device yet.
-2. Then, in the owner's order: **what a kanji card's reading field accepts**
-   (生 has せい, しょう, い.きる, なま…), so kanji join the queue; **"Review this
-   list"** with a session summary; the **opt-in handwriting queue** (D-109) —
-   *how* the learner opts in is still open.
+1. **What a kanji card's reading field accepts** — the owner leads this. 生 has
+   two on'yomi and eighteen kun'yomi forms in KANJIDIC2; the 2,501 most
+   frequent kanji average 3.1 readings and 450 have five or more. Options
+   discussed on 2026-10-15: any one reading passes; the main on'yomi and kun'yomi
+   are both required; meaning only, no reading field; or a different question
+   altogether. Each answer is a different study habit, and it is written into
+   the review log, so it is a checkpoint. Then remove `type = 'WORD'` from
+   `REVIEWABLE` in `SrsDao.kt` and build the card.
+2. Then Phase 8 (D-116).
+
+**Deferred by the owner, 2026-10-14: the phone test.** Review on a real phone
+waits for one device pass near the end, alongside V-30 (D-116). Nothing in
+Phase 7 has been on a physical device yet.
 
 ### Where the code is
 
@@ -40,6 +51,7 @@ card's photo.
 | Review tables, queue queries, migration 2 → 3 | `data/user/SrsEntities.kt`, `SrsDao.kt` |
 | Recording an answer (log, then FSRS, one transaction) | `data/user/RoomReviewRepository.kt` — `ReviewRepositoryTest` |
 | The Review tab and session | `app/review/ReviewScreen.kt`, `ReviewViewModel.kt` |
+| Review this list, practice, summary (D-117) | the same two files; route `list/{id}/review` in `app/nav/SpotterApp.kt`; list filter `IN_LIST` and `notDueItems` in `SrsDao.kt` |
 | Due counts on Saved, the tab badge | `app/saved/SavedViewModel.kt`, `app/nav/SpotterApp.kt` (`minuteTicks`) |
 
 ## Done
@@ -85,7 +97,7 @@ card's photo.
       reached the database. Two faults found by looking and fixed: the theme's
       focus border is the same jade as "right", so a field looked graded while
       typing; and a trailing n stayed a letter in the field after Submit.
-- [ ] **Handwriting review — design artboard 2c, "Review — write it"** (D-72,
+- [ ] **After 1.0 (D-116).** **Handwriting review — design artboard 2c, "Review — write it"** (D-72,
       D-109): **opt-in**, its own queue and button, its own `WRITING` schedule.
       A canvas the learner writes the word on, a *Clear* control, a **Check**
       button that reveals the answer beside their attempt, then **right or
@@ -112,8 +124,18 @@ card's photo.
       (no Save for kana-only words), **V-36** (every study item has one schedule,
       kept on re-save), **V-37** (the stored schedule is a replay of the log),
       **V-38** (romaji through a composing keyboard keeps every letter)
-- [ ] Kanji in review — blocked on the reading rule (D-106)
-- [ ] "Review this list" and a session summary (D-115)
+- [ ] Kanji in review — blocked on the reading rule (D-106); in 1.0 (D-116)
+- [x] **"Review this list", practice and a session summary (D-117, V-39)** —
+      2026-10-15. Every review query takes an optional list (`IN_LIST`); practice
+      draws the list's not-due words and writes nothing. Reached from the ⋯ menu
+      on Saved (artboard 2d) and *Review* on the list screen (wireflow C5), on a
+      route under the list so Saved stays lit. The summary (wireflow D4, not
+      designed) serves every session. `ReviewRepositoryTest` 12/12. Driven on
+      the emulator end to end: a list review with one miss gave "2 words · 1
+      right first time · 1 missed" with a forecast; practice with a miss brought
+      the miss back and left `review_log` and `srs_state` exactly as they were.
+      Found while driving: せいざん for 生産 is a real word ("live birth"), so
+      D-108's retry nudge fired — working as designed.
 
 ## Open questions
 
@@ -136,7 +158,7 @@ card's photo.
 
 - ~~**Does every saved word get a write card, or does the learner opt
   in?**~~ — **resolved 2026-10-12 (D-109):** opt-in, with its own queue and
-  button. Still open: *how* the learner opts in. A write card is drawn by hand on a canvas and self-graded after
+  button. Still open, and **after 1.0** (D-116): *how* the learner opts in. A write card is drawn by hand on a canvas and self-graded after
   *Check* (artboard 2c, D-72) — there is no handwriting recognition. Its prompt
   needs the reading as well as the meaning, since "teacher" alone is 先生 or
   教師; confirm against the artboard.
@@ -144,7 +166,15 @@ card's photo.
 - ~~**What does a kanji card's back show?**~~ — **resolved 2026-10-11
   (D-106):** its meanings in KANJIDIC2's order, cut to fit with a count of the
   rest. Kanji use D-107's card; still open: what a kanji's **reading** field
-  accepts (生 has せい, しょう, い.きる, なま…). Deferred by the owner.
+  accepts (生 has せい, しょう, い.きる, なま…). **In 1.0 (D-116)**; the owner
+  leads it. See *Next action*.
+
+- ~~**What does "Review this list" include?**~~ — **resolved 2026-10-15
+  (D-117):** the list's due words, then optional practice over the rest that is
+  never recorded.
+
+- ~~**Where is the 1.0 cutoff?**~~ — **resolved 2026-10-15 (D-116):** the end
+  of Phase 9, with Phases 7 and 8 complete except handwriting review.
 
 - ~~**The `srs_state` / `review_log` schema**~~ — **approved 2026-10-12
   (D-112):** an append-only log is the truth, `srs_state` a cache keyed by

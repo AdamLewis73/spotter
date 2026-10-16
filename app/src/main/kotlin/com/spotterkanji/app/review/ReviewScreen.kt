@@ -67,6 +67,7 @@ import com.spotterkanji.app.ui.theme.SpotterMono
 import com.spotterkanji.app.ui.theme.SpotterTheme
 import com.spotterkanji.app.ui.theme.withJapaneseFont
 import com.spotterkanji.domain.review.romajiToKana
+import com.spotterkanji.domain.user.SavedListId
 import java.time.LocalDate
 import java.time.format.TextStyle as DayNameStyle
 import java.util.Locale
@@ -78,26 +79,44 @@ import java.util.Locale
  * and a reading field, one Submit. After Submit each field's border turns green
  * or red, the answer appears beneath, and Submit becomes Next. Answers are
  * checked by the app (D-108); there are no Again/Hard/Good/Easy buttons.
+ *
+ * With a [listId] it reviews that list alone ("Review this list", D-117), and
+ * [onBack] returns to wherever it was opened from. Once the list has nothing
+ * due, its other words can be practised on the same card — checked, never
+ * recorded.
  */
 @Composable
 internal fun ReviewScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    listId: SavedListId? = null,
+    onBack: (() -> Unit)? = null,
     viewModel: ReviewViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsState()
 
-    // Counts move with the clock; re-read them whenever the tab is shown.
-    LaunchedEffect(Unit) { viewModel.refreshHome() }
+    // Counts move with the clock; re-read them whenever the screen is shown.
+    LaunchedEffect(listId) {
+        viewModel.open(listId)
+        viewModel.refreshHome()
+    }
 
-    // Back leaves the session for the tab's home rather than leaving the app.
-    // Anything answered is already recorded (answers are written at Next).
-    BackHandler(enabled = state is ReviewUiState.Card, onBack = viewModel::close)
+    // Back leaves the session, or its summary, for the screen's home rather than
+    // leaving the app. Anything answered is already recorded (at Next).
+    BackHandler(
+        enabled = state is ReviewUiState.Card || state is ReviewUiState.Done,
+        onBack = viewModel::close,
+    )
 
     Box(modifier = modifier.fillMaxSize().padding(contentPadding)) {
         when (val s = state) {
             ReviewUiState.Loading -> Unit
-            is ReviewUiState.Home -> ReviewHome(s, onStart = viewModel::start)
+            is ReviewUiState.Home -> ReviewHome(
+                state = s,
+                onStart = viewModel::start,
+                onPractice = viewModel::startPractice,
+                onBack = onBack,
+            )
             is ReviewUiState.Card -> ReviewCardScreen(
                 state = s,
                 onSubmit = viewModel::submit,
@@ -105,14 +124,26 @@ internal fun ReviewScreen(
                 onNext = viewModel::next,
                 onClose = viewModel::close,
             )
-            is ReviewUiState.Done -> ReviewDone(s, onDone = viewModel::close)
+            is ReviewUiState.Done -> ReviewDone(
+                state = s,
+                onPractice = viewModel::startPractice,
+                // A list's review goes back to where it was opened; the tab's
+                // stays on the tab.
+                onDone = onBack ?: viewModel::close,
+            )
         }
     }
 }
 
 @Composable
-private fun ReviewHome(state: ReviewUiState.Home, onStart: () -> Unit) {
+private fun ReviewHome(
+    state: ReviewUiState.Home,
+    onStart: () -> Unit,
+    onPractice: () -> Unit,
+    onBack: (() -> Unit)?,
+) {
     val tokens = SpotterTheme.tokens
+    if (state.listName != null) ListHeader(state.listName, onBack)
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = tokens.spaceXl),
         verticalArrangement = Arrangement.Center,
@@ -134,7 +165,18 @@ private fun ReviewHome(state: ReviewUiState.Home, onStart: () -> Unit) {
             }
             // Something is scheduled, just not yet. An empty queue and an empty
             // app look alike and mean opposite things, so they are told apart.
-            state.nextDueAt != null -> CaughtUp(state)
+            state.nextDueAt != null -> {
+                CaughtUp(state)
+                if (state.practiceCount > 0) {
+                    Spacer(Modifier.height(tokens.spaceLg))
+                    PracticeOffer(state.practiceCount, onPractice)
+                }
+            }
+            state.listName != null -> {
+                Title(stringResource(R.string.review_list_nothing_title))
+                Spacer(Modifier.height(tokens.spaceSm))
+                Body(stringResource(R.string.review_list_nothing_body))
+            }
             else -> {
                 Title(stringResource(R.string.review_nothing_yet_title))
                 Spacer(Modifier.height(tokens.spaceSm))
@@ -142,6 +184,45 @@ private fun ReviewHome(state: ReviewUiState.Home, onStart: () -> Unit) {
             }
         }
     }
+}
+
+/** "‹ Street Signs" over a list's review (D-117): which list, and the way back. */
+@Composable
+private fun ListHeader(listName: String, onBack: (() -> Unit)?) {
+    val tokens = SpotterTheme.tokens
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = tokens.spaceXs, vertical = tokens.spaceXs),
+    ) {
+        if (onBack != null) {
+            TextButton(onClick = onBack) {
+                Text("‹", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+        Text(
+            // The user named it, so it may be Japanese (D-98).
+            text = listName.withJapaneseFont(),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+/**
+ * The way into practice (D-117), always with its note: an answer here is
+ * checked but not recorded, and a learner who did not know that would wonder
+ * why a word they just got right still comes up when it was going to.
+ */
+@Composable
+private fun PracticeOffer(count: Int, onPractice: () -> Unit) {
+    val tokens = SpotterTheme.tokens
+    OutlinedButton(
+        onClick = onPractice,
+        modifier = Modifier.fillMaxWidth().height(48.dp),
+        shape = RoundedCornerShape(12.dp),
+    ) { Text(pluralStringResource(R.plurals.practice_start, count, count)) }
+    Spacer(Modifier.height(tokens.spaceXs))
+    Body(stringResource(R.string.practice_note))
 }
 
 /**
@@ -172,29 +253,36 @@ private fun CaughtUp(state: ReviewUiState.Home) {
     }
     if (state.comingUp.isNotEmpty()) {
         Spacer(Modifier.height(tokens.spaceLg))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-                .padding(tokens.spaceMd),
-            verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
-        ) {
-            Label(stringResource(R.string.review_coming_up))
-            state.comingUp.forEach { (day, count) ->
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = dayLabel(day),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = count.toString(),
-                        fontFamily = SpotterMono,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
+        Forecast(stringResource(R.string.review_coming_up), state.comingUp)
+    }
+}
+
+/** A few days ahead and how many words fall due on each (artboard 4h). */
+@Composable
+private fun Forecast(title: String, days: List<DayCount>) {
+    val tokens = SpotterTheme.tokens
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .padding(tokens.spaceMd),
+        verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
+    ) {
+        Label(title)
+        days.forEach { (day, count) ->
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = dayLabel(day),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = count.toString(),
+                    fontFamily = SpotterMono,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
     }
@@ -211,17 +299,41 @@ private fun dayLabel(day: LocalDate): String {
     }
 }
 
+/**
+ * The end of a session: how many words, right first time against missed, and —
+ * after a review — when they come back (the wireflow's D4, which has no
+ * artboard). After a list's review, its remaining words are offered as practice
+ * (D-117).
+ */
 @Composable
-private fun ReviewDone(state: ReviewUiState.Done, onDone: () -> Unit) {
+private fun ReviewDone(state: ReviewUiState.Done, onPractice: () -> Unit, onDone: () -> Unit) {
     val tokens = SpotterTheme.tokens
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = tokens.spaceXl),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = tokens.spaceXl, vertical = tokens.spaceLg),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Title(stringResource(R.string.review_done_title))
+        Title(stringResource(if (state.practice) R.string.practice_done_title else R.string.review_done_title))
+        if (state.listName != null) Body(state.listName.withJapaneseFont())
         Spacer(Modifier.height(tokens.spaceSm))
-        Body(pluralStringResource(R.plurals.review_done_body, state.answered, state.answered))
+        Body(
+            listOf(
+                pluralStringResource(R.plurals.review_done_words, state.words, state.words),
+                stringResource(R.string.review_done_right, state.rightFirstTime),
+                stringResource(R.string.review_done_missed, state.missed),
+            ).joinToString(" · ")
+        )
+        if (state.comingBack.isNotEmpty()) {
+            Spacer(Modifier.height(tokens.spaceLg))
+            Forecast(stringResource(R.string.review_coming_back), state.comingBack)
+        }
+        if (state.practiceCount > 0) {
+            Spacer(Modifier.height(tokens.spaceLg))
+            PracticeOffer(state.practiceCount, onPractice)
+        }
         Spacer(Modifier.height(tokens.spaceLg))
         Button(
             onClick = onDone,
@@ -270,7 +382,10 @@ private fun ReviewCardScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = stringResource(R.string.review_card_kind).uppercase(),
+                // Practice says so on every card (D-117): its answers are not recorded.
+                text = stringResource(
+                    if (state.practice) R.string.practice_card_kind else R.string.review_card_kind
+                ).uppercase(),
                 fontFamily = SpotterMono,
                 fontSize = 12.sp,
                 letterSpacing = 1.5.sp,
@@ -298,6 +413,14 @@ private fun ReviewCardScreen(
             gapSize = 0.dp,
             modifier = Modifier.fillMaxWidth().height(3.dp),
         )
+        // Which list, when reviewing one (D-117) — "STREET SIGNS" in the wireflow's D2.
+        if (state.listName != null) {
+            Text(
+                text = state.listName.withJapaneseFont(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         // The reading, revealed over the word in jade once answered (artboard 1n)
         // — like furigana. Drawn transparent while asking rather than left out,
@@ -497,7 +620,10 @@ private fun Title(text: String) = Text(
 )
 
 @Composable
-private fun Body(text: String) = Text(
+private fun Body(text: String) = Body(AnnotatedString(text))
+
+@Composable
+private fun Body(text: AnnotatedString) = Text(
     text = text,
     style = MaterialTheme.typography.bodyMedium,
     color = MaterialTheme.colorScheme.onSurfaceVariant,

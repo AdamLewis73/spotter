@@ -70,6 +70,7 @@ internal fun SavedScreen(
     onNewListConfirmed: (String) -> Unit,
     onRenamed: (SavedListId, String) -> Unit,
     onDeleted: (SavedListId) -> Unit,
+    onReviewList: (SavedListId) -> Unit,
     onListOpened: (SavedListId) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
@@ -116,6 +117,7 @@ internal fun SavedScreen(
                         onOpen = { onListOpened(summary.list.id) },
                         onRename = { name -> onRenamed(summary.list.id, name) },
                         onDelete = { onDeleted(summary.list.id) },
+                        onReview = { onReviewList(summary.list.id) },
                         modifier = Modifier.padding(horizontal = tokens.spaceMd),
                     )
                 }
@@ -213,6 +215,7 @@ private fun ListCard(
     onOpen: () -> Unit,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
+    onReview: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tokens = SpotterTheme.tokens
@@ -292,6 +295,13 @@ private fun ListCard(
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.saved_rename_list)) },
                     onClick = { menuOpen = false; renaming = true },
+                )
+                // Between Rename and Delete, as artboard 2d's menu has it (D-117).
+                // Offered for an empty list too, which then says so — a menu
+                // item that comes and goes is harder to find than one that stays.
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.review_this_list)) },
+                    onClick = { menuOpen = false; onReview() },
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.saved_delete_list)) },
