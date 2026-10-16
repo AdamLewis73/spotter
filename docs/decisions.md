@@ -134,7 +134,7 @@ Scan for the relevant entry rather than reading the whole file.
 | D-103 | ~~A word card's front is the written form; a pass means recalling the reading **and** the main sense~~ — SUPERSEDED by D-107 | SRS |
 | D-104 | ~~The scan photo is on the back of a card, never the front~~ — SUPERSEDED by D-107 | SRS |
 | D-105 | **Each card kind has its own schedule: `srs_state` is keyed by item and kind** | SRS |
-| D-106 | A kanji card's back is its meanings in KANJIDIC2's order, cut to fit with a count of the rest | SRS |
+| D-106 | A kanji card's back is its meanings in KANJIDIC2's order, cut to fit with a count of the rest *(reading rule: D-118)* | SRS |
 | D-107 | **One card per word: meaning and reading fields, one schedule, pass only if both are right** | SRS |
 | D-108 | Answers checked loosely and offline; any sense counts; "I was right" saves a synonym | SRS |
 | D-109 | Handwriting review is opt-in, with its own queue and button *(after 1.0, D-116)* | SRS |
@@ -142,10 +142,11 @@ Scan for the relevant entry rather than reading the whole file.
 | D-111 | Anki export: one note per word per list, front and back, no review history | SRS |
 | D-112 | **Review schema: append-only log is the truth; `srs_state` a cache keyed (item, kind); no undo in v1** | SRS |
 | D-113 | FSRS is a port of py-fsrs v6.3.2, held to its tests, on default settings; fuzz seeded per review | SRS |
-| D-114 | A review session records at Next, brings learning cards back, stops at 50; kanji not yet reviewed | SRS |
+| D-114 | A review session records at Next, brings learning cards back, stops at 50; kanji not yet reviewed *(kanji admitted by D-118)* | SRS |
 | D-115 | From the design: review state on Saved, a tab badge, a caught-up forecast, the reading over the word; no review-ahead | UI |
 | D-116 | 1.0 is Phases 7–9 finished — kanji in review and all of export included, handwriting not — with one device pass at the end | Product |
 | D-117 | "Review this list" reviews the list's due words, then offers the rest as practice that is never recorded | SRS |
+| D-118 | A kanji card passes on any one reading — a kun'yomi's bare stem included — and any meaning; the answer shows every reading with a word | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -1161,6 +1162,22 @@ Settled by the project owner on 2026-10-15. D-115 deferred "Review this list" (a
 *The session summary* (the wireflow's D4, not designed) is built with it and serves every session, not only a list's: how many words, how many were right first time against missed, and for a review when they come back, in the same week-ahead form as the caught-up forecast. D-107 has no grades, so "counts per grade" became right and missed.
 
 *Cost to reverse:* low. Nothing stored depends on it; practice writes nothing by design.
+
+**D-118 — A kanji card passes on any one of its readings and any one of its meanings. The answer then shows every reading, each with a word that uses it.** *Answers D-106's open question; lifts D-114's exclusion of kanji.*
+
+Settled by the project owner on 2026-10-15. A word card's reading has one answer (先生 is せんせい). A lone kanji has many: 生 has two on'yomi and eighteen kun'yomi forms in KANJIDIC2, the 2,501 most frequent kanji average 3.1 readings, and 450 of them have five or more. Which reading applies depends on the word around the kanji, which is the app's whole thesis (D-04, D-44).
+
+- **Reading: any one passes.** Requiring all of them, or one on'yomi plus one kun'yomi, was weighed and rejected. A kanji's readings are learned from the words that use them, not as a list, and 401 common kanji have no kun'yomi and 16 have no on'yomi, so a paired rule would need exceptions everywhere.
+- **A kun'yomi passes as its stem.** KANJIDIC2 writes `い.きる`: the stem い, then the kana ending that follows the kanji in 生きる. The card shows the kanji alone, and the owner judged it odd to ask for an ending the card does not show. So い passes, and so does いきる, typed in full. The markers for a prefix or suffix (`なま-`, `-う`) are dropped.
+- **The cost, accepted knowingly:** a bare stem is often one kana. い, う, お, は, き, な and む all answer 生, so a one-kana guess passes roughly one time in seven there, and 445 common kanji have a one-kana stem. **To be revisited after 1.0** with real use behind it (`roadmap.md`'s Deferred table).
+- **Meaning: any of KANJIDIC2's meanings,** checked as loosely as a word's (D-108), with *I was right* saving the learner's synonym.
+- **The answer shows the breadth the test does not ask for.** Each reading is listed with one word that uses it, from the kanji screen's own Examples data. On'yomi come first, and the reading the learner typed is marked in jade: 生 answered い shows い 生きる alongside セイ 学生 and ショウ 誕生. Readings no common word demonstrates are listed after, as plain kana. Meanings follow D-106: KANJIDIC2's order, cut to fit with a count of the rest.
+- **The card is labelled *Kanji*** and has no photo when the kanji was saved from the kanji screen rather than a scan, which is the usual case.
+- **A kanji the dictionary no longer has** is asked its meaning alone, from `snapshot_gloss`. It stays reviewable (D-40) instead of being asked a reading it cannot check, and the log records that no reading was asked.
+
+*Why kanji cards may space out faster than word cards:* passing is easier, so intervals grow quicker. That is intended. The kanji card is a light recognition check; the word cards carry the reading load.
+
+*Cost to reverse:* low to medium. The log keeps exactly what was typed, so a stricter rule can be applied to answers from then on. Answers already given were graded under this one and stay as they are.
 
 ---
 

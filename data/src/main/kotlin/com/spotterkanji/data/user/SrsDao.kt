@@ -18,9 +18,9 @@ import kotlinx.coroutines.flow.Flow
  *
  * **The queue reviews filed words only** (D-89): a live study item with at least
  * one live list membership — the same test `StudyItemDao.observeFiledCount`
- * uses, so a word counts as reviewable exactly when Saved shows it. And WORD
- * items only for now: what a kanji card's reading field accepts is still open
- * (D-106), so a kanji is kept out rather than asked a question with no rule.
+ * uses, so a word counts as reviewable exactly when Saved shows it. Words and
+ * kanji alike: a kanji joined the queue once D-118 settled what its reading
+ * field accepts.
  */
 @Dao
 interface SrsDao {
@@ -112,7 +112,7 @@ interface SrsDao {
         FROM list_membership AS m
         JOIN study_item AS i ON i.id = m.study_item_id
         JOIN srs_state AS s ON s.study_item_id = i.id AND s.card_kind = :cardKind
-        WHERE m.deleted_at IS NULL AND i.deleted_at IS NULL AND i.type = 'WORD'
+        WHERE m.deleted_at IS NULL AND i.deleted_at IS NULL
         GROUP BY m.list_id
         """
     )
@@ -172,10 +172,9 @@ data class ListReviewRow(
     @ColumnInfo(name = "learned") val learned: Int,
 )
 
-/** The test every review query shares: a live, filed WORD (D-89, D-106). */
+/** The test every review query shares: a live, filed item, word or kanji (D-89, D-118). */
 private const val REVIEWABLE = """
     i.deleted_at IS NULL
-    AND i.type = 'WORD'
     AND EXISTS (
         SELECT 1 FROM list_membership AS m
         WHERE m.study_item_id = i.id AND m.deleted_at IS NULL

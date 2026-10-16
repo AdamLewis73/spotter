@@ -133,6 +133,11 @@
     </plurals>
     <string name="practice_note">Practice isn’t recorded. It won’t change when words come back.</string>
     <string name="practice_card_kind">Practice</string>
+    <!-- The kanji card (D-118). -->
+    <string name="kanji_card_kind">Kanji</string>
+    <string name="kanji_reading_hint">any one reading, in romaji</string>
+    <string name="kanji_answer_readings">Readings</string>
+    <string name="kanji_answer_rarer">also %1$s</string>
 
     <!-- The list picker (D-88, D-91). No artboard: the wireflow marks it
          "NOT DESIGNED", so this follows the owner's spec. -->

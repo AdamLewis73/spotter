@@ -31,6 +31,14 @@ data class ReviewCard(
      * built from `snapshot_gloss` instead and stays answerable (D-40, D-43, V-20).
      */
     val resolved: Boolean,
+    /**
+     * False only for a kanji whose readings the dictionary no longer has: the
+     * card then asks its meaning alone rather than a reading it cannot check
+     * (D-40). A word always has its saved reading, so always asks.
+     */
+    val asksReading: Boolean = true,
+    /** Set for a kanji card (D-118): every reading with a word that shows it, for the answer. */
+    val kanji: KanjiReveal? = null,
 ) {
     val mainSense: List<String> get() = senses.firstOrNull().orEmpty()
     val otherSenses: List<List<String>> get() = senses.drop(1)
@@ -131,9 +139,8 @@ fun fuzzSeed(itemId: StudyItemId, kind: CardKind, atMs: Long): Long {
  * Review's view of user data (D-112). Implemented over Room in `:data`.
  *
  * Only **filed** words are reviewed (D-89) — a word taken out of every list
- * keeps its schedule but drops out of the queue until it is filed again — and
- * only WORD items for now: what a kanji card's reading field accepts is still
- * open (D-106).
+ * keeps its schedule but drops out of the queue until it is filed again. Words
+ * and kanji alike (D-92, D-118).
  */
 interface ReviewRepository {
     /**

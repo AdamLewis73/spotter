@@ -508,6 +508,20 @@ Setup: file 先生 into *Signs* and *Menu*, and 生産 into *Menu* only. Review 
 
 The trap is practice that quietly records. It uses the same card, the same checking and the same Next as review, so the natural code path writes a log row and moves FSRS — and then every practice session shortens intervals the learner never asked to shorten, which is exactly D-115's objection to review ahead. Nothing on screen would differ. `ReviewRepositoryTest` holds the list filter and the not-due set (`a_list_review_asks_only_that_lists_due_words`, `practice_draws_the_lists_words_that_are_not_due`). The no-write rule lives in `ReviewViewModel.next` and was checked on the emulator on 2026-10-15 by copying the database off before and after a practice session with a miss in it: 5 log rows and identical schedules both times.
 
+### V-40 · A kanji card accepts any one reading, in any form a learner would type (D-118)
+
+Setup: save 生 from its kanji screen, file it, and review it.
+
+| Typed | Expected |
+|---|---|
+| `sei`, `セイ`, `shou`, `nama`, `ki` | right: on'yomi in romaji or katakana, kun'yomi as written |
+| `i`, `ikiru`, `umareru`, `uma` | right: a kun'yomi's stem, or stem and ending together |
+| `ka`, `seikatsu` | wrong |
+| Any meaning of `life`, `genuine`, `birth` | right |
+| The answer, after `i` | every reading listed with a word; い marked, with 生きる under it |
+
+The trap is a right reading refused because of how KANJIDIC2 writes it. Its kun'yomi carry markers (`い.きる`, `なま-`, `-う`) that a learner never types; compare against the raw strings and every kun'yomi with an ending or a marker is unreachable, silently. Katakana on'yomi typed as romaji have to compare in one script, as word readings already do (D-108). `KanjiCardTest` holds every row; `ReviewRepositoryTest.a_filed_kanji_is_in_the_queue` holds the queue. Driven on the emulator on 2026-10-15: `life`/`い` and then `birth`/`sei` both passed, and the reveal marked い and then セイ.
+
 ### V-20 · An orphaned saved item renders and stays reviewable (D-40, D-43)
 
 Setup: save a word, then swap in a dictionary build where that `(text, reading)` no longer resolves.
