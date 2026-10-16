@@ -89,11 +89,18 @@ class ReviewRepositoryTest {
         assertNull(reviews.nextDueAt())
     }
 
-    /** D-106: what a kanji card's reading accepts is open, so kanji stay out for now. */
+    /**
+     * D-118: a filed kanji is reviewed like a word — due at once, and counted on
+     * its list. Before D-118 the queue left kanji out; this is the line that let
+     * them in.
+     */
     @Test
-    fun kanji_items_are_not_in_the_queue_yet() = runBlocking {
-        filed("生", "", StudyItemType.KANJI)
-        assertEquals(0, reviews.dueCount(later))
+    fun a_filed_kanji_is_in_the_queue() = runBlocking {
+        val sei = filed("生", "", StudyItemType.KANJI)
+        assertEquals(1, reviews.dueCount(later))
+        assertEquals(listOf(sei.id), reviews.dueItems(later, 10).map { it.id })
+        val list = lists.observeListsOnce().single()
+        assertEquals(ListReviewState(due = 1, learned = 0), reviews.observeListReviewState(later).first()[list.id])
     }
 
     // ---- Recording

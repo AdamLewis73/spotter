@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -371,6 +372,8 @@ private fun ReviewCardScreen(
         reading = final
         onSubmit(meaning, final)
     }
+    // A kanji the dictionary lost asks its meaning alone (D-40, D-118).
+    val asksReading = card.asksReading
 
     Column(
         modifier = Modifier
@@ -384,7 +387,11 @@ private fun ReviewCardScreen(
             Text(
                 // Practice says so on every card (D-117): its answers are not recorded.
                 text = stringResource(
-                    if (state.practice) R.string.practice_card_kind else R.string.review_card_kind
+                    when {
+                        state.practice -> R.string.practice_card_kind
+                        card.kanji != null || !card.asksReading -> R.string.kanji_card_kind
+                        else -> R.string.review_card_kind
+                    }
                 ).uppercase(),
                 fontFamily = SpotterMono,
                 fontSize = 12.sp,
@@ -465,21 +472,26 @@ private fun ReviewCardScreen(
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
                 autoCorrectEnabled = false,
-                imeAction = ImeAction.Next,
+                imeAction = if (asksReading) ImeAction.Next else ImeAction.Done,
             ),
-            keyboardActions = KeyboardActions(onNext = { readingFocus.requestFocus() }),
+            keyboardActions = KeyboardActions(
+                onNext = { readingFocus.requestFocus() },
+                onDone = { submit() },
+            ),
             colors = resultColors(result?.meaningRight),
             modifier = Modifier.fillMaxWidth().focusRequester(meaningFocus),
         )
 
-        OutlinedTextField(
+        if (asksReading) OutlinedTextField(
             value = reading,
             onValueChange = { if (result == null) reading = it },
             // Romaji is shown as kana as it is typed (D-108).
             visualTransformation = RomajiAsKana,
             readOnly = result != null,
             label = { Text(stringResource(R.string.review_reading_label)) },
-            placeholder = { Text(stringResource(R.string.review_reading_hint)) },
+            placeholder = {
+                Text(stringResource(if (card.kanji != null) R.string.kanji_reading_hint else R.string.review_reading_hint))
+            },
             singleLine = true,
             textStyle = TextStyle(fontFamily = SpotterJapanese, fontSize = 18.sp),
             keyboardOptions = KeyboardOptions(
@@ -542,6 +554,7 @@ private fun ReviewCardScreen(
 private fun Answer(state: ReviewUiState.Card) {
     val tokens = SpotterTheme.tokens
     val card = state.card
+    if (card.kanji != null || !card.asksReading) return KanjiAnswer(state)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -578,6 +591,78 @@ private fun Answer(state: ReviewUiState.Card) {
         }
     }
 }
+
+/**
+ * A kanji card's answer (D-106, D-118): its meanings in KANJIDIC2's order, cut to
+ * fit with a count of the rest, then **every reading with one word that uses
+ * it**, the one the learner typed marked in jade. One reading was enough to
+ * pass; the rest are here so each review still shows the whole spread, each tied
+ * to a word — show, don't assert (D-04).
+ */
+@Composable
+private fun KanjiAnswer(state: ReviewUiState.Card) {
+    val tokens = SpotterTheme.tokens
+    val card = state.card
+    val meanings = card.mainSense
+    val typedKey = state.result?.readingAnswer?.let { card.kanji?.keyFor(it) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+            .padding(tokens.spaceMd),
+        verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
+    ) {
+        Label(stringResource(R.string.review_answer_meaning))
+        Text(
+            text = meanings.take(KANJI_MEANINGS_SHOWN).joinToString("; ") +
+                if (meanings.size > KANJI_MEANINGS_SHOWN) {
+                    "  " + stringResource(R.string.review_more, meanings.size - KANJI_MEANINGS_SHOWN)
+                } else "",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        val reveal = card.kanji ?: return@Column
+        Spacer(Modifier.height(tokens.spaceXs))
+        Label(stringResource(R.string.kanji_answer_readings))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(tokens.spaceMd),
+            verticalArrangement = Arrangement.spacedBy(tokens.spaceXs),
+        ) {
+            reveal.readings.forEach { r ->
+                val typed = r.key == typedKey
+                Column {
+                    Text(
+                        text = r.reading,
+                        fontFamily = SpotterJapanese,
+                        fontSize = 18.sp,
+                        fontWeight = if (typed) FontWeight.Bold else FontWeight.Normal,
+                        color = if (typed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    )
+                    r.example?.let { example ->
+                        Text(
+                            text = example.text,
+                            fontFamily = SpotterJapanese,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+        if (reveal.rarer.isNotEmpty()) {
+            val rarer = reveal.rarer.joinToString("、")
+            Text(
+                text = stringResource(R.string.kanji_answer_rarer, rarer).withJapaneseFont(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** D-106: as many of a kanji's meanings as read comfortably on one line or two. */
+private const val KANJI_MEANINGS_SHOWN = 5
 
 /**
  * Green for right, red for wrong — and a neutral border while asking. The

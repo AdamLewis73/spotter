@@ -9,6 +9,7 @@ import com.spotterkanji.domain.review.OtherReading
 import com.spotterkanji.domain.review.ReadingVerdict
 import com.spotterkanji.domain.review.ReviewAnswer
 import com.spotterkanji.domain.review.ReviewCard
+import com.spotterkanji.domain.review.buildKanjiReviewCard
 import com.spotterkanji.domain.review.buildReviewCard
 import com.spotterkanji.domain.review.checkReading
 import com.spotterkanji.domain.review.meaningMatches
@@ -18,6 +19,7 @@ import com.spotterkanji.domain.user.SavedListId
 import com.spotterkanji.domain.user.ScanThumbnail
 import com.spotterkanji.domain.user.StudyItem
 import com.spotterkanji.domain.user.StudyItemId
+import com.spotterkanji.domain.user.StudyItemType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -248,6 +250,21 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
         if (current.result != null) return
         val card = current.card
 
+        // A kanji the dictionary lost asks its meaning only (D-40, D-118).
+        if (!card.asksReading) {
+            if (meaning.isBlank()) return
+            _state.value = current.copy(
+                result = Result(
+                    meaningAnswer = meaning.trim(),
+                    meaningCorrect = meaningMatches(meaning, card.senses, card.synonyms),
+                    overridden = false,
+                    readingAnswer = "",
+                    readingCorrect = true,
+                ),
+            )
+            return
+        }
+
         when (val verdict = checkReading(reading, card.acceptedReadings, card.otherWords)) {
             is ReadingVerdict.OtherWord -> {
                 // Not graded: the card shows only the written form, so the learner
@@ -312,8 +329,9 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                     meaningAnswer = result.meaningAnswer,
                     meaningCorrect = result.meaningCorrect,
                     meaningOverridden = result.overridden,
-                    readingAnswer = result.readingAnswer,
-                    readingCorrect = result.readingCorrect,
+                    // Null when the card did not ask (D-112: the log says what was asked).
+                    readingAnswer = result.readingAnswer.takeIf { current.card.asksReading },
+                    readingCorrect = result.readingCorrect.takeIf { current.card.asksReading },
                 ),
                 atMs = now,
                 durationMs = (now - shownAt).coerceAtLeast(0),
@@ -336,7 +354,12 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         position++
-        val card = buildReviewCard(item, dictionary.lookup(item.key.text), reviews.synonyms(item.id))
+        val synonyms = reviews.synonyms(item.id)
+        val card = when (item.key.type) {
+            StudyItemType.WORD -> buildReviewCard(item, dictionary.lookup(item.key.text), synonyms)
+            // From the kanji screen's own data, so the card agrees with what was saved (D-118).
+            StudyItemType.KANJI -> buildKanjiReviewCard(item, dictionary.kanjiDetail(item.key.text), synonyms)
+        }
         val thumbnail = scans.observeThumbnails(listOf(item.id)).first()[item.id]
         shownAt = System.currentTimeMillis()
         _state.value = ReviewUiState.Card(
