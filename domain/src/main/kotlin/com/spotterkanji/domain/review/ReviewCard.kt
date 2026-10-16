@@ -136,14 +136,25 @@ fun fuzzSeed(itemId: StudyItemId, kind: CardKind, atMs: Long): Long {
  * open (D-106).
  */
 interface ReviewRepository {
-    /** How many REVIEW cards are due at [nowMs]. */
-    suspend fun dueCount(nowMs: Long): Int
+    /**
+     * How many REVIEW cards are due at [nowMs] — in [listId] only, when given
+     * ("Review this list", D-117). A list only filters; the schedule is the
+     * word's (D-29).
+     */
+    suspend fun dueCount(nowMs: Long, listId: SavedListId? = null): Int
 
     /** When the next REVIEW card falls due, or null if nothing is scheduled. */
-    suspend fun nextDueAt(): Long?
+    suspend fun nextDueAt(listId: SavedListId? = null): Long?
 
     /** Due REVIEW cards' items, most overdue first, new words in the order saved. */
-    suspend fun dueItems(nowMs: Long, limit: Int): List<StudyItem>
+    suspend fun dueItems(nowMs: Long, limit: Int, listId: SavedListId? = null): List<StudyItem>
+
+    /**
+     * [listId]'s words that are **not** due at [nowMs], soonest due first — the
+     * practice that follows a list's review (D-117). Practice is never recorded,
+     * so this is the only place it touches the schedule: to choose an order.
+     */
+    suspend fun notDueItems(nowMs: Long, limit: Int, listId: SavedListId): List<StudyItem>
 
     /** [dueCount], live: changes as words are filed, answered or removed. */
     fun observeDueCount(nowMs: Long): Flow<Int>
@@ -155,7 +166,7 @@ interface ReviewRepository {
     suspend fun answeredSince(sinceMs: Long): Int
 
     /** Due times of reviewable cards after [fromMs] and up to [untilMs], earliest first. */
-    suspend fun dueTimesBetween(fromMs: Long, untilMs: Long): List<Long>
+    suspend fun dueTimesBetween(fromMs: Long, untilMs: Long, listId: SavedListId? = null): List<Long>
 
     suspend fun synonyms(itemId: StudyItemId): List<String>
 

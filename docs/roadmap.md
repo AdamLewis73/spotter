@@ -24,7 +24,7 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save went live in Phase 6 | The real scan experience |
 | 6 | Saved lists | **Complete** — checkpoints settled (D-79, D-80), wireflow settled (D-85 to D-92). Schema v2 with its first migration, Save through the list picker, the Saved and list screens, remove-with-undo (D-93), scan photos with drawn thumbnails (D-94, D-95), and search from inside a list (D-86, D-96). Two items named as owed rather than closed: V-30 wants one real sign on a real phone, and D-86's camera-denied *Type a word* is deferred | Multiple lists, many-to-many |
 | 6.5 | Audit | **Complete** — an aside before Phase 7: a read of the whole codebase for anything broken, messy or done wrong, without changing design or flow. Eight bugs fixed, four decisions taken with the owner (D-97 to D-100). Its four device checks passed on 2026-10-04 | Fixes, no new features |
-| 7 | SRS review | **In progress** — FSRS (D-113), schema v3 (D-112) and the review screen (D-107, D-108, D-114, D-115) are built and merged. Open: kanji in review (D-106), the opt-in handwriting queue (D-109), "Review this list"; nothing tried on a physical device yet | FSRS scheduling and quizzes |
+| 7 | SRS review | **In progress** — FSRS (D-113), schema v3 (D-112), the review screen (D-107, D-108, D-114, D-115) and "Review this list" with practice and a session summary (D-117) are built. Open: kanji in review (D-106's reading rule). Handwriting (D-109) is after 1.0 (D-116) | FSRS scheduling and quizzes |
 | 8 | Export / import | Not started | Versioned JSON/zip |
 | 9 | Release prep | Not started — **deliberately last** | The in-app attribution screen the data licences require, and whatever else a store release needs |
 
@@ -99,7 +99,7 @@ Saved lists, then FSRS review, then export/import.
 
 **Settled before Phase 6, as it had to be (D-79):** Spotter schedules reviews itself *and* exports to Anki — the scheduler first, because building export first hands the retention loop away before there is one, and the beginner this app is aimed at does not run Anki. So Phase 7 is unchanged and Phase 8 gains a second export format.
 
-~~**Open for Phase 7:** what goes on the **back of a review card** for a word with several senses.~~ — **settled 2026-10-11 (D-102):** the main sense leads and the learner grades on it; the other senses sit smaller beneath. The front, the graded reading and the photo followed the same day (D-103, D-104), and reading and writing keep separate schedules (D-105). A kanji card's back is its meanings in KANJIDIC2's order, cut to fit (D-106). **Then the card changed shape (2026-10-12):** after a prototype of two candidates, a word is reviewed on **one card with typed meaning and reading fields**, checked by the app, under one schedule (D-107, D-108), superseding the flip card of D-103 and D-104. Handwriting is an opt-in queue of its own (D-109). Still open: how writing is opted into, and what a kanji's reading field accepts.
+~~**Open for Phase 7:** what goes on the **back of a review card** for a word with several senses.~~ — **settled 2026-10-11 (D-102):** the main sense leads and the learner grades on it; the other senses sit smaller beneath. The front, the graded reading and the photo followed the same day (D-103, D-104), and reading and writing keep separate schedules (D-105). A kanji card's back is its meanings in KANJIDIC2's order, cut to fit (D-106). **Then the card changed shape (2026-10-12):** after a prototype of two candidates, a word is reviewed on **one card with typed meaning and reading fields**, checked by the app, under one schedule (D-107, D-108), superseding the flip card of D-103 and D-104. Handwriting is an opt-in queue of its own (D-109), moved after 1.0 (D-116). Still open: what a kanji's reading field accepts, which 1.0 needs; and how writing is opted into, which waits with handwriting.
 
 **Phase 6 closed 2026-09-22.** The study loop has a front half: words are saved
 only by being filed (D-88, D-89), through a picker that writes nothing until
@@ -121,6 +121,23 @@ Last, by the owner's choice (2026-10-01), because the attribution text can still
 - **The attribution screen.** EDRDG's licence for JMdict and KANJIDIC2 requires acknowledgement *on a separate screen reached from a menu, such as "About"* — a launch-screen mention does not satisfy it. `attribution.md` holds the text and the shape. No screen exists yet; a placeholder is fine until then. **Nothing may be distributed before this exists**, including a v1 built from Phases 1–5 alone.
 
 **A shippable v1 is Phases 1–5**, plus the Phase 9 attribution screen. Phases 6–8 turn it from a lookup tool into a study app. The staging matters: the full spec is a large build, and stalling at 60% is the common failure mode for solo projects of this size.
+
+That is the **floor**, the least that could ever be distributed. What 1.0 actually waits for is below.
+
+## The 1.0 cutoff
+
+Settled 2026-10-15 (D-116). **1.0 ships when Phase 9 is done**, with:
+
+| Phase | In 1.0 | Not in 1.0 |
+|---|---|---|
+| 7 — SRS review | Word review (built), "Review this list" with practice and a summary (D-117, built), **kanji in review** once D-106's reading rule is settled | **Handwriting review** (D-109), after 1.0 |
+| 8 — Export / import | **All of it**: the backup file (D-20) and Anki export (D-79, D-111) | — |
+| 9 — Release prep | The attribution screen and whatever a store release needs | — |
+| Deferred table below | Nothing, unless a later decision brings an item in | Everything in it |
+
+**One device pass near the end**, not phase by phase (D-116): review in use on a real phone, V-30's real sign, and how much exact hit-testing bites at a real distance. What it finds is fixed before release.
+
+Remaining after this: finish Phase 7 (kanji in review), then Phases 8 and 9, then the device pass.
 
 ---
 
@@ -169,6 +186,7 @@ Pinned deliberately, each with the reason and the cost of adding it later. **Non
 | **Search by reading** | Typing せんせい finds 先生, so a learner who can say a word but not write it can still find it | D-96 searches written forms only. The index it needs was dropped from the dictionary for its 8.3 MB (`schema.sql`), and the phone's Japanese keyboard already turns romaji and kana into kanji. **How learners should type kanji is an open question the owner wants to brainstorm**, not a rejected feature | **Low** — one index line, a dictionary rebuild and a `SCHEMA_VERSION` bump; no user-data change |
 | **User-chosen reading on a saved word** | Let the learner save a reading other than the leading one — or several — so FSRS reviews the reading they actually met, not the commonest one | Proposed 2026-08-28. D-81 saves the top-ranked entry because the peek deliberately shows no reading (D-47) while identity needs one (D-12); genuine ambiguity is **1% of common words** (412 of 41,289 measured), but weighted toward 後 中 外 間 — single kanji that are everywhere on signage. Wanted, and it is the honest answer to "why guess at all"; likely artboard **1b**, the ambiguity chips nobody has opened yet | **Near zero** on the schema — D-12's (text, reading) identity already stores one row per reading, so this is a picker and nothing else |
 | **Tap-target mitigations** | `ux.md` names three for text too small to hit reliably — pinch-zoom on the frozen frame, ambiguity chips (artboard **1b**) when a tap could mean more than one word, and snapping to the nearest word within a tolerance — and says none is sufficient alone. Artboard **1c**, the loupe, is a fourth | **None is built**, found by the 2026-09-22 doc sweep rather than by a decision to defer. Phase 5 shipped exact hit-testing: a tap must land inside the character's own rectangle, and only ruby falls through to the word beneath it (V-26). It has not been tried on a real sign at a real distance, so how badly it bites is unmeasured — which is the same evidence V-30 is waiting on | **Medium.** The geometry is already there: `ScanLayout.offsetAt` is where a tolerance radius goes, `LongestMatch` already produces the overlapping candidates chips would show (D-70), and zoom is a transform on the frame the overlay already maps through `ScanProjection`. It is UI work on settled data, not new pipeline |
+| **Handwriting review** | Artboard 2c: write the word on a canvas, press *Check*, grade yourself right or wrong. Opt-in, with its own queue, button and `WRITING` schedule (D-109) | Moved after 1.0 by the owner (D-116). Many learners do not want it, and nothing else waits on it. How a learner opts in is still open | **Low to medium** — `StrokeOrder.kt` already parses, scales, captures and hit-tests strokes; D-105's per-kind schedule means no migration |
 | **Undo last answer** | Take back the answer just given in review — mostly for a mistyped reading, which "I was right" does not cover | Deferred by the owner to after 1.0 (D-112). Romaji shows as kana before Submit, so most typos are caught first | **Low** — a nullable `deleted_at` on `review_log` and a button; no history depends on it |
 | **Kana-only words** | Saving words with no kanji (トイレ, これ), and finding the 1,525 common words JMdict files under kanji but that are usually written in kana (おにぎり, ありがとう) | Out of scope for v1 by the owner's ruling (D-110): the app teaches kanji in context, and the review card's reading field has nothing to test for a kana word | **Low to medium** — the Save rule is one test; the lookup gap needs a builder change and a decision on saved-word identity (D-12) |
 | **JLPT level** | An estimated N5–N1 level per kanji | No official list exists post-2010; only community reconstructions of unstated licensing (D-42) | **Near zero** — a dictionary column, no migration. Settle the encoding first |

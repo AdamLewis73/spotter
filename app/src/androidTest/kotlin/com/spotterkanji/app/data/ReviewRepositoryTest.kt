@@ -201,6 +201,53 @@ class ReviewRepositoryTest {
         assertEquals(listOf(after.dueMs), reviews.dueTimesBetween(later, later + 7 * 86_400_000L))
     }
 
+    // ---- Review this list, and practice (D-117)
+
+    /**
+     * A list only filters (D-29): its review asks its own due words and no
+     * others, and a word in two lists is due in both — one schedule, so
+     * answering it from one list moves it in the other.
+     */
+    @Test
+    fun a_list_review_asks_only_that_lists_due_words() = runBlocking {
+        val signs = lists.createList("Signs")
+        val menu = lists.createList("Menu")
+        val sensei = items.save(StudyItemKey("先生", "せんせい"), "teacher").also { lists.addToList(signs.id, it.id) }
+        val seisan = items.save(StudyItemKey("生産", "せいさん"), "production").also { lists.addToList(menu.id, it.id) }
+        lists.addToList(menu.id, sensei.id)
+
+        assertEquals(listOf(sensei.id), reviews.dueItems(later, 10, signs.id).map { it.id })
+        assertEquals(setOf(sensei.id, seisan.id), reviews.dueItems(later, 10, menu.id).map { it.id }.toSet())
+        assertEquals(1, reviews.dueCount(later, signs.id))
+        assertEquals(2, reviews.dueCount(later))
+
+        val first = reviews.record(sensei.id, CardKind.REVIEW, right, later, null)
+        reviews.record(sensei.id, CardKind.REVIEW, right, first.dueMs, null)
+        assertEquals(0, reviews.dueCount(later, signs.id))
+        assertEquals("先生 left Menu's queue too", listOf(seisan.id), reviews.dueItems(later, 10, menu.id).map { it.id })
+        assertTrue(reviews.nextDueAt(signs.id)!! > later)
+    }
+
+    /**
+     * Practice is drawn from the list's words that are not due — never a due
+     * word, which belongs to review, and never a word never yet reviewed, which
+     * is always due.
+     */
+    @Test
+    fun practice_draws_the_lists_words_that_are_not_due() = runBlocking {
+        val sensei = filed("先生", "せんせい")
+        filed("生産", "せいさん")
+        val list = lists.observeListsOnce().single()
+        assertTrue(reviews.notDueItems(later, 10, list.id).isEmpty())
+
+        val first = reviews.record(sensei.id, CardKind.REVIEW, right, later, null)
+        val graduated = reviews.record(sensei.id, CardKind.REVIEW, right, first.dueMs, null)
+        val now = first.dueMs + 1
+
+        assertEquals(listOf(sensei.id), reviews.notDueItems(now, 10, list.id).map { it.id })
+        assertTrue("due again, so review's, not practice's", reviews.notDueItems(graduated.dueMs, 10, list.id).isEmpty())
+    }
+
     // ---- Synonyms
 
     @Test

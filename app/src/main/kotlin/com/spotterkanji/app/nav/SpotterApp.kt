@@ -115,6 +115,7 @@ internal fun SpotterApp(
                     onRenamed = viewModel::onRenamed,
                     onDeleted = viewModel::onDeleted,
                     onListOpened = { id -> navController.navigate(listRoute(id)) },
+                    onReviewList = { id -> navController.navigate(listReviewRoute(id)) },
                     contentPadding = innerPadding.withSystemBars(),
                 )
             }
@@ -138,7 +139,20 @@ internal fun SpotterApp(
                     onRemove = viewModel::onRemove,
                     onUndoRemove = viewModel::onUndoRemove,
                     onAddFromSearch = { navController.navigate(searchRoute(SavedListId(id))) },
+                    onReview = { navController.navigate(listReviewRoute(SavedListId(id))) },
                     contentPadding = innerPadding.withSystemBars(),
+                )
+            }
+
+            // "Review this list" (D-117), from Saved's menu or the list itself.
+            // Under the list's route, so Saved stays lit and back returns to
+            // wherever it was opened from.
+            composable(LIST_REVIEW_ROUTE) { entry ->
+                val id = entry.arguments?.getString(LIST_ARG).orEmpty()
+                ReviewScreen(
+                    contentPadding = innerPadding.withSystemBars(),
+                    listId = SavedListId(id),
+                    onBack = { navController.popBackStack() },
                 )
             }
 
@@ -194,6 +208,8 @@ private const val LIST_ROUTE_PREFIX = "list/"
 private const val LIST_ROUTE = "$LIST_ROUTE_PREFIX{$LIST_ARG}"
 
 private const val SEARCH_ROUTE = "$LIST_ROUTE/search"
+private const val LIST_REVIEW_ROUTE = "$LIST_ROUTE/review"
 
 private fun listRoute(id: SavedListId) = "$LIST_ROUTE_PREFIX${id.value}"
 private fun searchRoute(id: SavedListId) = "${listRoute(id)}/search"
+private fun listReviewRoute(id: SavedListId) = "${listRoute(id)}/review"
