@@ -1,7 +1,8 @@
 # Phase 7 — SRS review
 
-**Status:** everything 1.0 asks of it is built — words, kanji, "Review this list"; closing waits on the owner
-**Updated:** 2026-10-15
+**Status:** done. Word and kanji review on FSRS, "Review this list" with
+practice, and a summary after every session — everything 1.0 asks of it (D-116).
+**Updated:** 2026-10-21
 
 ## Current state
 
@@ -32,10 +33,11 @@ in jade.
 
 ## Next action
 
-1. **The owner decides whether Phase 7 is closed.** Everything D-116 puts in
-   1.0 is built. What stays open is after 1.0 (handwriting, a stricter kanji
-   rule) or waits for the end-of-build device pass.
-2. Then Phase 8 (D-116): the backup file (D-20) and Anki export (D-79, D-111).
+None. **Closed by the owner on 2026-10-21.** Work moves to Phase 8
+(`phase-08-export-import.md`). What this phase leaves behind is named rather
+than open: handwriting review (D-109) and a stricter kanji reading rule (D-118)
+are after 1.0 in `roadmap.md`'s Deferred table, and the scan date on a card's
+photo stays deferred by D-115.
 
 **Deferred by the owner, 2026-10-14: the phone test.** Review on a real phone
 waits for one device pass near the end, alongside V-30 (D-116). Nothing in

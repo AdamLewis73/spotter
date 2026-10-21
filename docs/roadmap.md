@@ -24,8 +24,8 @@ By the end of Phase 3, roughly 70% of the app exists and is fully testable witho
 | 5 | Tappable overlay | **Feature-complete** — geometry, transform, overlay and expanding sheet (D-75–D-78); every `V-##` it owns is met and the D-22 checkpoint is discharged. Save went live in Phase 6 | The real scan experience |
 | 6 | Saved lists | **Complete** — checkpoints settled (D-79, D-80), wireflow settled (D-85 to D-92). Schema v2 with its first migration, Save through the list picker, the Saved and list screens, remove-with-undo (D-93), scan photos with drawn thumbnails (D-94, D-95), and search from inside a list (D-86, D-96). Two items named as owed rather than closed: V-30 wants one real sign on a real phone, and D-86's camera-denied *Type a word* is deferred | Multiple lists, many-to-many |
 | 6.5 | Audit | **Complete** — an aside before Phase 7: a read of the whole codebase for anything broken, messy or done wrong, without changing design or flow. Eight bugs fixed, four decisions taken with the owner (D-97 to D-100). Its four device checks passed on 2026-10-04 | Fixes, no new features |
-| 7 | SRS review | **In progress** — FSRS (D-113), schema v3 (D-112), the review screen (D-107, D-108, D-114, D-115) and "Review this list" with practice and a session summary (D-117) and **kanji in review** (D-118) are built — everything 1.0 asks of it. Handwriting (D-109) is after 1.0 (D-116) | FSRS scheduling and quizzes |
-| 8 | Export / import | Not started | Versioned JSON/zip |
+| 7 | SRS review | **Complete** — FSRS (D-113), schema v3 (D-112), the review screen (D-107, D-108, D-114, D-115), "Review this list" with practice and a session summary (D-117) and **kanji in review** (D-118): everything 1.0 asks of it. Handwriting (D-109) is after 1.0 (D-116); review on a real phone waits for the end-of-build device pass | FSRS scheduling and quizzes |
+| 8 | Export / import | **Next** — the backup file (D-20) and Anki export (D-79, D-111) | Versioned JSON/zip |
 | 9 | Release prep | Not started — **deliberately last** | The in-app attribution screen the data licences require, and whatever else a store release needs |
 
 ### Phase 1 — Dictionary builder
@@ -107,6 +107,13 @@ only by being filed (D-88, D-89), through a picker that writes nothing until
 filed from (D-94, D-95); and a word can be found by typing as well as by
 scanning (D-86, D-96). `srs_state` and `review_log` are Phase 7's, and the shape
 they need holds — scheduling hangs off `study_item`, never off a list (V-13).
+
+**Phase 7 closed 2026-10-21.** The study loop's back half: a saved word or kanji
+comes due at once and is reviewed on one typed card under FSRS (D-107, D-113,
+D-118), with an append-only log as the truth (D-112). A list can be reviewed on
+its own, then practised without touching the schedule (D-117). What it leaves
+for later is named in the Deferred table, not left open: handwriting review and
+a stricter kanji reading rule. Phase 8 has a settled schema to export.
 
 ### Phase 6.5 — Audit
 
