@@ -18,9 +18,9 @@ import kotlinx.coroutines.flow.Flow
  *
  * **The queue reviews filed words only** (D-89): a live study item with at least
  * one live list membership — the same test `StudyItemDao.observeFiledCount`
- * uses, so a word counts as reviewable exactly when Saved shows it. And WORD
- * items only for now: what a kanji card's reading field accepts is still open
- * (D-106), so a kanji is kept out rather than asked a question with no rule.
+ * uses, so a word counts as reviewable exactly when Saved shows it. Words and
+ * kanji alike: a kanji joined the queue once D-118 settled what its reading
+ * field accepts.
  */
 @Dao
 interface SrsDao {
@@ -30,19 +30,19 @@ interface SrsDao {
         SELECT COUNT(*) FROM srs_state AS s
         JOIN study_item AS i ON i.id = s.study_item_id
         WHERE s.card_kind = :cardKind AND s.due_at <= :now
-          AND $REVIEWABLE
+          AND $REVIEWABLE AND $IN_LIST
         """
     )
-    suspend fun dueCount(cardKind: String, now: Long): Int
+    suspend fun dueCount(cardKind: String, now: Long, listId: String?): Int
 
     @Query(
         """
         SELECT MIN(s.due_at) FROM srs_state AS s
         JOIN study_item AS i ON i.id = s.study_item_id
-        WHERE s.card_kind = :cardKind AND $REVIEWABLE
+        WHERE s.card_kind = :cardKind AND $REVIEWABLE AND $IN_LIST
         """
     )
-    suspend fun nextDueAt(cardKind: String): Long?
+    suspend fun nextDueAt(cardKind: String, listId: String?): Long?
 
     /**
      * Due items, most overdue first. New words share their save time as due
@@ -54,12 +54,29 @@ interface SrsDao {
         SELECT i.* FROM srs_state AS s
         JOIN study_item AS i ON i.id = s.study_item_id
         WHERE s.card_kind = :cardKind AND s.due_at <= :now
-          AND $REVIEWABLE
+          AND $REVIEWABLE AND $IN_LIST
         ORDER BY s.due_at, i.created_at
         LIMIT :limit
         """
     )
-    suspend fun dueItems(cardKind: String, now: Long, limit: Int): List<StudyItemRow>
+    suspend fun dueItems(cardKind: String, now: Long, limit: Int, listId: String?): List<StudyItemRow>
+
+    /**
+     * [listId]'s words that are not due yet, soonest due first: the ones nearest
+     * to being forgotten are the most worth practising (D-117). A card never
+     * reviewed is always due, so it never appears here.
+     */
+    @Query(
+        """
+        SELECT i.* FROM srs_state AS s
+        JOIN study_item AS i ON i.id = s.study_item_id
+        WHERE s.card_kind = :cardKind AND s.due_at > :now AND s.last_reviewed_at IS NOT NULL
+          AND $REVIEWABLE AND $IN_LIST
+        ORDER BY s.due_at, i.created_at
+        LIMIT :limit
+        """
+    )
+    suspend fun notDueItems(cardKind: String, now: Long, limit: Int, listId: String): List<StudyItemRow>
 
     /**
      * As [dueCount], kept live: re-emits whenever schedules or memberships change.
@@ -95,7 +112,7 @@ interface SrsDao {
         FROM list_membership AS m
         JOIN study_item AS i ON i.id = m.study_item_id
         JOIN srs_state AS s ON s.study_item_id = i.id AND s.card_kind = :cardKind
-        WHERE m.deleted_at IS NULL AND i.deleted_at IS NULL AND i.type = 'WORD'
+        WHERE m.deleted_at IS NULL AND i.deleted_at IS NULL
         GROUP BY m.list_id
         """
     )
@@ -111,11 +128,11 @@ interface SrsDao {
         SELECT s.due_at FROM srs_state AS s
         JOIN study_item AS i ON i.id = s.study_item_id
         WHERE s.card_kind = :cardKind AND s.due_at > :from AND s.due_at <= :until
-          AND $REVIEWABLE
+          AND $REVIEWABLE AND $IN_LIST
         ORDER BY s.due_at
         """
     )
-    suspend fun dueTimesBetween(cardKind: String, from: Long, until: Long): List<Long>
+    suspend fun dueTimesBetween(cardKind: String, from: Long, until: Long, listId: String?): List<Long>
 
     @Upsert
     suspend fun upsert(row: SrsStateRow)
@@ -155,14 +172,26 @@ data class ListReviewRow(
     @ColumnInfo(name = "learned") val learned: Int,
 )
 
-/** The test every review query shares: a live, filed WORD (D-89, D-106). */
+/** The test every review query shares: a live, filed item, word or kanji (D-89, D-118). */
 private const val REVIEWABLE = """
     i.deleted_at IS NULL
-    AND i.type = 'WORD'
     AND EXISTS (
         SELECT 1 FROM list_membership AS m
         WHERE m.study_item_id = i.id AND m.deleted_at IS NULL
     )
+"""
+
+/**
+ * Narrows a review query to one list when `:listId` is given ("Review this
+ * list", D-117), and is a no-op when it is null. The list only filters: a word in
+ * three lists is still one schedule (D-29), and reviewing it from one list moves
+ * it in all three.
+ */
+private const val IN_LIST = """
+    (:listId IS NULL OR EXISTS (
+        SELECT 1 FROM list_membership AS lm
+        WHERE lm.study_item_id = i.id AND lm.list_id = :listId AND lm.deleted_at IS NULL
+    ))
 """
 
 /**

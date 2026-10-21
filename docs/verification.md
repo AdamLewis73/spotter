@@ -495,6 +495,33 @@ Setup: on Gboard's English layout, type the reading of 学生 one letter at a ti
 
 The trap: converting by rewriting the field's text on each keystroke. Gboard keeps a *composing region* — the word being typed — and expects to own it; replace the text under it and the two disagree about where the word starts, and letters vanish. Found on 2026-10-12: "gakusei" arrived as がうせい and was marked wrong, while "sensei" and "seisan" had happened to survive. The field now keeps the typed romaji and only *draws* it as kana (`RomajiAsKana`, a visual transformation); conversion happens at Submit. Only a real keyboard shows this — unit tests of `romajiToKana` pass either way.
 
+### V-39 · A list review moves the word everywhere; practice moves nothing (D-117, D-29)
+
+Setup: file 先生 into *Signs* and *Menu*, and 生産 into *Menu* only. Review *Signs*, answering 先生 right until it graduates. Then open *Signs* again and practise it.
+
+| Check | Expected |
+|---|---|
+| *Signs*' review | asks 先生 only; 生産 is never shown |
+| *Menu* after it | 先生 no longer due there either: one schedule (D-29) |
+| Practice offered | 先生, once nothing in *Signs* is due; never a word that is due, and never one never reviewed |
+| After practice, right or wrong | `review_log` row count and every `srs_state` row **unchanged** |
+
+The trap is practice that quietly records. It uses the same card, the same checking and the same Next as review, so the natural code path writes a log row and moves FSRS — and then every practice session shortens intervals the learner never asked to shorten, which is exactly D-115's objection to review ahead. Nothing on screen would differ. `ReviewRepositoryTest` holds the list filter and the not-due set (`a_list_review_asks_only_that_lists_due_words`, `practice_draws_the_lists_words_that_are_not_due`). The no-write rule lives in `ReviewViewModel.next` and was checked on the emulator on 2026-10-15 by copying the database off before and after a practice session with a miss in it: 5 log rows and identical schedules both times.
+
+### V-40 · A kanji card accepts any one reading, in any form a learner would type (D-118)
+
+Setup: save 生 from its kanji screen, file it, and review it.
+
+| Typed | Expected |
+|---|---|
+| `sei`, `セイ`, `shou`, `nama`, `ki` | right: on'yomi in romaji or katakana, kun'yomi as written |
+| `i`, `ikiru`, `umareru`, `uma` | right: a kun'yomi's stem, or stem and ending together |
+| `ka`, `seikatsu` | wrong |
+| Any meaning of `life`, `genuine`, `birth` | right |
+| The answer, after `i` | every reading listed with a word; い marked, with 生きる under it |
+
+The trap is a right reading refused because of how KANJIDIC2 writes it. Its kun'yomi carry markers (`い.きる`, `なま-`, `-う`) that a learner never types; compare against the raw strings and every kun'yomi with an ending or a marker is unreachable, silently. Katakana on'yomi typed as romaji have to compare in one script, as word readings already do (D-108). `KanjiCardTest` holds every row; `ReviewRepositoryTest.a_filed_kanji_is_in_the_queue` holds the queue. Driven on the emulator on 2026-10-15: `life`/`い` and then `birth`/`sei` both passed, and the reveal marked い and then セイ.
+
 ### V-20 · An orphaned saved item renders and stays reviewable (D-40, D-43)
 
 Setup: save a word, then swap in a dictionary build where that `(text, reading)` no longer resolves.

@@ -1,7 +1,7 @@
 # Phase 8 — Export / import
 
-**Status:** not started
-**Updated:** 2026-08-09
+**Status:** not started — next, now that Phase 7 is closed
+**Updated:** 2026-10-21
 
 ## Current state
 
@@ -9,17 +9,26 @@ Not started.
 
 ## Next action
 
-Nothing yet — needs the full user-data schema settled through Phases 6 and 7.
+**Agree the backup file's shape with the owner before writing it.** The schema
+it serializes is settled (`UserDatabase` v3, Phases 6 and 7), so nothing blocks
+the phase. But the file format is a checkpoint: once learners hold backup files,
+every later version of the app has to read them.
 
 ## Done
 
-- [ ] Versioned JSON/zip export of user data plus images
+- [ ] Versioned JSON/zip export of user data (photos: see *Open questions*)
 - [ ] Import, including the round trip on a different device
+- [ ] Anki export: one note per word per list, front and back, no review
+      history (D-79, D-111)
 - [ ] Relevant `V-##` cases from `verification.md` added to this list
 
 ## Open questions
 
-None recorded yet.
+- **Do photos go in the backup file?** This stub's original line said "plus
+  images". D-94 keeps photos out of Android's *automatic* backup because of its
+  25 MB limit, which is a different mechanism with a different constraint. A
+  file the learner exports by hand has no such limit, but full-size photos make
+  it large. Not decided.
 
 ## Notes
 

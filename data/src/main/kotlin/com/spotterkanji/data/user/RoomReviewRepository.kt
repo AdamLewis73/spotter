@@ -36,12 +36,16 @@ class RoomReviewRepository(
 
     private val dao get() = db.srsDao()
 
-    override suspend fun dueCount(nowMs: Long): Int = dao.dueCount(CardKind.REVIEW.name, nowMs)
+    override suspend fun dueCount(nowMs: Long, listId: SavedListId?): Int =
+        dao.dueCount(CardKind.REVIEW.name, nowMs, listId?.value)
 
-    override suspend fun nextDueAt(): Long? = dao.nextDueAt(CardKind.REVIEW.name)
+    override suspend fun nextDueAt(listId: SavedListId?): Long? = dao.nextDueAt(CardKind.REVIEW.name, listId?.value)
 
-    override suspend fun dueItems(nowMs: Long, limit: Int): List<StudyItem> =
-        dao.dueItems(CardKind.REVIEW.name, nowMs, limit).map { it.toModel() }
+    override suspend fun dueItems(nowMs: Long, limit: Int, listId: SavedListId?): List<StudyItem> =
+        dao.dueItems(CardKind.REVIEW.name, nowMs, limit, listId?.value).map { it.toModel() }
+
+    override suspend fun notDueItems(nowMs: Long, limit: Int, listId: SavedListId): List<StudyItem> =
+        dao.notDueItems(CardKind.REVIEW.name, nowMs, limit, listId.value).map { it.toModel() }
 
     override fun observeDueCount(nowMs: Long): Flow<Int> = dao.observeDueCount(CardKind.REVIEW.name, nowMs)
 
@@ -52,8 +56,8 @@ class RoomReviewRepository(
 
     override suspend fun answeredSince(sinceMs: Long): Int = dao.answeredSince(CardKind.REVIEW.name, sinceMs)
 
-    override suspend fun dueTimesBetween(fromMs: Long, untilMs: Long): List<Long> =
-        dao.dueTimesBetween(CardKind.REVIEW.name, fromMs, untilMs)
+    override suspend fun dueTimesBetween(fromMs: Long, untilMs: Long, listId: SavedListId?): List<Long> =
+        dao.dueTimesBetween(CardKind.REVIEW.name, fromMs, untilMs, listId?.value)
 
     override suspend fun synonyms(itemId: StudyItemId): List<String> = dao.synonyms(itemId.value)
 

@@ -110,6 +110,7 @@ internal fun ListDetailScreen(
     onRemove: (StudyItemId) -> Unit,
     onUndoRemove: (StudyItemId) -> Unit,
     onAddFromSearch: () -> Unit,
+    onReview: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -196,12 +197,26 @@ internal fun ListDetailScreen(
                         .fillMaxWidth()
                         .padding(horizontal = tokens.spaceMd, vertical = tokens.spaceSm),
                 ) {
-                    TextButton(onClick = onBack, contentPadding = PaddingValues(0.dp)) {
-                        Text(
-                            text = "‹  " + stringResource(R.string.destination_saved),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = onBack, contentPadding = PaddingValues(0.dp)) {
+                            Text(
+                                text = "‹  " + stringResource(R.string.destination_saved),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.weight(1f))
+                        // "Review this list" (D-117), top right as the wireflow's
+                        // C5 draws it. Nothing to review in an empty list.
+                        if (words.isNotEmpty()) {
+                            TextButton(onClick = onReview) {
+                                Text(
+                                    text = stringResource(R.string.review_list_action),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
                     }
                     Text(
                         text = listName,

@@ -134,16 +134,19 @@ Scan for the relevant entry rather than reading the whole file.
 | D-103 | ~~A word card's front is the written form; a pass means recalling the reading **and** the main sense~~ — SUPERSEDED by D-107 | SRS |
 | D-104 | ~~The scan photo is on the back of a card, never the front~~ — SUPERSEDED by D-107 | SRS |
 | D-105 | **Each card kind has its own schedule: `srs_state` is keyed by item and kind** | SRS |
-| D-106 | A kanji card's back is its meanings in KANJIDIC2's order, cut to fit with a count of the rest | SRS |
+| D-106 | A kanji card's back is its meanings in KANJIDIC2's order, cut to fit with a count of the rest *(reading rule: D-118)* | SRS |
 | D-107 | **One card per word: meaning and reading fields, one schedule, pass only if both are right** | SRS |
 | D-108 | Answers checked loosely and offline; any sense counts; "I was right" saves a synonym | SRS |
-| D-109 | Handwriting review is opt-in, with its own queue and button | SRS |
+| D-109 | Handwriting review is opt-in, with its own queue and button *(after 1.0, D-116)* | SRS |
 | D-110 | Kana-only words cannot be saved in v1 | Product |
 | D-111 | Anki export: one note per word per list, front and back, no review history | SRS |
 | D-112 | **Review schema: append-only log is the truth; `srs_state` a cache keyed (item, kind); no undo in v1** | SRS |
 | D-113 | FSRS is a port of py-fsrs v6.3.2, held to its tests, on default settings; fuzz seeded per review | SRS |
-| D-114 | A review session records at Next, brings learning cards back, stops at 50; kanji not yet reviewed | SRS |
+| D-114 | A review session records at Next, brings learning cards back, stops at 50; kanji not yet reviewed *(kanji admitted by D-118)* | SRS |
 | D-115 | From the design: review state on Saved, a tab badge, a caught-up forecast, the reading over the word; no review-ahead | UI |
+| D-116 | 1.0 is Phases 7–9 finished — kanji in review and all of export included, handwriting not — with one device pass at the end | Product |
+| D-117 | "Review this list" reviews the list's due words, then offers the rest as practice that is never recorded | SRS |
+| D-118 | A kanji card passes on any one reading — a kun'yomi's bare stem included — and any meaning; the answer shows every reading with a word | SRS |
 
 **Bold** entries are the ones whose violation causes silent data corruption or a forced rewrite. They are also listed in `CLAUDE.md`.
 
@@ -312,6 +315,22 @@ D-01 scoped v1 study items to words and deferred kanji-only items, on the ground
 *What it does not change:* the word remains the primary unit of study, and the kanji screen remains reference material reached by drilling down (D-05). This makes a kanji **keepable**, not the thing the app is about.
 
 *Cost to reverse:* near zero going forward; awkward going back, since users would have saved kanji needing somewhere to go.
+
+**D-116 — 1.0 is the end of Phase 9, with Phases 7 and 8 finished in full except handwriting review. Device testing is one pass near the end.**
+
+Settled by the project owner on 2026-10-15. Until now `roadmap.md` said only that *a shippable v1 is Phases 1–5 plus the attribution screen*. That was a floor, the least that could ever be distributed, not a plan, and it left open which of the three remaining phases a release waits for.
+
+*In 1.0:*
+
+- **Phase 7 — SRS review**, including **kanji in review**: a saved kanji is asked like a word. This needs D-106's open question answered, which is what a kanji card's reading field accepts, and the owner leads that. It blocks Phase 7 from closing. Also **"Review this list"** with a session summary (D-117).
+- **Phase 8 — export and import, all of it**: the backup file D-20 describes, which is also the recovery path if a migration ever fails on a phone, and the Anki export of D-79 and D-111.
+- **Phase 9 — release prep**, with the attribution screen the data licences require.
+
+*Not in 1.0:* **handwriting review (D-109)**. It stays decided as written, opt-in with its own queue, and is built after 1.0. Artboard 2c draws it, so it is deferred knowingly, not dropped. Everything in `roadmap.md`'s *Deferred* table also stays out unless a later decision brings it in.
+
+*Device testing comes at the end, in one pass.* Nothing in Phase 7 has run on a physical phone yet, and the owner chose to test once the build is close to done rather than phase by phase. That pass carries every check that needs real hardware: review in use (FSRS's 1- and 10-minute steps, the card itself), V-30's real sign photographed on a real phone, and how badly exact hit-testing bites at a real distance (the *tap-target mitigations* row). What it finds is fixed before release, not deferred.
+
+*Cost to reverse:* low. Scope only; nothing stored depends on it. The cost runs the other way: each item added to 1.0 delays the first release.
 
 ---
 
@@ -1128,6 +1147,37 @@ Declined: **"Review ahead anyway"** (4h). Reviewing before FSRS's due time spend
 *Two consequences found while building:* due counts on Saved and the tab are live queries that hold the time they were started with, so they re-query once a minute — and **a card never reviewed counts as due whatever that time says**, because its due time is its save time; otherwise a word filed just after a tick stayed uncounted for up to a minute.
 
 *Cost to reverse:* low. Display only; nothing stored.
+
+**D-117 — "Review this list" reviews the list's due words like any review, then offers the list's other words as practice that is checked but never recorded.**
+
+Settled by the project owner on 2026-10-15. D-115 deferred "Review this list" (artboard 2d's list menu, the wireflow's entry into lane D) and declined "review ahead". The design draws the menu item on a list that is already **all caught up**, which a due-only review could not honour. Three shapes were weighed: due words only; every word in the list, which is review ahead under another name; or due words first, then optional practice. The owner chose the third.
+
+- **The review is an ordinary review, narrowed to one list.** Same card, same checking (D-107, D-108), same recording and session rules (D-112, D-114). A list only filters (D-29): a word in two lists is one schedule, so reviewing it from one list moves it in both.
+- **Practice follows, when the learner wants it.** Once the list has nothing due, on its home screen or at the end of its review, its other words are offered as practice: words not due yet, soonest due first, up to 50, leaving out any answered earlier in the same sitting. The card says *Practice*, and the offer says the answers are not recorded.
+- **Practice records nothing.** No `review_log` row and no schedule change, so practising ahead can never shorten an interval, which is D-115's objection to review ahead. A missed practice word still comes back before the session ends, as in review. *I was right* still saves the learner's synonym (D-108): that is what the word means to them, not a grade.
+- **A word never reviewed is never practice.** Its due time is its save time, so it is always due, and it belongs to review.
+
+*Where it is reached:* the ⋯ menu on each list in Saved, between Rename and Delete as 2d draws it, and a **Review** action at the top of the list screen, where the wireflow's C5 draws one. It opens under the list, so Saved stays lit and back returns to where it was opened from.
+
+*The session summary* (the wireflow's D4, not designed) is built with it and serves every session, not only a list's: how many words, how many were right first time against missed, and for a review when they come back, in the same week-ahead form as the caught-up forecast. D-107 has no grades, so "counts per grade" became right and missed.
+
+*Cost to reverse:* low. Nothing stored depends on it; practice writes nothing by design.
+
+**D-118 — A kanji card passes on any one of its readings and any one of its meanings. The answer then shows every reading, each with a word that uses it.** *Answers D-106's open question; lifts D-114's exclusion of kanji.*
+
+Settled by the project owner on 2026-10-15. A word card's reading has one answer (先生 is せんせい). A lone kanji has many: 生 has two on'yomi and eighteen kun'yomi forms in KANJIDIC2, the 2,501 most frequent kanji average 3.1 readings, and 450 of them have five or more. Which reading applies depends on the word around the kanji, which is the app's whole thesis (D-04, D-44).
+
+- **Reading: any one passes.** Requiring all of them, or one on'yomi plus one kun'yomi, was weighed and rejected. A kanji's readings are learned from the words that use them, not as a list, and 401 common kanji have no kun'yomi and 16 have no on'yomi, so a paired rule would need exceptions everywhere.
+- **A kun'yomi passes as its stem.** KANJIDIC2 writes `い.きる`: the stem い, then the kana ending that follows the kanji in 生きる. The card shows the kanji alone, and the owner judged it odd to ask for an ending the card does not show. So い passes, and so does いきる, typed in full. The markers for a prefix or suffix (`なま-`, `-う`) are dropped.
+- **The cost, accepted knowingly:** a bare stem is often one kana. い, う, お, は, き, な and む all answer 生, so a one-kana guess passes roughly one time in seven there, and 445 common kanji have a one-kana stem. **To be revisited after 1.0** with real use behind it (`roadmap.md`'s Deferred table).
+- **Meaning: any of KANJIDIC2's meanings,** checked as loosely as a word's (D-108), with *I was right* saving the learner's synonym.
+- **The answer shows the breadth the test does not ask for.** Each reading is listed with one word that uses it, from the kanji screen's own Examples data. On'yomi come first, and the reading the learner typed is marked in jade: 生 answered い shows い 生きる alongside セイ 学生 and ショウ 誕生. Readings no common word demonstrates are listed after, as plain kana. Meanings follow D-106: KANJIDIC2's order, cut to fit with a count of the rest.
+- **The card is labelled *Kanji*** and has no photo when the kanji was saved from the kanji screen rather than a scan, which is the usual case.
+- **A kanji the dictionary no longer has** is asked its meaning alone, from `snapshot_gloss`. It stays reviewable (D-40) instead of being asked a reading it cannot check, and the log records that no reading was asked.
+
+*Why kanji cards may space out faster than word cards:* passing is easier, so intervals grow quicker. That is intended. The kanji card is a light recognition check; the word cards carry the reading load.
+
+*Cost to reverse:* low to medium. The log keeps exactly what was typed, so a stricter rule can be applied to answers from then on. Answers already given were graded under this one and stay as they are.
 
 ---
 

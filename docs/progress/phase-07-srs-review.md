@@ -1,7 +1,8 @@
 # Phase 7 — SRS review
 
-**Status:** in progress — the main review loop is built and merged (PRs #48–#53)
-**Updated:** 2026-10-12
+**Status:** done. Word and kanji review on FSRS, "Review this list" with
+practice, and a summary after every session — everything 1.0 asks of it (D-116).
+**Updated:** 2026-10-21
 
 ## Current state
 
@@ -16,20 +17,31 @@ recall; an append-only `review_log` is the truth and `srs_state` a cache of it
 (D-112). Session rules are D-114; what was taken from the design project is
 D-115.
 
-**Not built yet:** saved **kanji are kept out of review** until their reading
-rule is settled (D-106, D-114); the **handwriting** queue (D-109); "Review this
-list" and a per-session summary (D-115 deferred them); the scan date on the
-card's photo.
+**"Review this list" is built (D-117).** From a list's ⋯ menu on Saved, or
+*Review* at the top of the list, the list's due words are reviewed as usual;
+once none are due, its other words can be **practised**, checked the same way
+but **never recorded**. Every session now ends on a summary: words, right first
+time, missed, and when they come back.
+
+**Kanji are reviewed (D-118).** A saved kanji gets a card labelled *Kanji*:
+any one meaning and any one reading pass, a kun'yomi's bare stem included, and
+the answer lists every reading with a word that uses it, the one typed marked
+in jade.
+
+**Not built:** the scan date on the card's photo (D-115 deferred it). The
+**handwriting** queue (D-109) is after 1.0 (D-116).
 
 ## Next action
 
-1. **The owner tries review on a real phone.** Judge FSRS's 1- and 10-minute
-   learning steps (D-113) and the card itself in use. Nothing here has been on
-   a physical device yet.
-2. Then, in the owner's order: **what a kanji card's reading field accepts**
-   (生 has せい, しょう, い.きる, なま…), so kanji join the queue; **"Review this
-   list"** with a session summary; the **opt-in handwriting queue** (D-109) —
-   *how* the learner opts in is still open.
+None. **Closed by the owner on 2026-10-21.** Work moves to Phase 8
+(`phase-08-export-import.md`). What this phase leaves behind is named rather
+than open: handwriting review (D-109) and a stricter kanji reading rule (D-118)
+are after 1.0 in `roadmap.md`'s Deferred table, and the scan date on a card's
+photo stays deferred by D-115.
+
+**Deferred by the owner, 2026-10-14: the phone test.** Review on a real phone
+waits for one device pass near the end, alongside V-30 (D-116). Nothing in
+Phase 7 has been on a physical device yet.
 
 ### Where the code is
 
@@ -40,6 +52,8 @@ card's photo.
 | Review tables, queue queries, migration 2 → 3 | `data/user/SrsEntities.kt`, `SrsDao.kt` |
 | Recording an answer (log, then FSRS, one transaction) | `data/user/RoomReviewRepository.kt` — `ReviewRepositoryTest` |
 | The Review tab and session | `app/review/ReviewScreen.kt`, `ReviewViewModel.kt` |
+| The kanji card: accepted readings, the reveal (D-118) | `domain/review/KanjiCard.kt` — `KanjiCardTest` |
+| Review this list, practice, summary (D-117) | the same two files; route `list/{id}/review` in `app/nav/SpotterApp.kt`; list filter `IN_LIST` and `notDueItems` in `SrsDao.kt` |
 | Due counts on Saved, the tab badge | `app/saved/SavedViewModel.kt`, `app/nav/SpotterApp.kt` (`minuteTicks`) |
 
 ## Done
@@ -85,7 +99,7 @@ card's photo.
       reached the database. Two faults found by looking and fixed: the theme's
       focus border is the same jade as "right", so a field looked graded while
       typing; and a trailing n stayed a letter in the field after Submit.
-- [ ] **Handwriting review — design artboard 2c, "Review — write it"** (D-72,
+- [ ] **After 1.0 (D-116).** **Handwriting review — design artboard 2c, "Review — write it"** (D-72,
       D-109): **opt-in**, its own queue and button, its own `WRITING` schedule.
       A canvas the learner writes the word on, a *Clear* control, a **Check**
       button that reveals the answer beside their attempt, then **right or
@@ -112,8 +126,28 @@ card's photo.
       (no Save for kana-only words), **V-36** (every study item has one schedule,
       kept on re-save), **V-37** (the stored schedule is a replay of the log),
       **V-38** (romaji through a composing keyboard keeps every letter)
-- [ ] Kanji in review — blocked on the reading rule (D-106)
-- [ ] "Review this list" and a session summary (D-115)
+- [x] **Kanji in review (D-118, V-40)** — 2026-10-15. `kanjiAnswers` turns
+      KANJIDIC2's readings into what a learner types: markers dropped, on'yomi
+      compared in hiragana, a kun'yomi as its stem or in full. The reveal reuses
+      the Examples tab's reading groups, first word of each. `REVIEWABLE` no
+      longer filters on type. `KanjiCardTest` 8/8, `ReviewRepositoryTest` 12/12.
+      Driven on the emulator: 生 saved from its kanji screen, answered
+      `life`/`い` then `birth`/`sei`, marked right both times, い and then セイ
+      lit in the reveal, and the summary said it comes back Saturday. Seen while
+      driving, and left alone because it comes from the kanji screen's own
+      grouping: 生's kun'yomi show as う, うま and うまれ separately, and the
+      example picked for セイ is 学生 rather than 先生.
+- [x] **"Review this list", practice and a session summary (D-117, V-39)** —
+      2026-10-15. Every review query takes an optional list (`IN_LIST`); practice
+      draws the list's not-due words and writes nothing. Reached from the ⋯ menu
+      on Saved (artboard 2d) and *Review* on the list screen (wireflow C5), on a
+      route under the list so Saved stays lit. The summary (wireflow D4, not
+      designed) serves every session. `ReviewRepositoryTest` 12/12. Driven on
+      the emulator end to end: a list review with one miss gave "2 words · 1
+      right first time · 1 missed" with a forecast; practice with a miss brought
+      the miss back and left `review_log` and `srs_state` exactly as they were.
+      Found while driving: せいざん for 生産 is a real word ("live birth"), so
+      D-108's retry nudge fired — working as designed.
 
 ## Open questions
 
@@ -136,7 +170,7 @@ card's photo.
 
 - ~~**Does every saved word get a write card, or does the learner opt
   in?**~~ — **resolved 2026-10-12 (D-109):** opt-in, with its own queue and
-  button. Still open: *how* the learner opts in. A write card is drawn by hand on a canvas and self-graded after
+  button. Still open, and **after 1.0** (D-116): *how* the learner opts in. A write card is drawn by hand on a canvas and self-graded after
   *Check* (artboard 2c, D-72) — there is no handwriting recognition. Its prompt
   needs the reading as well as the meaning, since "teacher" alone is 先生 or
   教師; confirm against the artboard.
@@ -144,7 +178,16 @@ card's photo.
 - ~~**What does a kanji card's back show?**~~ — **resolved 2026-10-11
   (D-106):** its meanings in KANJIDIC2's order, cut to fit with a count of the
   rest. Kanji use D-107's card; still open: what a kanji's **reading** field
-  accepts (生 has せい, しょう, い.きる, なま…). Deferred by the owner.
+  accepts (生 has せい, しょう, い.きる, なま…). — **resolved 2026-10-15 (D-118):**
+  any one reading, a kun'yomi's bare stem included, with every reading shown on
+  the answer. To be revisited after 1.0.
+
+- ~~**What does "Review this list" include?**~~ — **resolved 2026-10-15
+  (D-117):** the list's due words, then optional practice over the rest that is
+  never recorded.
+
+- ~~**Where is the 1.0 cutoff?**~~ — **resolved 2026-10-15 (D-116):** the end
+  of Phase 9, with Phases 7 and 8 complete except handwriting review.
 
 - ~~**The `srs_state` / `review_log` schema**~~ — **approved 2026-10-12
   (D-112):** an append-only log is the truth, `srs_state` a cache keyed by
@@ -166,10 +209,9 @@ card's photo.
 - FSRS, not SM-2 or anything hand-rolled (D-26).
 - Lists only filter; they never own scheduling (D-29). A word in three lists is
   still one schedule per card kind (D-105).
-- Kanji are study items in v1 (D-92) and get a REVIEW schedule like any word,
-  but the queue's `REVIEWABLE` filter (`SrsDao.kt`) keeps `type = 'KANJI'` out
-  until D-106's open question is answered. Removing that one line is how they
-  join.
+- Kanji are study items in v1 (D-92), get a REVIEW schedule like any word,
+  and are in the queue since D-118. The card is built by `buildKanjiReviewCard`
+  from `kanjiDetail`, the kanji screen's own data, not from a word lookup.
 
 ### Device and test knowledge from this phase
 

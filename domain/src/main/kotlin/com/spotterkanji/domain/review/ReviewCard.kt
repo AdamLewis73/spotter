@@ -31,6 +31,14 @@ data class ReviewCard(
      * built from `snapshot_gloss` instead and stays answerable (D-40, D-43, V-20).
      */
     val resolved: Boolean,
+    /**
+     * False only for a kanji whose readings the dictionary no longer has: the
+     * card then asks its meaning alone rather than a reading it cannot check
+     * (D-40). A word always has its saved reading, so always asks.
+     */
+    val asksReading: Boolean = true,
+    /** Set for a kanji card (D-118): every reading with a word that shows it, for the answer. */
+    val kanji: KanjiReveal? = null,
 ) {
     val mainSense: List<String> get() = senses.firstOrNull().orEmpty()
     val otherSenses: List<List<String>> get() = senses.drop(1)
@@ -131,19 +139,29 @@ fun fuzzSeed(itemId: StudyItemId, kind: CardKind, atMs: Long): Long {
  * Review's view of user data (D-112). Implemented over Room in `:data`.
  *
  * Only **filed** words are reviewed (D-89) — a word taken out of every list
- * keeps its schedule but drops out of the queue until it is filed again — and
- * only WORD items for now: what a kanji card's reading field accepts is still
- * open (D-106).
+ * keeps its schedule but drops out of the queue until it is filed again. Words
+ * and kanji alike (D-92, D-118).
  */
 interface ReviewRepository {
-    /** How many REVIEW cards are due at [nowMs]. */
-    suspend fun dueCount(nowMs: Long): Int
+    /**
+     * How many REVIEW cards are due at [nowMs] — in [listId] only, when given
+     * ("Review this list", D-117). A list only filters; the schedule is the
+     * word's (D-29).
+     */
+    suspend fun dueCount(nowMs: Long, listId: SavedListId? = null): Int
 
     /** When the next REVIEW card falls due, or null if nothing is scheduled. */
-    suspend fun nextDueAt(): Long?
+    suspend fun nextDueAt(listId: SavedListId? = null): Long?
 
     /** Due REVIEW cards' items, most overdue first, new words in the order saved. */
-    suspend fun dueItems(nowMs: Long, limit: Int): List<StudyItem>
+    suspend fun dueItems(nowMs: Long, limit: Int, listId: SavedListId? = null): List<StudyItem>
+
+    /**
+     * [listId]'s words that are **not** due at [nowMs], soonest due first — the
+     * practice that follows a list's review (D-117). Practice is never recorded,
+     * so this is the only place it touches the schedule: to choose an order.
+     */
+    suspend fun notDueItems(nowMs: Long, limit: Int, listId: SavedListId): List<StudyItem>
 
     /** [dueCount], live: changes as words are filed, answered or removed. */
     fun observeDueCount(nowMs: Long): Flow<Int>
@@ -155,7 +173,7 @@ interface ReviewRepository {
     suspend fun answeredSince(sinceMs: Long): Int
 
     /** Due times of reviewable cards after [fromMs] and up to [untilMs], earliest first. */
-    suspend fun dueTimesBetween(fromMs: Long, untilMs: Long): List<Long>
+    suspend fun dueTimesBetween(fromMs: Long, untilMs: Long, listId: SavedListId? = null): List<Long>
 
     suspend fun synonyms(itemId: StudyItemId): List<String>
 

@@ -112,12 +112,32 @@
     <string name="review_also">also: %1$s</string>
     <string name="review_more">+%1$d more</string>
     <string name="review_done_title">Session complete</string>
-    <plurals name="review_done_body">
-        <item quantity="one">%d answer recorded.</item>
-        <item quantity="other">%d answers recorded.</item>
+    <string name="practice_done_title">Practice complete</string>
+    <plurals name="review_done_words">
+        <item quantity="one">%d word</item>
+        <item quantity="other">%d words</item>
     </plurals>
+    <string name="review_done_right">%1$d right first time</string>
+    <string name="review_done_missed">%1$d missed</string>
+    <string name="review_coming_back">Coming back</string>
     <string name="review_done_back">Done</string>
     <string name="review_close">End review</string>
+    <!-- Review this list, and practice after it (D-117). -->
+    <string name="review_this_list">Review this list</string>
+    <string name="review_list_action">Review</string>
+    <string name="review_list_nothing_title">Nothing to review in this list yet</string>
+    <string name="review_list_nothing_body">Words filed into it come up here.</string>
+    <plurals name="practice_start">
+        <item quantity="one">Practise %d more word</item>
+        <item quantity="other">Practise %d more words</item>
+    </plurals>
+    <string name="practice_note">Practice isn’t recorded. It won’t change when words come back.</string>
+    <string name="practice_card_kind">Practice</string>
+    <!-- The kanji card (D-118). -->
+    <string name="kanji_card_kind">Kanji</string>
+    <string name="kanji_reading_hint">any one reading, in romaji</string>
+    <string name="kanji_answer_readings">Readings</string>
+    <string name="kanji_answer_rarer">also %1$s</string>
 
     <!-- The list picker (D-88, D-91). No artboard: the wireflow marks it
          "NOT DESIGNED", so this follows the owner's spec. -->
